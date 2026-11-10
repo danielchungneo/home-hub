@@ -1,7 +1,8 @@
 # Serves the kiosk build (pi/deploy.ps1 copies it to /var/www/hub).
-# Bound to localhost on purpose: the kiosk login (VITE_KIOSK_EMAIL / VITE_KIOSK_PASSWORD)
+# Bound to loopback on purpose: the kiosk login (VITE_KIOSK_EMAIL / VITE_KIOSK_PASSWORD)
 # is built into the JS, so the site must not be reachable from other devices on the network.
-http://localhost {
+# Both localhost and 127.0.0.1 are listed: a Host mismatch returns an empty 200 (white screen).
+http://localhost, http://127.0.0.1 {
 	bind 127.0.0.1
 
 	# Music agent search API (apps/music-agent listens on 127.0.0.1:8787).

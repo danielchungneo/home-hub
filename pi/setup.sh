@@ -52,9 +52,20 @@ else
 
 # Chung Family Hub kiosk: autologin on tty1 starts the browser (restart: sudo systemctl restart getty@tty1).
 if [ "\$(tty)" = "/dev/tty1" ]; then
+  # Wait for Caddy — Chromium will stick on a white tab if the first load fails.
+  for i in \$(seq 1 30); do
+    curl -fsS -o /dev/null http://127.0.0.1/ && break
+    sleep 1
+  done
+  # Optional: ~/hub-kiosk-tools/kiosk-watchdog.py reloads via CDP if the first paint is blank.
+  if [ -x "\$HOME/hub-kiosk-tools/venv/bin/python" ] && [ -f "\$HOME/hub-kiosk-tools/kiosk-watchdog.py" ]; then
+    nohup "\$HOME/hub-kiosk-tools/venv/bin/python" "\$HOME/hub-kiosk-tools/kiosk-watchdog.py" \\
+      >/tmp/hub-kiosk-watchdog.log 2>&1 &
+    disown || true
+  fi
   exec cage -- $CHROMIUM --kiosk --ozone-platform=wayland --password-store=basic \\
     --noerrdialogs --disable-infobars --disable-session-crashed-bubble \\
-    --no-first-run http://localhost
+    --no-first-run --remote-debugging-port=9222 --disk-cache-size=1 http://127.0.0.1/
 fi
 EOF
 fi
