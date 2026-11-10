@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Icon } from '../components/Icon'
 import { IconTile, Label, Progress } from '../components/primitives'
-import { useCompleted, useTasks } from '../data/hooks'
+import { useCompleted, useEvents, useTasks } from '../data/hooks'
+import { useLive } from '../data/live'
 import { localDate } from '../data/mappers'
-import { EVENTS, MEAL_PLAN, PHOTOS, RECIPES, SETTINGS, WEATHER } from '../data/mock'
+import { MEAL_PLAN, PHOTOS, RECIPES, SETTINGS, WEATHER } from '../data/mock'
 import { useClock } from '../hooks/useClock'
-import { clock, hourLabel, longDate } from '../lib/format'
+import { addDays, clock, hourLabel, longDate, startOfWeek } from '../lib/format'
 import { who } from '../lib/members'
 import { PhotoPlaceholder } from './PhotoPlaceholder'
 import s from './Idle.module.css'
@@ -15,6 +16,7 @@ export default function Idle() {
   const now = useClock()
   const slides = PHOTOS.filter((p) => p.inSlideshow)
   const [i, setI] = useState(0)
+  useLive('events', 'events')
 
   // Preload/advance one slide at a time; only the current image is mounted.
   useEffect(() => {
@@ -24,7 +26,13 @@ export default function Idle() {
 
   const today = now.getDay()
   const hour = now.getHours() + now.getMinutes() / 60
-  const agenda = EVENTS.filter((e) => e.day === today && !e.allDay && e.end > hour).slice(0, 4)
+  const weekStart = useMemo(() => startOfWeek(now), [now])
+  const weekEnd = useMemo(() => addDays(weekStart, 7), [weekStart])
+  const events = useEvents(weekStart, weekEnd).data ?? []
+  const agenda = events
+    .filter((e) => e.day === today && !e.allDay && e.end > hour)
+    .sort((a, b) => a.start - b.start)
+    .slice(0, 4)
   const dinner = MEAL_PLAN.dinner[today]
   const dinnerTitle = dinner ? ('recipeId' in dinner ? RECIPES.find((r) => r.id === dinner.recipeId)?.title : dinner.text) : 'Not planned yet'
   const total = useTasks().data?.length ?? 0

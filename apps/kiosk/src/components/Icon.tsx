@@ -73,6 +73,7 @@ const UI = {
   heart: <path d="M12 20s-7-4.4-9-8.6C1.6 8.4 3.4 5 6.8 5c2 0 3.4 1.2 5.2 3 1.8-1.8 3.2-3 5.2-3 3.4 0 5.2 3.4 3.8 6.4-2 4.2-9 8.6-9 8.6z" />,
   'heart-solid': <path d="M12 20s-7-4.4-9-8.6C1.6 8.4 3.4 5 6.8 5c2 0 3.4 1.2 5.2 3 1.8-1.8 3.2-3 5.2-3 3.4 0 5.2 3.4 3.8 6.4-2 4.2-9 8.6-9 8.6z" fill="currentColor" />,
   speaker: <><rect x="6" y="3" width="12" height="18" rx="3" /><circle cx="12" cy="14" r="3" /><path d="M12 7h.01" /></>,
+  refresh: <path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" />,
   'arrow-right': <path d="M5 12h14M13 6l6 6-6 6" />,
   'arrow-up': <path d="M12 19V5M6 11l6-6 6 6" />,
   'chevron-up': <path d="M5 15l7-7 7 7" />,

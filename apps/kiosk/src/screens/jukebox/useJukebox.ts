@@ -11,11 +11,14 @@ import {
   type QueueTrackInput,
 } from '../../data/hooks'
 import { useLive } from '../../data/live'
+import { fetchCollection } from '../../lib/musicAgent'
 import {
+  collectionTrackToTrack,
   favoriteToCollection,
   favoriteToTrack,
   nowPlayingToTrack,
   queueItemToTrack,
+  recentToCollection,
   trackMeta,
 } from '../../lib/jukeboxMedia'
 
@@ -51,6 +54,16 @@ const toQueueInput = (t: Track): QueueTrackInput => ({
   durationMs: t.durationMs || undefined,
 })
 
+const collectionPayload = (c: Collection, opts: { startUri?: string; shuffle?: boolean } = {}) => ({
+  contextUri: c.uri,
+  title: c.title,
+  subtitle: c.subtitle,
+  imageUrl: c.art.url,
+  kind: c.kind,
+  startUri: opts.startUri,
+  shuffle: opts.shuffle ?? false,
+})
+
 export function useJukebox() {
   const speakers = useSpeakers()
   const favoritesQuery = useFavorites()
@@ -67,8 +80,6 @@ export function useJukebox() {
 
   const [speakerId, setSpeakerId] = useState<string | null>(null)
   const [from, setFrom] = useState<string | null>(null)
-  const [shuffle, setShuffle] = useState(false)
-  const [repeat, setRepeat] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<number>()
   const advanceSent = useRef<string | null>(null)
@@ -124,8 +135,8 @@ export function useJukebox() {
     positionAt: Date.now(),
     speakerId: speakerId ?? '',
     volume: Math.round((live?.volume ?? 40) / 10),
-    shuffle,
-    repeat,
+    shuffle: live?.shuffle ?? false,
+    repeat: (live?.repeat ?? 'off') !== 'off',
     durationMs: live?.durationMs ?? npTrack?.durationMs ?? 0,
     track: npTrack,
   }
@@ -166,21 +177,26 @@ export function useJukebox() {
       setFrom(null)
       send('play', { uri: t.uri })
     },
-    playCollection: (c: Collection, _opts: { startUri?: string; shuffle?: boolean } = {}) => {
+    playCollection: (c: Collection, opts: { startUri?: string; shuffle?: boolean } = {}) => {
       setFrom(c.title)
-      void queueMut.replaceAll.mutateAsync([])
-      send('play', { contextUri: c.uri })
-      flash(`Playing “${c.title}”`)
+      send('play', collectionPayload(c, opts))
+      flash(opts.shuffle ? `Shuffling “${c.title}”` : `Playing “${c.title}”`)
     },
     playSearchHit: (hit: SearchHit) => {
       if (hit.kind === 'track') {
         setFrom(null)
         send('play', { uri: hit.uri })
-      } else {
-        setFrom(hit.title)
-        void queueMut.replaceAll.mutateAsync([])
-        send('play', { contextUri: hit.uri })
+        return
       }
+      setFrom(hit.title)
+      send('play', {
+        contextUri: hit.uri,
+        title: hit.title,
+        subtitle: hit.subtitle,
+        imageUrl: hit.imageUrl,
+        kind: hit.kind,
+        shuffle: false,
+      })
     },
     playNext: (track: Track | string) => {
       const t = typeof track === 'string' ? resolveTrack(track) : track
@@ -195,17 +211,23 @@ export function useJukebox() {
       flash(`Added “${t.title}” to the queue`)
     },
     addAllToQueue: (c: Collection) => {
-      // Without a collection track list API yet, only tracks we already know can be queued.
-      const known = c.trackUris.map(resolveTrack).filter(Boolean) as Track[]
-      if (!known.length) {
-        flash(`Open songs from search to add them — Spotify doesn’t share this playlist’s tracks`)
-        return
-      }
-      void queueMut.replaceAll.mutateAsync([
-        ...queueRows.map((q) => asQueue(q)),
-        ...known.filter((t) => t.uri !== player.current).map(toQueueInput),
-      ])
-      flash(`Added ${c.title} to the queue`)
+      void (async () => {
+        try {
+          const collection = await fetchCollection(c.uri)
+          const tracks = collection.tracks.map(collectionTrackToTrack)
+          if (!tracks.length) {
+            flash(`Spotify doesn’t share this playlist’s tracks`)
+            return
+          }
+          void queueMut.replaceAll.mutateAsync([
+            ...queueRows.map((q) => asQueue(q)),
+            ...tracks.filter((t) => t.uri !== player.current).map(toQueueInput),
+          ])
+          flash(`Added ${c.title} to the queue`)
+        } catch (err) {
+          flash(err instanceof Error ? err.message : 'Couldn’t load songs')
+        }
+      })()
     },
     playFromQueue: (i: number) => {
       const row = queueRows[i]
@@ -243,8 +265,8 @@ export function useJukebox() {
       const next = Math.max(0, Math.min(100, (live?.volume ?? 40) + delta * 10))
       send('volume', { volume: next })
     },
-    toggleShuffle: () => setShuffle((v) => !v),
-    toggleRepeat: () => setRepeat((v) => !v),
+    toggleShuffle: () => send('shuffle', { state: !player.shuffle }),
+    toggleRepeat: () => send('repeat', { state: player.repeat ? 'off' : 'context' }),
     toggleFavorite: (
       uri: string,
       kind: MediaKind,
@@ -268,7 +290,7 @@ export function useJukebox() {
         .catch((err) => flash(err instanceof Error ? err.message : 'Couldn’t update favorites'))
     },
   }), [
-    resolveTrack, send, queueMut, flash, queueRows, player.current, player.playing,
+    resolveTrack, send, queueMut, flash, queueRows, player.current, player.playing, player.shuffle, player.repeat,
     speakerList, live?.volume, favorites, toggleFav,
   ])
 
@@ -286,6 +308,10 @@ export function useJukebox() {
     () => favorites.filter((f) => f.kind === 'playlist').map(favoriteToCollection),
     [favorites],
   )
+  const recent = useMemo(
+    () => (live?.recent ?? []).map(recentToCollection),
+    [live?.recent],
+  )
   const queueTracks = useMemo(() => queueRows.map(queueItemToTrack), [queueRows])
 
   const ready = Boolean(speakers.data && favoritesQuery.data && queueQuery.data && state.data)
@@ -298,6 +324,7 @@ export function useJukebox() {
     songs,
     albums,
     playlists,
+    recent,
     queueTracks,
     speakers: speakerList,
     isFavorite: (uri: string) => favoriteUris.has(uri),

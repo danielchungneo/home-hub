@@ -4,26 +4,54 @@ import { db, type CommandRow, type SpeakerRow } from './db'
 import { getSpeaker, refreshSpeakers } from './speakers'
 import {
   findDeviceByName,
+  getCollectionTracks,
   getPlayback,
   listDevices,
   pausePlayback,
   resumePlayback,
+  setRepeat,
+  setShuffle,
   setVolume,
   skipNext,
   skipPrevious,
   startPlayback,
   transferPlayback,
+  type CollectionTrack,
   type PlaybackState,
+  type RepeatMode,
 } from './spotify/webApi'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+type RecentItem = {
+  uri: string
+  kind: 'album' | 'playlist'
+  title: string
+  subtitle?: string
+  imageUrl?: string
+}
 
 function payload(cmd: CommandRow) {
   return (cmd.payload ?? {}) as {
     uri?: string
     contextUri?: string
+    startUri?: string
     volume?: number
+    shuffle?: boolean
+    state?: boolean | RepeatMode
+    title?: string
+    subtitle?: string
+    imageUrl?: string
+    kind?: 'album' | 'playlist'
   }
+}
+
+function shuffleInPlace<T>(items: T[]) {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[items[i], items[j]] = [items[j]!, items[i]!]
+  }
+  return items
 }
 
 async function ensureSpotifyDevice(speaker: SpeakerRow) {
@@ -77,7 +105,46 @@ export function enqueueCommand(cmd: CommandRow) {
   return queue
 }
 
-async function writeState(speaker: SpeakerRow | null, playback: PlaybackState | null) {
+async function readRecent(): Promise<RecentItem[]> {
+  const { data } = await db
+    .from('jukebox_state')
+    .select('recent')
+    .eq('household_id', config.householdId)
+    .maybeSingle()
+  const raw = data?.recent
+  if (!Array.isArray(raw)) return []
+  return raw.filter((x): x is RecentItem => {
+    if (!x || typeof x !== 'object') return false
+    const o = x as Record<string, unknown>
+    return typeof o.uri === 'string' && typeof o.title === 'string' && (o.kind === 'album' || o.kind === 'playlist')
+  })
+}
+
+function pushRecent(current: RecentItem[], item: RecentItem): RecentItem[] {
+  return [item, ...current.filter((x) => x.uri !== item.uri)].slice(0, 4)
+}
+
+async function replaceQueue(tracks: CollectionTrack[]) {
+  await db.from('jukebox_queue').delete().eq('household_id', config.householdId)
+  if (!tracks.length) return
+  await db.from('jukebox_queue').insert(
+    tracks.map((t, i) => ({
+      household_id: config.householdId,
+      position: i,
+      spotify_uri: t.uri,
+      title: t.title,
+      subtitle: t.subtitle || null,
+      image_url: t.imageUrl ?? null,
+      duration_ms: t.durationMs ?? null,
+    })),
+  )
+}
+
+async function writeState(
+  speaker: SpeakerRow | null,
+  playback: PlaybackState | null,
+  extras?: { recent?: RecentItem[]; shuffle?: boolean; repeat?: RepeatMode },
+) {
   const item = playback?.item
   const nowPlaying = item
     ? {
@@ -90,6 +157,10 @@ async function writeState(speaker: SpeakerRow | null, playback: PlaybackState | 
       }
     : {}
 
+  const recent = extras?.recent ?? (await readRecent())
+  const shuffle = extras?.shuffle ?? Boolean(playback?.shuffle_state)
+  const repeat: RepeatMode = extras?.repeat ?? playback?.repeat_state ?? 'off'
+
   await db.from('jukebox_state').upsert({
     household_id: config.householdId,
     speaker_id: speaker?.id ?? null,
@@ -98,6 +169,9 @@ async function writeState(speaker: SpeakerRow | null, playback: PlaybackState | 
     progress_ms: playback?.progress_ms ?? 0,
     duration_ms: item?.duration_ms ?? 0,
     now_playing: nowPlaying,
+    shuffle,
+    repeat,
+    recent,
     updated_at: new Date().toISOString(),
   })
 }
@@ -118,8 +192,15 @@ export async function processCommand(cmd: CommandRow) {
 
     const body = payload(cmd)
     let deviceId: string | undefined
+    let recentOverride: RecentItem[] | undefined
+    let shuffleOverride: boolean | undefined
+    let repeatOverride: RepeatMode | undefined
 
-    if (speaker && ['play', 'resume', 'transfer', 'skip', 'previous', 'volume', 'advance'].includes(cmd.type)) {
+    const needsDevice = [
+      'play', 'resume', 'transfer', 'skip', 'previous', 'volume', 'advance', 'shuffle', 'repeat',
+    ].includes(cmd.type)
+
+    if (speaker && needsDevice) {
       const device = await ensureSpotifyDevice(speaker)
       deviceId = device.id ?? undefined
       if (!deviceId) throw new Error(`${speaker.name} has no Spotify device id`)
@@ -130,11 +211,48 @@ export async function processCommand(cmd: CommandRow) {
         if (!speaker || !deviceId) throw new Error('Speaker required for play')
         await transferPlayback(deviceId, false)
         await sleep(300)
-        await startPlayback({
-          deviceId,
-          uri: body.uri,
-          contextUri: body.contextUri,
-        })
+
+        if (body.contextUri) {
+          const collection = await getCollectionTracks(body.contextUri)
+          const kind = body.kind ?? collection.kind
+          const recentItem: RecentItem = {
+            uri: body.contextUri,
+            kind,
+            title: body.title ?? collection.title ?? 'Collection',
+            subtitle: body.subtitle ?? collection.subtitle,
+            imageUrl: body.imageUrl ?? collection.imageUrl,
+          }
+          recentOverride = pushRecent(await readRecent(), recentItem)
+
+          if (collection.available && collection.tracks.length) {
+            let ordered = body.shuffle
+              ? shuffleInPlace([...collection.tracks])
+              : [...collection.tracks]
+            if (body.startUri && !body.shuffle) {
+              const idx = ordered.findIndex((t) => t.uri === body.startUri)
+              if (idx > 0) ordered = ordered.slice(idx)
+            }
+            const [first, ...rest] = ordered
+            // App owns queue order — keep Spotify shuffle off.
+            await setShuffle(false, deviceId)
+            shuffleOverride = false
+            await replaceQueue(rest)
+            await startPlayback({ deviceId, uri: first!.uri })
+          } else {
+            // Unowned / empty playlist: Spotify picks tracks via context.
+            await replaceQueue([])
+            if (body.shuffle) {
+              await setShuffle(true, deviceId)
+              shuffleOverride = true
+            }
+            await startPlayback({ deviceId, contextUri: body.contextUri })
+          }
+        } else {
+          await startPlayback({
+            deviceId,
+            uri: body.uri,
+          })
+        }
         break
       }
       case 'resume':
@@ -179,13 +297,34 @@ export async function processCommand(cmd: CommandRow) {
         await transferPlayback(deviceId, true)
         break
       }
+      case 'shuffle': {
+        if (typeof body.state !== 'boolean') throw new Error('shuffle state required')
+        await setShuffle(body.state, deviceId)
+        shuffleOverride = body.state
+        break
+      }
+      case 'repeat': {
+        const mode: RepeatMode =
+          body.state === 'track' || body.state === 'context' || body.state === 'off'
+            ? body.state
+            : body.state === true
+              ? 'context'
+              : 'off'
+        await setRepeat(mode, deviceId)
+        repeatOverride = mode
+        break
+      }
       default:
         throw new Error(`Unsupported command: ${cmd.type}`)
     }
 
     await sleep(400)
     const playback = await getPlayback()
-    await writeState(speaker, playback)
+    await writeState(speaker, playback, {
+      recent: recentOverride,
+      shuffle: shuffleOverride,
+      repeat: repeatOverride,
+    })
     if (speaker) {
       await db
         .from('speakers')

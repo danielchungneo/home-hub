@@ -85,7 +85,8 @@ Expo SDK 54+ supports pnpm’s default **isolated** linker in monorepos, so this
 
 ## What’s intentionally unfinished
 
-- Kiosk Tasks, Rewards, Lists and Jukebox use Supabase; calendar/meals/recipes/photos still use mock data.
+- Kiosk Tasks, Rewards, Lists, Jukebox and Calendar use Supabase; meals/recipes/photos still use mock data.
+- Google Calendar: link accounts with `pnpm google:calendar-login`, then `pnpm google:calendar-sync` (see `packages/google-calendar/README.md`).
 - Mobile is placeholders only until after the Pi kiosk is working.
 - Music agent Cast wake is unofficial (needs `SPOTIFY_SP_DC`); see `apps/music-agent/README.md`.
-- Calendar/meals/recipes/photos tables: later.
+- Meals/recipes/photos tables: later.

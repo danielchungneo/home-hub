@@ -14,6 +14,8 @@ type LiveTable =
   | 'jukebox_commands'
   | 'jukebox_favorites'
   | 'jukebox_queue'
+  | 'events'
+  | 'calendar_sources'
 
 let channelCount = 0
 

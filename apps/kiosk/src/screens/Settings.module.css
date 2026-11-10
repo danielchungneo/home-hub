@@ -53,3 +53,32 @@
 .rowText { flex: 1; display: flex; flex-direction: column; gap: 2px; font-size: var(--text-lg); font-weight: var(--weight-bold); }
 .rowText small { font-size: var(--text-sm); font-weight: 600; color: var(--color-ink-3); }
 .value { padding: 0 14px 0 20px; font-size: 18px; }
+
+.speakerPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0 20px;
+  border-bottom: 1px solid var(--color-divider);
+}
+.speakerOption {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+  border-radius: var(--radius-lg);
+  text-align: left;
+  background: var(--color-surface-sunken);
+}
+.speakerOptionOn {
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 2px var(--color-ink);
+}
+.speakerEmpty {
+  margin: 0;
+  padding: 12px 4px;
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink-3);
+}

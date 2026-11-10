@@ -1,11 +1,13 @@
 // Query and mutation hooks for the screens backed by Supabase.
 // Mutations update the cache first so taps feel instant on the Pi, then refetch.
 import { queryOptions, useMutation, useQuery, useQueryClient, type QueryClient, type QueryKey } from '@tanstack/react-query'
-import type { Database, Json, JukeboxFavorite, ListItem, MediaKind, QueueItem, Redemption } from '@hub/shared'
+import type { CalendarEvent, CalendarSource, Database, Json, JukeboxFavorite, ListItem, MediaKind, QueueItem, Redemption } from '@hub/shared'
 import { ensureSession, supabase } from '../lib/supabase'
 import type { ShoppingList } from '../lib/types'
 import {
   localDate,
+  toCalendarEvent,
+  toCalendarSource,
   toFavorite,
   toJukeboxState,
   toLedgerEntry,
@@ -138,8 +140,41 @@ const jukeboxStateQuery = () =>
   })
 
 /** Warm the cache for Tasks, Rewards, Lists and Jukebox. Errors are ignored; the screens retry and show them. */
-export const prefetchLiveScreens = (queryClient: QueryClient) =>
-  Promise.all([
+const calendarSourcesQuery = () =>
+  queryOptions({
+    queryKey: ['calendarSources'],
+    queryFn: async () =>
+      (await run(() => supabase.from('calendar_sources').select('*').order('name'))).map(toCalendarSource),
+  })
+
+const eventsQuery = (rangeStartIso: string, rangeEndIso: string) =>
+  queryOptions({
+    queryKey: ['events', rangeStartIso, rangeEndIso],
+    queryFn: async () => {
+      const rows = await run(() =>
+        supabase
+          .from('events')
+          .select('*, calendar_sources!inner(enabled)')
+          .eq('calendar_sources.enabled', true)
+          .lt('starts_at', rangeEndIso)
+          .gt('ends_at', rangeStartIso)
+          .order('starts_at'),
+      )
+      const rangeStart = new Date(rangeStartIso)
+      const rangeEnd = new Date(rangeEndIso)
+      return rows
+        .map((r) => toCalendarEvent(r, rangeStart, rangeEnd))
+        .filter((e): e is CalendarEvent => Boolean(e))
+    },
+  })
+
+export const prefetchLiveScreens = (queryClient: QueryClient) => {
+  const weekStart = new Date()
+  weekStart.setHours(0, 0, 0, 0)
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekEnd.getDate() + 7)
+  return Promise.all([
     queryClient.prefetchQuery(membersQuery()),
     queryClient.prefetchQuery(tasksQuery()),
     queryClient.prefetchQuery(completedQuery(localDate())),
@@ -151,11 +186,57 @@ export const prefetchLiveScreens = (queryClient: QueryClient) =>
     queryClient.prefetchQuery(favoritesQuery()),
     queryClient.prefetchQuery(queueQuery()),
     queryClient.prefetchQuery(jukeboxStateQuery()),
+    queryClient.prefetchQuery(calendarSourcesQuery()),
+    queryClient.prefetchQuery(eventsQuery(weekStart.toISOString(), weekEnd.toISOString())),
   ])
+}
 
 // Members
 
 export const useMembers = () => useQuery(membersQuery())
+
+// Calendar
+
+export const useCalendarSources = () => useQuery(calendarSourcesQuery())
+
+export const useEvents = (rangeStart: Date, rangeEnd: Date) =>
+  useQuery(eventsQuery(rangeStart.toISOString(), rangeEnd.toISOString()))
+
+export function useToggleCalendarSource() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
+      await run(() => supabase.from('calendar_sources').update({ enabled }).eq('id', id))
+    },
+    onMutate: async ({ id, enabled }) => {
+      const key = ['calendarSources'] as const
+      const rollback = await optimistic<CalendarSource[]>(queryClient, key, (old) =>
+        old.map((s) => (s.id === id ? { ...s, enabled } : s)),
+      )
+      return { rollback }
+    },
+    onError: (_e, _v, ctx) => ctx?.rollback(),
+    onSettled: () => refetch(queryClient, 'calendarSources', 'events'),
+  })
+}
+
+/** Pull latest events from Google via the calendar-sync edge function. */
+export function useSyncCalendars() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      await ensureSession()
+      const { data, error } = await supabase.functions.invoke<{ ok?: boolean; error?: string }>('calendar-sync', {
+        method: 'POST',
+        body: {},
+      })
+      if (error) throw new Error(error.message)
+      if (data?.error) throw new Error(data.error)
+      return data
+    },
+    onSettled: () => refetch(queryClient, 'calendarSources', 'events'),
+  })
+}
 
 // Tasks
 

@@ -60,7 +60,7 @@ export default function Jukebox() {
   else if (detail) body = <DetailView jb={jb} c={detail} onBack={() => setDetail(null)} onPick={pick} />
   else if (tab === 'albums') body = <WallView items={jb.albums} kind="album" onPick={pick} onOpen={open} />
   else if (tab === 'playlists') body = <WallView items={jb.playlists} kind="playlist" onPick={pick} onOpen={open} />
-  else body = <SongsView jb={jb} tracks={jb.songs} recent={[...jb.albums, ...jb.playlists].slice(0, 4)} onPick={pick} onOpen={open} />
+  else body = <SongsView jb={jb} tracks={jb.songs} recent={jb.recent} onPick={pick} onOpen={open} />
 
   return (
     <AppShell>

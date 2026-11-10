@@ -47,10 +47,21 @@ export function quantity(q: number) {
   return `${whole || ''}${f}`
 }
 
-export function startOfWeek(d: Date) {
+export function startOfDay(d: Date) {
   const s = new Date(d)
   s.setHours(0, 0, 0, 0)
+  return s
+}
+
+export function startOfWeek(d: Date) {
+  const s = startOfDay(d)
   s.setDate(s.getDate() - s.getDay())
+  return s
+}
+
+export function startOfMonth(d: Date) {
+  const s = startOfDay(d)
+  s.setDate(1)
   return s
 }
 
@@ -58,6 +69,24 @@ export function addDays(d: Date, n: number) {
   const x = new Date(d)
   x.setDate(x.getDate() + n)
   return x
+}
+
+export function addMonths(d: Date, n: number) {
+  const x = startOfDay(d)
+  const day = x.getDate()
+  x.setDate(1)
+  x.setMonth(x.getMonth() + n)
+  const dim = new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate()
+  x.setDate(Math.min(day, dim))
+  return x
+}
+
+export function sameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+}
+
+export function monthYear(d: Date) {
+  return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`
 }
 
 export function weekRange(d: Date) {

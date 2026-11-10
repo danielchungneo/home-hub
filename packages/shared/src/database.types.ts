@@ -39,6 +39,140 @@ export type Database = {
   }
   public: {
     Tables: {
+      calendar_sources: {
+        Row: {
+          account_email: string | null
+          color: Database["public"]["Enums"]["member_color"] | null
+          created_at: string
+          enabled: boolean
+          external_id: string
+          household_id: string
+          id: string
+          integration_id: string
+          last_synced_at: string | null
+          member_id: string | null
+          name: string
+          sync_token: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_email?: string | null
+          color?: Database["public"]["Enums"]["member_color"] | null
+          created_at?: string
+          enabled?: boolean
+          external_id: string
+          household_id?: string
+          id?: string
+          integration_id: string
+          last_synced_at?: string | null
+          member_id?: string | null
+          name: string
+          sync_token?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_email?: string | null
+          color?: Database["public"]["Enums"]["member_color"] | null
+          created_at?: string
+          enabled?: boolean
+          external_id?: string
+          household_id?: string
+          id?: string
+          integration_id?: string
+          last_synced_at?: string | null
+          member_id?: string | null
+          name?: string
+          sync_token?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_sources_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_sources_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_sources_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          all_day: boolean
+          created_at: string
+          ends_at: string
+          external_id: string
+          household_id: string
+          id: string
+          member_id: string | null
+          source_id: string
+          starts_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          all_day?: boolean
+          created_at?: string
+          ends_at: string
+          external_id: string
+          household_id?: string
+          id?: string
+          member_id?: string | null
+          source_id: string
+          starts_at: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          all_day?: boolean
+          created_at?: string
+          ends_at?: string
+          external_id?: string
+          household_id?: string
+          id?: string
+          member_id?: string | null
+          source_id?: string
+          starts_at?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       households: {
         Row: {
           created_at: string
@@ -72,9 +206,11 @@ export type Database = {
       integrations: {
         Row: {
           access_token: string | null
+          account_key: string
           created_at: string
           expires_at: string | null
           household_id: string
+          id: string
           meta: Json
           provider: string
           refresh_token: string | null
@@ -82,9 +218,11 @@ export type Database = {
         }
         Insert: {
           access_token?: string | null
+          account_key: string
           created_at?: string
           expires_at?: string | null
           household_id: string
+          id?: string
           meta?: Json
           provider: string
           refresh_token?: string | null
@@ -92,9 +230,11 @@ export type Database = {
         }
         Update: {
           access_token?: string | null
+          account_key?: string
           created_at?: string
           expires_at?: string | null
           household_id?: string
+          id?: string
           meta?: Json
           provider?: string
           refresh_token?: string | null
@@ -102,7 +242,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "integrations_household_id_fkey"
+            foreignKeyName: "integrations_v2_household_id_fkey"
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
@@ -294,6 +434,9 @@ export type Database = {
           is_playing: boolean
           now_playing: Json
           progress_ms: number
+          recent: Json
+          repeat: string
+          shuffle: boolean
           speaker_id: string | null
           updated_at: string
           volume: number
@@ -304,6 +447,9 @@ export type Database = {
           is_playing?: boolean
           now_playing?: Json
           progress_ms?: number
+          recent?: Json
+          repeat?: string
+          shuffle?: boolean
           speaker_id?: string | null
           updated_at?: string
           volume?: number
@@ -314,6 +460,9 @@ export type Database = {
           is_playing?: boolean
           now_playing?: Json
           progress_ms?: number
+          recent?: Json
+          repeat?: string
+          shuffle?: boolean
           speaker_id?: string | null
           updated_at?: string
           volume?: number
@@ -918,6 +1067,7 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["profile_kind"]
       }
+      invoke_calendar_sync: { Args: never; Returns: number }
     }
     Enums: {
       jukebox_command_status: "pending" | "done" | "failed"
@@ -932,6 +1082,8 @@ export type Database = {
         | "queue_add"
         | "refresh_speakers"
         | "advance"
+        | "shuffle"
+        | "repeat"
       jukebox_media_kind: "track" | "album" | "playlist"
       member_color: "moss" | "clay" | "honey" | "fjord" | "plum"
       member_role: "parent" | "child"
@@ -1081,6 +1233,8 @@ export const Constants = {
         "queue_add",
         "refresh_speakers",
         "advance",
+        "shuffle",
+        "repeat",
       ],
       jukebox_media_kind: ["track", "album", "playlist"],
       member_color: ["moss", "clay", "honey", "fjord", "plum"],

@@ -63,6 +63,41 @@ export function favoriteToCollection(f: JukeboxFavorite): Collection {
   }
 }
 
+export function recentToCollection(r: {
+  uri: string
+  kind: 'album' | 'playlist'
+  title: string
+  subtitle?: string
+  imageUrl?: string
+}): Collection {
+  return {
+    uri: r.uri,
+    kind: r.kind,
+    title: r.title,
+    subtitle: r.subtitle || (r.kind === 'album' ? 'Album' : 'Playlist'),
+    art: artwork(r.uri, r.imageUrl),
+    trackUris: [],
+  }
+}
+
+export function collectionTrackToTrack(t: {
+  uri: string
+  title: string
+  subtitle: string
+  album?: string
+  imageUrl?: string
+  durationMs?: number
+}): Track {
+  return {
+    uri: t.uri,
+    title: t.title,
+    artist: t.subtitle,
+    album: t.album ?? '',
+    durationMs: t.durationMs ?? 0,
+    art: artwork(t.uri, t.imageUrl),
+  }
+}
+
 export function queueItemToTrack(q: QueueItem): Track {
   return {
     uri: q.spotifyUri,

@@ -23,9 +23,9 @@ Jump straight to a screen with a hash: `#calendar`, `#tasks`, `#rewards`, `#meal
 
 ## Data
 
-**Tasks, Rewards and Lists** (plus the members and the slideshow's task count) read from and write to Supabase. A small loader in front of each of those screens waits for its queries. Hooks live in `src/data/hooks.ts`, row-to-UI mapping in `src/data/mappers.ts`, and `src/data/live.ts` subscribes each screen to Realtime for its own tables. The kiosk signs in as a dedicated device user from `.env` (see `.env.example`).
+**Tasks, Rewards, Lists, Jukebox and Calendar** (plus the members and the slideshow's task count) read from and write to Supabase. Hooks live in `src/data/hooks.ts`, row-to-UI mapping in `src/data/mappers.ts`, and `src/data/live.ts` subscribes each screen to Realtime for its own tables. The kiosk signs in as a dedicated device user from `.env` (see `.env.example`).
 
-Everything else (Calendar, Meals, Recipes, Photos, Jukebox, weather, Settings values) still reads `src/data/mock.ts` until those tables exist.
+Meals, Recipes, Photos, weather, and most Settings sections still read `src/data/mock.ts` until those tables exist. Google Calendar linking: `packages/google-calendar/README.md`.
 
 ## What works with mock data
 

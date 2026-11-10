@@ -1,6 +1,6 @@
 // Turn Supabase rows into the shapes the screens were built against (see data/mock.ts).
 import type {
-  Database, JukeboxFavorite, JukeboxState, LedgerEntry, ListItem, Member, NowPlaying, QueueItem, Redemption, Speaker,
+  CalendarEvent, CalendarSource, Database, JukeboxFavorite, JukeboxState, LedgerEntry, ListItem, Member, NowPlaying, QueueItem, Redemption, Speaker,
 } from '@hub/shared'
 import type { IconName } from '../components/Icon'
 import { weekday } from '../lib/format'
@@ -109,9 +109,38 @@ export const toQueueItem = (r: Row<'jukebox_queue'>): QueueItem => ({
   durationMs: r.duration_ms ?? undefined,
 })
 
+function toRecent(raw: unknown): JukeboxState['recent'] {
+  if (!Array.isArray(raw)) return []
+  const out: JukeboxState['recent'] = []
+  for (const x of raw) {
+    if (!x || typeof x !== 'object') continue
+    const o = x as Record<string, unknown>
+    if (typeof o.uri !== 'string' || typeof o.title !== 'string') continue
+    if (o.kind !== 'album' && o.kind !== 'playlist') continue
+    out.push({
+      uri: o.uri,
+      kind: o.kind,
+      title: o.title,
+      subtitle: typeof o.subtitle === 'string' ? o.subtitle : undefined,
+      imageUrl: typeof o.imageUrl === 'string' ? o.imageUrl : undefined,
+    })
+  }
+  return out
+}
+
 export const toJukeboxState = (r: Row<'jukebox_state'> | null): JukeboxState => {
   if (!r) {
-    return { speakerId: null, isPlaying: false, volume: 40, progressMs: 0, durationMs: 0, nowPlaying: null }
+    return {
+      speakerId: null,
+      isPlaying: false,
+      volume: 40,
+      progressMs: 0,
+      durationMs: 0,
+      nowPlaying: null,
+      shuffle: false,
+      repeat: 'off',
+      recent: [],
+    }
   }
   const np = r.now_playing as Partial<NowPlaying> | null
   const nowPlaying =
@@ -126,6 +155,7 @@ export const toJukeboxState = (r: Row<'jukebox_state'> | null): JukeboxState => 
           contextName: typeof np.contextName === 'string' ? np.contextName : undefined,
         }
       : null
+  const repeat = r.repeat === 'track' || r.repeat === 'context' || r.repeat === 'off' ? r.repeat : 'off'
   return {
     speakerId: r.speaker_id,
     isPlaying: r.is_playing,
@@ -133,6 +163,9 @@ export const toJukeboxState = (r: Row<'jukebox_state'> | null): JukeboxState => 
     progressMs: r.progress_ms,
     durationMs: r.duration_ms,
     nowPlaying,
+    shuffle: r.shuffle,
+    repeat,
+    recent: toRecent(r.recent),
   }
 }
 
@@ -150,3 +183,46 @@ export function localDate(d = new Date()) {
   const p = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
+
+const FAMILY_WHO = 'family'
+
+function decimalHour(d: Date) {
+  return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600
+}
+
+/** Map a cached Google event into the UI shape (day is offset from rangeStart). */
+export function toCalendarEvent(r: Row<'events'>, rangeStart: Date, rangeEnd?: Date): CalendarEvent | null {
+  const start = new Date(r.starts_at)
+  const end = new Date(r.ends_at)
+  const endBound = rangeEnd ? new Date(rangeEnd) : new Date(rangeStart)
+  if (!rangeEnd) endBound.setDate(endBound.getDate() + 7)
+
+  // Include events that intersect the requested range.
+  if (end <= rangeStart || start >= endBound) return null
+
+  const dayAnchor = start < rangeStart ? rangeStart : start
+  const day = Math.max(0, Math.floor((dayAnchor.getTime() - rangeStart.getTime()) / 86_400_000))
+
+  return {
+    id: r.id,
+    title: r.title,
+    day,
+    start: r.all_day ? 0 : decimalHour(start),
+    end: r.all_day ? 0 : Math.max(decimalHour(start) + 0.25, decimalHour(end)),
+    who: r.member_id ?? FAMILY_WHO,
+    allDay: r.all_day,
+    startsAt: r.starts_at,
+    endsAt: r.ends_at,
+  }
+}
+
+export const toCalendarSource = (r: Row<'calendar_sources'>): CalendarSource => ({
+  id: r.id,
+  name: r.name,
+  externalId: r.external_id,
+  memberId: r.member_id,
+  color: r.color ?? undefined,
+  enabled: r.enabled,
+  accountKey: r.account_email ?? undefined,
+  lastSyncedAt: r.last_synced_at ?? undefined,
+})

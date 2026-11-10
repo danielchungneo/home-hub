@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { config } from './config'
-import { searchMusic } from './spotify/webApi'
+import { getCollectionTracks, searchMusic } from './spotify/webApi'
 
 function send(res: ServerResponse, status: number, body: unknown) {
   const json = JSON.stringify(body)
@@ -45,6 +45,17 @@ export function startHttpServer() {
         return
       }
 
+      if (req.method === 'GET' && url.pathname === '/collection') {
+        const uri = url.searchParams.get('uri') ?? ''
+        if (!uri.trim()) {
+          send(res, 400, { error: 'uri required' })
+          return
+        }
+        const collection = await getCollectionTracks(uri)
+        send(res, 200, collection)
+        return
+      }
+
       send(res, 404, { error: 'Not found' })
     } catch (err) {
       console.error('[music-agent] http error', err instanceof Error ? err.message : err)
@@ -53,7 +64,7 @@ export function startHttpServer() {
   })
 
   server.listen(config.httpPort, '127.0.0.1', () => {
-    console.log(`[music-agent] http://127.0.0.1:${config.httpPort} (search API)`)
+    console.log(`[music-agent] http://127.0.0.1:${config.httpPort} (search + collection API)`)
   })
 
   return server

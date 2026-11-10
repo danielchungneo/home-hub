@@ -2,8 +2,9 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { Button } from '../../components/Button'
 import { Icon } from '../../components/Icon'
 import { Label } from '../../components/primitives'
-import { searchMusic } from '../../lib/musicAgent'
+import { fetchCollection, searchMusic } from '../../lib/musicAgent'
 import {
+  collectionTrackToTrack,
   favoriteToCollection,
   favoriteToTrack,
   searchHitToCollection,
@@ -122,9 +123,36 @@ const collectionMeta = (c: Collection) => {
 
 /* ---------------- Album / playlist detail ---------------- */
 export function DetailView({ jb, c, onBack, onPick }: { jb: Jukebox; c: Collection; onBack: () => void; onPick: (c: Collection) => void }) {
-  const tracks = c.trackUris.length
-    ? c.trackUris.map((uri) => jb.songs.find((t) => t.uri === uri)).filter(Boolean) as Track[]
-    : []
+  const [tracks, setTracks] = useState<Track[]>([])
+  const [loading, setLoading] = useState(true)
+  const [available, setAvailable] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    void fetchCollection(c.uri)
+      .then((res) => {
+        if (cancelled) return
+        setTracks(res.tracks.map(collectionTrackToTrack))
+        setAvailable(res.available)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setTracks([])
+        setAvailable(false)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [c.uri])
+
+  const enriched: Collection = {
+    ...c,
+    trackUris: tracks.map((t) => t.uri),
+    trackCount: c.trackCount ?? (tracks.length || undefined),
+  }
+
   return (
     <section aria-label={c.title} className={`${s.panel} ${s.detail}`}>
       <div className={s.detailHead}>
@@ -136,7 +164,7 @@ export function DetailView({ jb, c, onBack, onPick }: { jb: Jukebox; c: Collecti
             </Button>
             <Label>{c.kind === 'album' ? 'Album' : 'Playlist'}</Label>
             <h2 className={s.detailTitle}>{c.title}</h2>
-            <span className={s.detailMeta}>{collectionMeta(c)}</span>
+            <span className={s.detailMeta}>{collectionMeta(enriched)}</span>
           </div>
           <div className={s.detailActions}>
             <Button size="lg" pill icon="play" onClick={() => onPick(c)}>Play</Button>
@@ -145,16 +173,19 @@ export function DetailView({ jb, c, onBack, onPick }: { jb: Jukebox; c: Collecti
             <FavoriteButton
               on={jb.isFavorite(c.uri)}
               title={c.title}
-              onToggle={() => jb.toggleFavorite(c.uri, c.kind, favMeta(c.kind, c))}
+              onToggle={() => jb.toggleFavorite(c.uri, c.kind, favMeta(c.kind, enriched))}
             />
           </div>
         </div>
       </div>
       <div className={`${s.rows} ${s.detailRows} scroll-y`}>
-        {tracks.map((t, i) => <TrackRow key={t.uri} showAlbum={false} {...trackProps(jb, t, i, c)} />)}
-        {!tracks.length && (
+        {tracks.map((t, i) => <TrackRow key={t.uri} showAlbum={false} {...trackProps(jb, t, i, enriched)} />)}
+        {loading && <p className={s.note}>Loading songs…</p>}
+        {!loading && !tracks.length && (
           <p className={s.note}>
-            Song lists come from Spotify for albums and playlists you own. You can still play this one; Spotify picks the tracks.
+            {available
+              ? 'No songs in this collection yet.'
+              : 'Song lists come from Spotify for albums and playlists you own. You can still play this one; Spotify picks the tracks.'}
           </p>
         )}
       </div>

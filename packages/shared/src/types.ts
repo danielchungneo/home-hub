@@ -39,6 +39,21 @@ export interface CalendarEvent {
   end: number
   who: string // member id or 'family'
   allDay?: boolean
+  /** Absolute start (ISO); used by Idle / range filters. */
+  startsAt?: string
+  endsAt?: string
+}
+
+/** One Google calendar linked for the household. */
+export interface CalendarSource {
+  id: string
+  name: string
+  externalId: string
+  memberId: string | null
+  color?: MemberColor
+  enabled: boolean
+  accountKey?: string
+  lastSyncedAt?: string
 }
 
 export interface Reward<I extends string = string> {
@@ -121,6 +136,17 @@ export interface NowPlaying {
   contextName?: string
 }
 
+/** Recently played album/playlist for Jump back in. */
+export interface RecentCollection {
+  uri: string
+  kind: 'album' | 'playlist'
+  title: string
+  subtitle?: string
+  imageUrl?: string
+}
+
+export type RepeatMode = 'off' | 'track' | 'context'
+
 export interface JukeboxState {
   speakerId: string | null
   isPlaying: boolean
@@ -128,6 +154,9 @@ export interface JukeboxState {
   progressMs: number
   durationMs: number
   nowPlaying: NowPlaying | null
+  shuffle: boolean
+  repeat: RepeatMode
+  recent: RecentCollection[]
 }
 
 // ---------- Jukebox v2 (Spotify favorites; see docs/JUKEBOX.md) ----------
