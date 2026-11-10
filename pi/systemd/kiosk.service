@@ -1,0 +1,22 @@
+# NOT INSTALLED. The kiosk currently launches from ~/.bash_profile on tty1 (see pi/setup.sh):
+# console autologin starts a login shell on tty1, which execs cage + chromium.
+# Restart it with: sudo systemctl restart getty@tty1
+#
+# Kept as a commented alternative in case we move to a systemd-managed kiosk later.
+#
+# [Unit]
+# Description=Chung Family Hub kiosk
+# After=network-online.target caddy.service
+# Wants=network-online.target
+#
+# [Service]
+# User=danielchung
+# PAMName=login
+# TTYPath=/dev/tty1
+# StandardInput=tty
+# ExecStart=/usr/bin/cage -- /usr/bin/chromium --kiosk --ozone-platform=wayland --password-store=basic \
+#   --noerrdialogs --disable-infobars --disable-session-crashed-bubble --no-first-run http://localhost
+# Restart=always
+#
+# [Install]
+# WantedBy=graphical.target

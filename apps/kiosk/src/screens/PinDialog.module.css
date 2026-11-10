@@ -1,0 +1,46 @@
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Solid scrim, no backdrop-filter blur (too costly on the Pi GPU). */
+  background: rgba(46, 42, 38, 0.72);
+}
+.dialog {
+  width: 620px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 26px;
+  padding: 44px 48px 40px;
+  border-radius: var(--radius-3xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-dialog);
+  animation: rise var(--dur-base) var(--ease-out);
+}
+.lock, .success {
+  width: 72px; height: 72px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--clay-tint);
+  color: var(--clay);
+}
+.success { width: 112px; height: 112px; background: var(--color-success); color: var(--color-on-ink); }
+.text { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.title { font-family: var(--font-display); font-weight: 400; font-size: var(--display-lg); line-height: 1; }
+.detail { font-size: 19px; font-weight: 600; line-height: 1.4; color: var(--color-ink-2); }
+.dots { height: 28px; display: flex; align-items: center; gap: 20px; }
+.dot { width: 22px; height: 22px; border: 2.5px solid var(--color-ink); border-radius: 50%; }
+.dotOn { background: var(--color-ink); }
+.pad { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.key {
+  height: 96px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-xl);
+  font-size: 19px;
+  font-weight: var(--weight-bold);
+}
+.key:active { transform: scale(0.96); }
+.digit { background: var(--color-surface-sunken); font-family: var(--font-display); font-size: 40px; font-weight: 500; }

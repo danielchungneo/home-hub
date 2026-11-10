@@ -1,0 +1,109 @@
+.layout { flex: 1; min-height: 0; display: flex; gap: var(--space-6); }
+
+.lists { width: 340px; flex: none; display: flex; flex-direction: column; gap: 10px; }
+.listBtn {
+  height: 84px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px 0 12px;
+  border-radius: 22px;
+  text-align: left;
+}
+.listOn { background: var(--color-surface); }
+.listName { flex: 1; font-size: 21px; font-weight: var(--weight-bold); color: var(--color-ink-2); }
+.listOn .listName { font-weight: var(--weight-heavy); color: var(--color-ink); }
+.count {
+  min-width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 20px;
+  background: var(--color-rail);
+  font-size: 16px;
+  font-weight: var(--weight-heavy);
+}
+.listOn .count { background: var(--color-ink); color: var(--color-on-ink); }
+.newList {
+  height: 72px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  border: 2px dashed var(--color-border-strong);
+  border-radius: 22px;
+  font-size: 18px;
+  font-weight: var(--weight-heavy);
+  color: var(--color-ink-2);
+}
+
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-5); padding: 28px 32px; }
+.mainHead { display: flex; align-items: baseline; justify-content: space-between; }
+.h2 { font-family: var(--font-display); font-weight: 400; font-size: 48px; line-height: 1; }
+.summary { font-size: var(--text-md); font-weight: var(--weight-bold); color: var(--color-ink-3); }
+
+.addRow {
+  flex: none;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 8px 0 22px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-sunken);
+}
+.addRow input { flex: 1; border: none; background: transparent; outline: none; font-size: 21px; font-weight: 600; }
+
+.groups {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 28px;
+  align-content: start;
+}
+.group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.groupLabel { padding: 6px 4px; }
+.item {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 14px 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: var(--color-surface);
+  text-align: left;
+}
+.itemText { flex: 1; min-width: 0; font-size: var(--text-lg); font-weight: var(--weight-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qty { padding: 5px 12px; border-radius: var(--radius-pill); background: var(--color-surface-sunken); font-size: var(--text-sm); font-weight: var(--weight-heavy); color: var(--color-ink-2); white-space: nowrap; }
+
+.done { display: flex; flex-direction: column; gap: 12px; padding-top: var(--space-4); border-top: 1px solid var(--color-border); }
+.doneHead { display: flex; align-items: center; justify-content: space-between; }
+.doneItems { display: flex; flex-wrap: wrap; gap: 10px; }
+.doneItem {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px 0 8px;
+  border-radius: var(--radius-md);
+  background: var(--color-success-tint);
+  font-size: 18px;
+  font-weight: var(--weight-bold);
+  color: var(--color-ink-2);
+}
+.strike { text-decoration: line-through; }
+
+.side { width: 400px; flex: none; display: flex; flex-direction: column; gap: var(--space-6); }
+.card { display: flex; flex-direction: column; gap: 14px; padding: 26px; }
+.meal { display: flex; align-items: center; gap: 14px; font-size: 18px; font-weight: var(--weight-bold); }
+.mealDay { width: 52px; flex: none; font-size: 14px; font-weight: var(--weight-heavy); color: var(--color-ink-3); }
+.mealsAdded {
+  height: 64px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  border-radius: 18px;
+  background: var(--color-success-tint);
+  color: var(--color-success);
+  font-size: var(--text-md);
+  font-weight: var(--weight-heavy);
+}
+.activity { flex: 1; min-height: 0; overflow: hidden; }
+.act { display: flex; align-items: flex-start; gap: 14px; }
+.actText { display: flex; flex-direction: column; gap: 2px; font-size: var(--text-md); font-weight: var(--weight-bold); line-height: 1.3; }
+.actWhen { font-size: 14px; color: var(--color-ink-3); }

@@ -1,0 +1,163 @@
+/* Panel */
+.panel {
+  background: var(--color-surface);
+  border-radius: var(--radius-2xl);
+  min-height: 0;
+}
+.pad-none { padding: 0; }
+.pad-sm { padding: var(--space-4); }
+.pad-md { padding: var(--space-7); }
+.pad-lg { padding: var(--space-8); }
+
+/* Label / eyebrow */
+.label {
+  display: block;
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: var(--weight-heavy);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-ink-3);
+}
+
+/* Avatar */
+.avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--member);
+  color: var(--color-on-ink);
+  font-family: var(--font-display);
+  line-height: 1;
+}
+.avatar-xs { width: 26px; height: 26px; font-size: 15px; }
+.avatar-sm { width: 36px; height: 36px; font-size: 19px; }
+.avatar-md { width: 58px; height: 58px; font-size: var(--display-sm); }
+.avatar-lg { width: 72px; height: 72px; font-size: var(--display-md); }
+.avatarMuted { background: var(--color-rail); color: var(--color-ink-3); }
+
+/* Progress */
+.track {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(46, 42, 38, 0.1);
+  overflow: hidden;
+}
+.fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 4px;
+  background: var(--member, var(--color-ink));
+  transform-origin: left center;
+  transition: transform var(--dur-base) var(--ease-out);
+}
+.fillInk { background: var(--color-ink); }
+
+/* Switch */
+.switch {
+  width: 76px;
+  height: 44px;
+  flex: none;
+  padding: 4px;
+  border-radius: 22px;
+  background: var(--color-track);
+  transition: background-color var(--dur-fast);
+}
+.knob {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.switchOn { background: var(--color-success); }
+.switchOn .knob { transform: translateX(32px); }
+
+/* Chip */
+.chip {
+  height: 52px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-pill);
+  background: var(--color-rail);
+  font-size: 16px;
+  font-weight: var(--weight-heavy);
+}
+.chipOn { background: var(--color-ink); color: var(--color-on-ink); }
+
+/* Check mark */
+.check {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 2.5px solid var(--color-border-strong);
+  color: var(--color-on-ink);
+}
+.checkOn {
+  border-color: transparent;
+  background: var(--member, var(--color-success));
+}
+
+/* Icon tile */
+.tile {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 28%;
+  background: var(--member-tint, var(--color-surface-sunken));
+  color: var(--color-ink);
+}
+
+/* Segmented */
+.seg {
+  display: inline-flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--color-rail);
+}
+.segBtn {
+  min-height: 56px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink-2);
+}
+.segOn { background: var(--color-surface); color: var(--color-ink); font-weight: var(--weight-heavy); }
+.segSub { font-size: 12px; font-weight: var(--weight-bold); color: var(--color-ink-3); }
+
+.segBlock { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); width: 100%; }
+
+.segMember {
+  border-radius: 18px;
+  background: var(--color-surface-sunken);
+}
+.segMember .segBtn { min-height: 60px; border-radius: 14px; padding: 0 var(--space-2); font-size: 15px; }
+.segMember .segOn { background: var(--member); color: var(--color-on-ink); }
+.segMember .segOn .segSub { color: var(--color-on-ink); opacity: 0.85; }
+
+/* Status pill */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-pill);
+  background: var(--color-rail);
+  font-size: 16px;
+  font-weight: var(--weight-heavy);
+}
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-success); }
+.dotOff { background: var(--color-alert); }

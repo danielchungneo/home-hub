@@ -1,0 +1,128 @@
+/*
+ * Chung Family Hub — design tokens ("Scandi Calm").
+ * The single source of truth for color, type, spacing, radii and motion.
+ * See DESIGN_SYSTEM.md before adding or changing anything here.
+ */
+:root {
+  /* ---------- Surfaces ---------- */
+  --color-bg: #F0EBE3;             /* oat: app background */
+  --color-rail: #E6DED2;           /* sidebar, segmented-control tracks, header pills */
+  --color-surface: #FFFDFA;        /* cards, panels, active nav item */
+  --color-surface-sunken: #F3EEE7; /* inputs, secondary buttons, inactive tabs */
+  --color-surface-muted: #F7F3ED;  /* quiet fills (text-only meal slots, idle speakers) */
+
+  /* ---------- Lines ---------- */
+  --color-border: #ECE4D9;         /* card + row outlines */
+  --color-border-strong: #CFC5B8;  /* empty checkboxes, dashed "add" tiles */
+  --color-divider: #F1EBE2;        /* list separators, grid lines */
+  --color-track: #D9CFC2;          /* switch-off track, upcoming progress segments, empty-slot dashes */
+
+  /* ---------- Ink (text + icons) ---------- */
+  --color-ink: #2E2A26;            /* primary text, primary buttons, FAB */
+  --color-ink-2: #4F4740;          /* secondary text */
+  --color-ink-3: #615950;          /* labels, captions, eyebrows (≥ 4.5:1 on bg and surface) */
+  --color-on-ink: #FFFDFA;         /* text on ink / on member-deep fills */
+  --color-ink-soft: #8A7F73;       /* LARGE display text only (≥ 34px), e.g. the header clock */
+
+  /* ---------- Member palette (deep = text/fills, tint = backgrounds) ---------- */
+  --moss: #55623F;   --moss-tint: #E9EDE1;
+  --clay: #7D513C;   --clay-tint: #F3E7DF;
+  --honey: #735623;  --honey-tint: #F4ECDA;
+  --fjord: #4B6270;  --fjord-tint: #E4EAEE;
+  --plum: #6E5A72;   --plum-tint: #EDE6F0;
+
+  /* ---------- Semantic ---------- */
+  --color-success: var(--moss);
+  --color-success-tint: var(--moss-tint);
+  --color-alert: #B4533A;          /* "now" line, destructive emphasis */
+  --color-warning: var(--clay);
+  --color-star: #F4D58D;
+  --color-peach: #E9A27E;          /* running timer button */
+  --color-highlight: #FBF7F1;      /* today column wash */
+  --color-scrim: rgba(36, 32, 28, 0.62);
+  --color-night: #0B0A09;          /* sleep screen */
+  --color-night-ink: #8A8178;
+  --color-backdrop: #24201C;       /* full-screen dim behind the jukebox pick animation */
+  --color-wall: #E9E0D2;           /* jukebox record wall */
+  --color-ledge: #B98E5E;          /* wooden picture ledge */
+  --color-ledge-edge: #8E6A43;
+  --color-vinyl: #1E1B18;          /* record */
+  --color-vinyl-groove: #2A2622;
+
+  /* ---------- Type ---------- */
+  --font-display: 'Newsreader Variable', Georgia, 'Times New Roman', serif;
+  --font-body: 'Manrope Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'DejaVu Sans Mono', Menlo, Consolas, monospace; /* error details only */
+
+  --text-xs: 13px;   /* tiny meta: counts under tabs */
+  --text-sm: 15px;   /* captions, chips, nav labels (14–15) */
+  --text-md: 17px;   /* button labels */
+  --text-lg: 20px;   /* list rows, card titles */
+  --text-xl: 22px;   /* large rows, emphasised body */
+
+  --display-sm: 28px;  /* avatar initials, small serif numbers */
+  --display-md: 34px;  /* column / card names */
+  --display-lg: 44px;  /* panel titles */
+  --display-xl: 64px;  /* page titles */
+  --display-2xl: 72px; /* cooking-mode step text */
+  --display-3xl: 120px;/* timers */
+  --display-hero: 200px;/* idle clock */
+
+  --weight-regular: 500;
+  --weight-bold: 700;
+  --weight-heavy: 800;
+
+  --tracking-eyebrow: 2px;
+  --tracking-label: 1.5px;
+
+  /* ---------- Space (4px base) ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ---------- Radii ---------- */
+  --radius-sm: 12px;   /* event blocks, small chips */
+  --radius-md: 16px;   /* checkboxes, icon buttons, inputs inside cards */
+  --radius-lg: 20px;   /* list rows, tiles, inputs */
+  --radius-xl: 24px;   /* cards inside panels */
+  --radius-2xl: 28px;  /* top-level panels and columns */
+  --radius-3xl: 36px;  /* dialogs */
+  --radius-pill: 999px;
+
+  /* ---------- Sizes ---------- */
+  --touch-min: 56px;   /* smallest interactive target anywhere */
+  --touch-kid: 64px;   /* default for things kids tap */
+  --touch-big: 88px;   /* FAB, primary kiosk actions */
+  --sidebar-width: 120px;
+  --page-pad-x: 40px;
+  --page-pad-top: 32px;
+  --page-pad-bottom: 30px;
+  --column-width: 412px; /* Tasks columns: 4 fit exactly at 1920 wide */
+
+  /* ---------- Motion (transform/opacity only) ---------- */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 150ms;
+  --dur-base: 300ms;
+  --dur-slow: 450ms;
+
+  /* ---------- Elevation (use sparingly; Pi GPU) ---------- */
+  --shadow-float: 0 4px 10px rgba(46, 42, 38, 0.25); /* FAB only */
+  --shadow-dialog: 0 6px 18px rgba(0, 0, 0, 0.18);   /* PIN dialog only */
+}
+
+/*
+ * Member theming: put data-color="moss|clay|honey|fjord|plum" on any element and
+ * use var(--member) / var(--member-tint) inside it. No inline colors needed.
+ */
+[data-color='moss']  { --member: var(--moss);  --member-tint: var(--moss-tint); }
+[data-color='clay']  { --member: var(--clay);  --member-tint: var(--clay-tint); }
+[data-color='honey'] { --member: var(--honey); --member-tint: var(--honey-tint); }
+[data-color='fjord'] { --member: var(--fjord); --member-tint: var(--fjord-tint); }
+[data-color='plum']  { --member: var(--plum);  --member-tint: var(--plum-tint); }

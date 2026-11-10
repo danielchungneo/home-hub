@@ -1,0 +1,12 @@
+.panel {
+  flex: 1;
+  min-height: 0;
+  border-radius: var(--radius-2xl);
+  background: var(--color-surface);
+  opacity: 0.6;
+  animation: fadeIn var(--dur-base) var(--ease-out);
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 0.6; }
+}

@@ -1,0 +1,28 @@
+# Dependencies
+node_modules
+
+# Build / tooling
+dist
+.turbo
+.expo
+*.tsbuildinfo
+*.local
+
+# Env — keep examples only
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Supabase local
+supabase/.temp
+
+# Logs / OS
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,16 @@
+[Unit]
+Description=Chung Family Hub music agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=danielchung
+WorkingDirectory=/home/danielchung/hub-music-agent
+EnvironmentFile=/home/danielchung/hub-music-agent/.env
+ExecStart=/home/danielchung/hub-music-agent/node_modules/.bin/tsx src/index.ts
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

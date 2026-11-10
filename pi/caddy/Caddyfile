@@ -1,0 +1,17 @@
+# Serves the kiosk build (pi/deploy.ps1 copies it to /var/www/hub).
+# Bound to localhost on purpose: the kiosk login (VITE_KIOSK_EMAIL / VITE_KIOSK_PASSWORD)
+# is built into the JS, so the site must not be reachable from other devices on the network.
+http://localhost {
+	bind 127.0.0.1
+
+	# Music agent search API (apps/music-agent listens on 127.0.0.1:8787).
+	handle_path /api/music/* {
+		reverse_proxy 127.0.0.1:8787
+	}
+
+	handle {
+		root * /var/www/hub
+		try_files {path} /index.html
+		file_server
+	}
+}

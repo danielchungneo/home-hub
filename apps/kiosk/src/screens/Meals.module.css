@@ -1,0 +1,65 @@
+.added {
+  height: 64px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 26px;
+  border-radius: var(--radius-pill);
+  background: var(--color-success-tint);
+  color: var(--color-success);
+  font-size: var(--text-md);
+  font-weight: var(--weight-heavy);
+}
+
+.grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 120px repeat(7, minmax(0, 1fr));
+  grid-template-rows: 64px repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+}
+.dayToday { background: var(--color-ink); color: var(--color-on-ink); }
+.dayName { font-size: var(--text-sm); font-weight: var(--weight-heavy); letter-spacing: 1px; text-transform: uppercase; }
+.dayNum { font-family: var(--font-display); font-size: 26px; }
+
+.slot {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding-left: 8px;
+  font-size: 16px;
+  font-weight: var(--weight-heavy);
+}
+
+.cell {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 14px;
+  border: 1px solid transparent;
+  border-radius: 18px;
+  text-align: left;
+  overflow: hidden;
+}
+.cellRecipe { background: var(--member-tint); }
+.cellRecipe > span:first-child { background: var(--color-surface); }
+.cellText { background: var(--color-surface-muted); justify-content: flex-end; }
+.cellEmpty { border: 2px dashed var(--color-track); justify-content: center; }
+.cellSel { outline: 3px solid var(--color-ink); outline-offset: -3px; }
+
+.cellBody { display: flex; flex-direction: column; gap: 2px; }
+.cellTitle { font-size: 18px; font-weight: var(--weight-heavy); line-height: 1.2; }
+.cellMeta { font-size: var(--text-xs); font-weight: var(--weight-bold); color: var(--color-ink-2); }
+.note { font-family: var(--font-display); font-size: 24px; color: var(--color-ink-2); line-height: 1.15; }
+.add { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; font-weight: var(--weight-heavy); color: var(--color-ink-3); }

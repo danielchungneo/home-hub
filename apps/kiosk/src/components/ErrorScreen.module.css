@@ -1,0 +1,47 @@
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  padding: var(--space-12);
+  background: var(--color-bg);
+  text-align: center;
+}
+.title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--display-xl);
+  line-height: 1;
+  letter-spacing: -1px;
+}
+.message {
+  max-width: 900px;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink-2);
+}
+.detail {
+  max-width: 1200px;
+  max-height: 240px;
+  overflow: auto;
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-ink-3);
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-align: left;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.action {
+  min-width: 280px;
+  margin-top: var(--space-4);
+}
