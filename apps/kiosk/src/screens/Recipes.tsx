@@ -3,6 +3,7 @@ import { useNav } from '../app/nav'
 import { AppShell, PageHeader } from '../components/AppShell'
 import { Button, IconButton } from '../components/Button'
 import { Icon } from '../components/Icon'
+import { SoftKeyboard } from '../components/SoftKeyboard'
 import { Chip, IconTile, Label, Panel } from '../components/primitives'
 import { RECIPES } from '../data/mock'
 import { minutes, quantity } from '../lib/format'
@@ -14,6 +15,7 @@ export default function Recipes() {
   const { cook } = useNav()
   const [tag, setTag] = useState('All')
   const [query, setQuery] = useState('')
+  const [keyboard, setKeyboard] = useState(false)
   const [selectedId, setSelectedId] = useState(RECIPES[0].id)
   const [servings, setServings] = useState<number | null>(null)
 
@@ -27,13 +29,22 @@ export default function Recipes() {
 
   return (
     <AppShell>
-      <div className={s.layout}>
+      <div className={keyboard ? `${s.layout} ${s.layoutWithKeyboard}` : s.layout}>
         <div className={s.left}>
           <PageHeader eyebrow={`Recipe box · ${RECIPES.length} recipes`} title="Recipes" />
           <label className={s.search}>
             <Icon name="search" size={24} />
             <span className="sr-only">Search recipes</span>
-            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search recipes or ingredients" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setKeyboard(true)}
+              inputMode="none"
+              autoComplete="off"
+              enterKeyHint="search"
+              placeholder="Search recipes or ingredients"
+            />
           </label>
           <div className={s.tags}>
             {TAGS.map((t) => <Chip key={t} selected={t === tag} onClick={() => setTag(t)}>{t}</Chip>)}
@@ -85,6 +96,7 @@ export default function Recipes() {
           </div>
         </Panel>
       </div>
+      {keyboard && <SoftKeyboard value={query} onChange={setQuery} onDone={() => setKeyboard(false)} />}
     </AppShell>
   )
 }

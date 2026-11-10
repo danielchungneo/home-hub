@@ -15,6 +15,14 @@ body,
   margin: 0;
 }
 
+/* Wall touchscreen: hide the mouse pointer. Touch does not move it, so it
+   otherwise sits dead-center and looks broken. */
+*,
+*::before,
+*::after {
+  cursor: none !important;
+}
+
 body {
   background: var(--color-bg);
   color: var(--color-ink);
@@ -40,12 +48,7 @@ button {
   border: none;
   background: none;
   padding: 0;
-  cursor: pointer;
   touch-action: manipulation;
-}
-
-button:disabled {
-  cursor: default;
 }
 
 input {

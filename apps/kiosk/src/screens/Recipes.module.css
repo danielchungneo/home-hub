@@ -1,4 +1,5 @@
 .layout { flex: 1; min-height: 0; display: flex; gap: var(--space-6); }
+.layoutWithKeyboard { padding-bottom: 340px; }
 .left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 22px; }
 
 .search {

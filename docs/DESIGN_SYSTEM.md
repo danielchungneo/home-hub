@@ -245,6 +245,9 @@ Rail pill with a status dot: "Spotify connected", "Live with everyone's phones".
 ### Fab
 The floating 88px ink "+" bottom-right for quick-add. One per screen, only on screens where adding is the main job (Tasks, Calendar).
 
+### SoftKeyboard
+`<SoftKeyboard value onChange onDone>`: QWERTY pad docked under the main area (not the sidebar). Chromium in cage has no OS soft keyboard, so search fields open this on focus (`inputMode="none"`). Letter / `123` modes, space, backspace, Clear, Done. Keys are ≥ 72px. Same idea as the PIN number pad.
+
 ### ScreenLoading
 The `Suspense` fallback for tab screens in `App.tsx`: the real sidebar plus an empty panel that fades in. It shows instantly on tap, so the tab highlight moves before the screen's code has loaded.
 
@@ -313,6 +316,7 @@ The only looping animations allowed in the app, and only while music is playing:
 - Icon-only buttons need `aria-label`. Progress bars need `aria-label`. Live changes (servings, PIN dots) use `aria-live="polite"`.
 - Color is never the only signal: completed items also get a tick, the selected tab also changes weight, an asleep speaker also gets a dashed border and text.
 - Focus ring: 3px fjord outline with a 3px offset (`:focus-visible`), already global.
+- The mouse cursor is hidden globally (`cursor: none` in `base.css`). This is a wall touchscreen; the pointer does not follow taps and would otherwise sit in the middle of the screen.
 
 ---
 

@@ -20,7 +20,7 @@ The Jukebox tab browses and plays the household's **favorited Spotify items** on
 
 | View | What's on it |
 |---|---|
-| Toolbar (always) | Tabs (Songs · Playlists · Albums, with counts), search box, and a "Now playing" button while something is playing |
+| Toolbar (always) | Tabs (Songs · Playlists · Albums, with counts), search box (opens the on-screen SoftKeyboard — Chromium has no OS keyboard), and a "Now playing" button while something is playing |
 | Songs | "Jump back in" (the last 4 albums or playlists played, from `play_collection` commands) and the list of favorite songs. Each row has Play, **Play next** and **Add to queue** |
 | Albums / Playlists | The **record wall**: covers leaning on two wooden ledges, scrolling sideways. Tap a cover to play it with the pick animation; tap the caption to see its songs |
 | Detail | Cover, title, meta, Play · Shuffle · Add all to queue · ♥, then the song list. Playlists you don't own show a note instead of songs (see §6) |

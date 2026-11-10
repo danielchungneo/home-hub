@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AppShell, PageHeader } from '../../components/AppShell'
 import { Icon } from '../../components/Icon'
+import { SoftKeyboard } from '../../components/SoftKeyboard'
 import { StatusPill } from '../../components/primitives'
 import type { Collection } from '@hub/shared'
 import { DetailView, SearchView, SongsView, WallView } from './Browse'
@@ -22,6 +23,7 @@ export default function Jukebox() {
   })
   const [detail, setDetail] = useState<Collection | null>(null)
   const [query, setQuery] = useState('')
+  const [keyboard, setKeyboard] = useState(false)
   const [picking, setPicking] = useState<Collection | null>(null)
   const [reveal, setReveal] = useState<Collection | null>(null)
   const timers = useRef<number[]>([])
@@ -30,12 +32,13 @@ export default function Jukebox() {
   if (!jb.ready) return <AppShell>{null}</AppShell>
 
   const speaker = jb.speakers.find((x) => x.id === jb.player.speakerId)?.name ?? jb.speakers[0]?.name ?? 'Speaker'
-  const goTab = (t: Tab) => { setTab(t); setDetail(null); setQuery('') }
-  const open = (c: Collection) => { setTab(c.kind === 'album' ? 'albums' : 'playlists'); setDetail(c); setQuery('') }
+  const clearSearch = () => { setQuery(''); setKeyboard(false) }
+  const goTab = (t: Tab) => { setTab(t); setDetail(null); clearSearch() }
+  const open = (c: Collection) => { setTab(c.kind === 'album' ? 'albums' : 'playlists'); setDetail(c); clearSearch() }
 
   const pick = (c: Collection) => {
     timers.current.forEach((t) => window.clearTimeout(t))
-    const start = () => { jb.playCollection(c); setTab('now'); setDetail(null); setQuery('') }
+    const start = () => { jb.playCollection(c); setTab('now'); setDetail(null); clearSearch() }
     if (reducedMotion()) { start(); return }
     setPicking(c)
     timers.current = [
@@ -86,11 +89,20 @@ export default function Jukebox() {
           <label className={s.searchBox}>
             <Icon name="search" size={24} />
             <span className="sr-only">Search Spotify</span>
-            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search Spotify for songs, albums, playlists" />
-            {query && <button type="button" className={s.searchClear} aria-label="Clear search" onClick={() => setQuery('')}><Icon name="close" size={20} /></button>}
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setKeyboard(true)}
+              inputMode="none"
+              autoComplete="off"
+              enterKeyHint="search"
+              placeholder="Search Spotify for songs, albums, playlists"
+            />
+            {query && <button type="button" className={s.searchClear} aria-label="Clear search" onClick={clearSearch}><Icon name="close" size={20} /></button>}
           </label>
           {current && (
-            <button type="button" aria-pressed={tab === 'now' && !query} className={tab === 'now' && !query ? `${s.nowBtn} ${s.nowBtnOn}` : s.nowBtn} onClick={() => { setTab('now'); setQuery('') }}>
+            <button type="button" aria-pressed={tab === 'now' && !query} className={tab === 'now' && !query ? `${s.nowBtn} ${s.nowBtnOn}` : s.nowBtn} onClick={() => { setTab('now'); clearSearch() }}>
               <span className={s.nowBtnArt}><Cover item={current} size={48} /></span>
               <Equalizer playing={jb.player.playing} />
               Now playing
@@ -98,15 +110,16 @@ export default function Jukebox() {
           )}
         </div>
 
-        <div className={s.body}>{body}</div>
+        <div className={keyboard ? `${s.body} ${s.bodyWithKeyboard}` : s.body}>{body}</div>
 
-        {tab !== 'now' && !query && current && <MiniPlayer jb={jb} onOpen={() => setTab('now')} />}
+        {tab !== 'now' && !query && current && !keyboard && <MiniPlayer jb={jb} onOpen={() => setTab('now')} />}
 
         {jb.toast && (
           <div role="status" className={s.toast}><Icon name="tick" size={20} stroke={3} />{jb.toast}</div>
         )}
         {picking && <PickOverlay item={picking} line={`${picking.subtitle} · putting it on in the ${speaker}`} />}
         {reveal && <Reveal item={reveal} />}
+        {keyboard && <SoftKeyboard value={query} onChange={setQuery} onDone={() => setKeyboard(false)} />}
       </div>
     </AppShell>
   )
