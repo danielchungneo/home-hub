@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Icon } from '../components/Icon'
 import { IconTile, Label, Progress } from '../components/primitives'
-import { useCompleted, useEvents, useTasks } from '../data/hooks'
+import { useCompleted, useEvents, useHouseholdSettings, useMealPlan, useRecipes, useTasks, useWeather } from '../data/hooks'
 import { useLive } from '../data/live'
 import { localDate } from '../data/mappers'
-import { MEAL_PLAN, PHOTOS, RECIPES, SETTINGS, WEATHER } from '../data/mock'
+import { PHOTOS } from '../data/mock'
 import { useClock } from '../hooks/useClock'
 import { addDays, clock, hourLabel, longDate, startOfWeek } from '../lib/format'
 import { who } from '../lib/members'
@@ -14,18 +14,25 @@ import s from './Idle.module.css'
 /** Screensaver: full-bleed photo slideshow with clock and today-at-a-glance. Any tap dismisses it (App handles that). */
 export default function Idle() {
   const now = useClock()
+  const settings = useHouseholdSettings()
+  const weather = useWeather()
   const slides = PHOTOS.filter((p) => p.inSlideshow)
   const [i, setI] = useState(0)
   useLive('events', 'events')
+  useLive('meal_plan', 'mealPlan')
+
+  const slideSeconds = settings.data?.slideSeconds ?? 20
 
   // Preload/advance one slide at a time; only the current image is mounted.
   useEffect(() => {
-    const id = window.setInterval(() => setI((x) => (x + 1) % slides.length), SETTINGS.slideSeconds * 1000)
+    if (!slides.length) return
+    const id = window.setInterval(() => setI((x) => (x + 1) % slides.length), slideSeconds * 1000)
     return () => window.clearInterval(id)
-  }, [slides.length])
+  }, [slides.length, slideSeconds])
 
   const today = now.getDay()
   const hour = now.getHours() + now.getMinutes() / 60
+  const todayStr = localDate(now)
   const weekStart = useMemo(() => startOfWeek(now), [now])
   const weekEnd = useMemo(() => addDays(weekStart, 7), [weekStart])
   const events = useEvents(weekStart, weekEnd).data ?? []
@@ -33,17 +40,24 @@ export default function Idle() {
     .filter((e) => e.day === today && !e.allDay && e.end > hour)
     .sort((a, b) => a.start - b.start)
     .slice(0, 4)
-  const dinner = MEAL_PLAN.dinner[today]
-  const dinnerTitle = dinner ? ('recipeId' in dinner ? RECIPES.find((r) => r.id === dinner.recipeId)?.title : dinner.text) : 'Not planned yet'
+  const mealPlan = useMealPlan(todayStr, todayStr).data ?? []
+  const recipes = useRecipes().data ?? []
+  const dinner = mealPlan.find((m) => m.slot === 'dinner')
+  const dinnerTitle = dinner
+    ? (dinner.recipeId ? recipes.find((r) => r.id === dinner.recipeId)?.title : dinner.title) ?? dinner.title ?? 'Not planned yet'
+    : 'Not planned yet'
   const total = useTasks().data?.length ?? 0
-  const done = useCompleted(localDate(now)).data?.length ?? 0
+  const done = useCompleted(todayStr).data?.length ?? 0
   const photo = slides[i]
+  const w = weather.data
 
   return (
     <div className={s.page} role="dialog" aria-label="Slideshow. Tap anywhere to open the hub.">
-      <div key={photo.id} className={`${s.photo} anim-fade`}>
-        <PhotoPlaceholder full palette={photo.palette} seed={i} label="Family photo" />
-      </div>
+      {photo && (
+        <div key={photo.id} className={`${s.photo} anim-fade`}>
+          <PhotoPlaceholder full palette={photo.palette} seed={i} label="Family photo" />
+        </div>
+      )}
 
       <div className={s.playing}>
         <span className={s.playingIcon}><Icon name="music" size={22} /></span>
@@ -53,7 +67,10 @@ export default function Idle() {
       <div className={s.clock}>
         <div className={s.time}>{clock(now)}</div>
         <div className={s.date}>{longDate(now)}</div>
-        <div className={s.weather}><Icon name="sun" size={30} />{WEATHER.temp}° · {WEATHER.condition} · High {WEATHER.high}°</div>
+        <div className={s.weather}>
+          <Icon name={w?.icon ?? 'sun'} size={30} />
+          {w ? `${w.temp}° · ${w.condition} · High ${w.high}°` : '…'}
+        </div>
       </div>
 
       <aside className={s.today} aria-label="Today at a glance">

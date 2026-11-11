@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.18"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       calendar_sources: {
@@ -173,10 +148,76 @@ export type Database = {
           },
         ]
       }
+      household_settings: {
+        Row: {
+          created_at: string
+          household_id: string
+          idle_minutes: number
+          kroger_location_id: string | null
+          location_label: string | null
+          location_zip: string | null
+          parent_pin_hash: string
+          pin_lock_minutes: number
+          pin_protect_deletes: boolean
+          pin_protect_rewards: boolean
+          pin_protect_settings: boolean
+          sleep_end: string
+          sleep_start: string
+          slide_seconds: number
+          updated_at: string
+          weather_units: string
+        }
+        Insert: {
+          created_at?: string
+          household_id?: string
+          idle_minutes?: number
+          kroger_location_id?: string | null
+          location_label?: string | null
+          location_zip?: string | null
+          parent_pin_hash: string
+          pin_lock_minutes?: number
+          pin_protect_deletes?: boolean
+          pin_protect_rewards?: boolean
+          pin_protect_settings?: boolean
+          sleep_end?: string
+          sleep_start?: string
+          slide_seconds?: number
+          updated_at?: string
+          weather_units?: string
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          idle_minutes?: number
+          kroger_location_id?: string | null
+          location_label?: string | null
+          location_zip?: string | null
+          parent_pin_hash?: string
+          pin_lock_minutes?: number
+          pin_protect_deletes?: boolean
+          pin_protect_rewards?: boolean
+          pin_protect_settings?: boolean
+          sleep_end?: string
+          sleep_start?: string
+          slide_seconds?: number
+          updated_at?: string
+          weather_units?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_settings_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: true
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       households: {
         Row: {
           created_at: string
           id: string
+          import_token: string
           location_lat: number | null
           location_lon: number | null
           name: string
@@ -186,6 +227,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          import_token?: string
           location_lat?: number | null
           location_lon?: number | null
           name: string
@@ -195,6 +237,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          import_token?: string
           location_lat?: number | null
           location_lon?: number | null
           name?: string
@@ -548,6 +591,51 @@ export type Database = {
           },
         ]
       }
+      list_share_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          household_id: string
+          id: string
+          list_id: string
+          revoked_at: string | null
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          household_id?: string
+          id?: string
+          list_id: string
+          revoked_at?: string | null
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          household_id?: string
+          id?: string
+          list_id?: string
+          revoked_at?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "list_share_tokens_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "list_share_tokens_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lists: {
         Row: {
           color: Database["public"]["Enums"]["member_color"]
@@ -585,6 +673,54 @@ export type Database = {
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meal_plan: {
+        Row: {
+          created_at: string
+          date: string
+          household_id: string
+          id: string
+          recipe_id: string | null
+          slot: Database["public"]["Enums"]["meal_slot"]
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          household_id?: string
+          id?: string
+          recipe_id?: string | null
+          slot: Database["public"]["Enums"]["meal_slot"]
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          household_id?: string
+          id?: string
+          recipe_id?: string | null
+          slot?: Database["public"]["Enums"]["meal_slot"]
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_plan_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_plan_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
         ]
@@ -732,6 +868,71 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipes: {
+        Row: {
+          color: Database["public"]["Enums"]["member_color"]
+          cook_min: number
+          created_at: string
+          favorite: boolean
+          household_id: string
+          icon: string
+          id: string
+          image_path: string | null
+          ingredients: Json
+          prep_min: number
+          servings: number
+          source_url: string | null
+          steps: Json
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          color?: Database["public"]["Enums"]["member_color"]
+          cook_min?: number
+          created_at?: string
+          favorite?: boolean
+          household_id?: string
+          icon?: string
+          id?: string
+          image_path?: string | null
+          ingredients?: Json
+          prep_min?: number
+          servings?: number
+          source_url?: string | null
+          steps?: Json
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          color?: Database["public"]["Enums"]["member_color"]
+          cook_min?: number
+          created_at?: string
+          favorite?: boolean
+          household_id?: string
+          icon?: string
+          id?: string
+          image_path?: string | null
+          ingredients?: Json
+          prep_min?: number
+          servings?: number
+          source_url?: string | null
+          steps?: Json
+          tags?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipes_household_id_fkey"
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
@@ -1068,6 +1269,8 @@ export type Database = {
         Returns: Database["public"]["Enums"]["profile_kind"]
       }
       invoke_calendar_sync: { Args: never; Returns: number }
+      set_parent_pin: { Args: { pin: string }; Returns: undefined }
+      verify_parent_pin: { Args: { pin: string }; Returns: boolean }
     }
     Enums: {
       jukebox_command_status: "pending" | "done" | "failed"
@@ -1085,6 +1288,7 @@ export type Database = {
         | "shuffle"
         | "repeat"
       jukebox_media_kind: "track" | "album" | "playlist"
+      meal_slot: "breakfast" | "lunch" | "dinner" | "snack"
       member_color: "moss" | "clay" | "honey" | "fjord" | "plum"
       member_role: "parent" | "child"
       profile_kind: "person" | "kiosk"
@@ -1216,9 +1420,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       jukebox_command_status: ["pending", "done", "failed"],
@@ -1237,6 +1438,7 @@ export const Constants = {
         "repeat",
       ],
       jukebox_media_kind: ["track", "album", "playlist"],
+      meal_slot: ["breakfast", "lunch", "dinner", "snack"],
       member_color: ["moss", "clay", "honey", "fjord", "plum"],
       member_role: ["parent", "child"],
       profile_kind: ["person", "kiosk"],

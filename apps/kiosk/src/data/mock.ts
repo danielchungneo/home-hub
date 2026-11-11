@@ -121,7 +121,8 @@ export const PENDING_REDEMPTIONS: Redemption[] = [{ id: 'r1', memberId: 'shelby'
 
 export const RECIPES: Recipe[] = [
   {
-    id: 'sheetpan', title: 'Sheet-pan chicken & veggies', icon: 'dish', color: 'clay', prepMin: 15, cookMin: 25, servings: 4, tags: ['Dinner'],
+    id: 'sheetpan', title: 'Sheet-pan chicken & veggies', icon: 'dish', color: 'clay', prepMin: 15, cookMin: 25, servings: 4, tags: ['Dinner', 'Quick', 'American'],
+    course: 'Dinner', photo: { palette: ['#F3E7DF', '#C27A4E', '#E9A27E', '#55623F'] }, favorite: true,
     ingredients: [
       { qty: 2, unit: 'lb', name: 'chicken thighs' }, { qty: 2, unit: '', name: 'sweet potatoes, cubed' },
       { qty: 1, unit: 'head', name: 'broccoli' }, { qty: 3, unit: 'tbsp', name: 'olive oil' },
@@ -138,7 +139,8 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'chili', title: 'Slow-cooker chili', icon: 'pot', color: 'honey', prepMin: 15, cookMin: 360, servings: 6, tags: ['Dinner', 'Slow cooker'],
+    id: 'chili', title: 'Slow-cooker chili', icon: 'pot', color: 'honey', prepMin: 15, cookMin: 360, servings: 6, tags: ['Dinner', 'Long', 'American'],
+    course: 'Dinner', photo: { palette: ['#F2DCCB', '#9A4E33', '#7D513C', '#F4D58D'] },
     ingredients: [
       { qty: 1, unit: 'lb', name: 'ground beef' }, { qty: 2, unit: 'cans', name: 'kidney beans' },
       { qty: 1, unit: 'can', name: 'diced tomatoes' }, { qty: 1, unit: '', name: 'onion, diced' },
@@ -151,7 +153,8 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'pasta', title: 'Lemon parmesan pasta', icon: 'pot', color: 'moss', prepMin: 10, cookMin: 15, servings: 4, tags: ['Dinner', 'Quick'],
+    id: 'pasta', title: 'Lemon parmesan pasta', icon: 'pot', color: 'moss', prepMin: 10, cookMin: 15, servings: 4, tags: ['Dinner', 'Quick', 'Italian'],
+    course: 'Dinner', photo: { palette: ['#E6E9DA', '#F4D58D', '#E9D9C4', '#6B7A55'] },
     ingredients: [
       { qty: 1, unit: 'lb', name: 'spaghetti' }, { qty: 1, unit: '', name: 'lemon, zest and juice' },
       { qty: 1, unit: 'cup', name: 'grated parmesan' }, { qty: 3, unit: 'tbsp', name: 'butter' }, { qty: 2, unit: 'cloves', name: 'garlic' },
@@ -162,7 +165,8 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'pancakes', title: 'Banana pancakes', icon: 'dish', color: 'honey', prepMin: 10, cookMin: 15, servings: 4, tags: ['Breakfast', 'Quick'],
+    id: 'pancakes', title: 'Banana pancakes', icon: 'dish', color: 'honey', prepMin: 10, cookMin: 15, servings: 4, tags: ['Breakfast', 'Quick', 'American'],
+    course: 'Breakfast', photo: { palette: ['#F4ECDA', '#E9B566', '#C29A55', '#F6E6BE'] }, favorite: true, from: 'Shelby’s Saturday special',
     ingredients: [
       { qty: 2, unit: '', name: 'ripe bananas' }, { qty: 1.5, unit: 'cups', name: 'flour' },
       { qty: 1, unit: 'cup', name: 'milk' }, { qty: 1, unit: '', name: 'egg' }, { qty: 2, unit: 'tsp', name: 'baking powder' },
@@ -174,7 +178,8 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'oats', title: 'Overnight oats', icon: 'mug', color: 'fjord', prepMin: 5, cookMin: 0, servings: 2, tags: ['Breakfast', 'Quick'],
+    id: 'oats', title: 'Overnight oats', icon: 'mug', color: 'fjord', prepMin: 5, cookMin: 0, servings: 2, tags: ['Breakfast', 'Quick', 'American'],
+    course: 'Breakfast', photo: { palette: ['#D6E0E6', '#E9D9C4', '#C29A55', '#6E5A72'] },
     ingredients: [
       { qty: 1, unit: 'cup', name: 'rolled oats' }, { qty: 1, unit: 'cup', name: 'milk' },
       { qty: 0.5, unit: 'cup', name: 'Greek yogurt' }, { qty: 1, unit: 'tbsp', name: 'maple syrup' },
@@ -182,7 +187,8 @@ export const RECIPES: Recipe[] = [
     steps: [{ text: 'Stir everything together in jars and refrigerate overnight.' }],
   },
   {
-    id: 'tacos', title: 'Taco night', icon: 'utensils', color: 'clay', prepMin: 10, cookMin: 20, servings: 4, tags: ['Dinner'],
+    id: 'tacos', title: 'Taco night', icon: 'utensils', color: 'clay', prepMin: 10, cookMin: 20, servings: 4, tags: ['Dinner', 'Quick', 'Mexican'],
+    course: 'Dinner', photo: { palette: ['#F4ECDA', '#E9B566', '#9A4E33', '#55623F'] },
     ingredients: [
       { qty: 1, unit: 'lb', name: 'ground turkey' }, { qty: 8, unit: '', name: 'taco shells' },
       { qty: 2, unit: 'tbsp', name: 'taco seasoning' }, { qty: 1, unit: 'cup', name: 'shredded cheese' }, { qty: 1, unit: '', name: 'tomato, diced' },
@@ -190,6 +196,61 @@ export const RECIPES: Recipe[] = [
     steps: [
       { text: 'Brown the turkey, then stir in the seasoning with a splash of water.', uses: ['ground turkey', 'taco seasoning'] },
       { text: 'Warm the shells and set out the toppings.', uses: ['taco shells', 'shredded cheese', 'tomato, diced'] },
+    ],
+  },
+  {
+    id: 'eggbites', title: 'Egg bites', icon: 'dish', color: 'moss', prepMin: 10, cookMin: 20, servings: 6, tags: ['Breakfast', 'Quick', 'American'],
+    course: 'Breakfast', photo: { palette: ['#E9EDE1', '#F4D58D', '#6B7A55', '#F6E6BE'] },
+    ingredients: [
+      { qty: 6, unit: '', name: 'eggs' }, { qty: 0.5, unit: 'cup', name: 'cottage cheese' },
+      { qty: 1, unit: 'cup', name: 'baby spinach' }, { qty: 0.5, unit: 'cup', name: 'shredded cheese' },
+    ],
+    steps: [
+      { text: 'Heat the oven to 350°F and grease a muffin tin.' },
+      { text: 'Blend the eggs and cottage cheese until smooth.', uses: ['eggs', 'cottage cheese'] },
+      { text: 'Divide spinach and cheese into the cups, then pour in the eggs.', uses: ['baby spinach', 'shredded cheese'] },
+      { text: 'Bake until just set.', timerMin: 20 },
+    ],
+  },
+  {
+    id: 'roast', title: 'Sunday pot roast', icon: 'pot', color: 'fjord', prepMin: 20, cookMin: 240, servings: 6, tags: ['Dinner', 'Long', 'American'],
+    course: 'Dinner', photo: { palette: ['#E4EAEE', '#7D513C', '#E9A27E', '#C29A55'] }, favorite: true, from: 'From Grandma’s recipe box',
+    ingredients: [
+      { qty: 3, unit: 'lb', name: 'chuck roast' }, { qty: 4, unit: '', name: 'carrots' },
+      { qty: 1.5, unit: 'lb', name: 'potatoes' }, { qty: 1, unit: '', name: 'onion' }, { qty: 2, unit: 'cups', name: 'beef broth' },
+    ],
+    steps: [
+      { text: 'Sear the roast on all sides in a heavy pot.', uses: ['chuck roast'] },
+      { text: 'Add the vegetables and broth around it.', uses: ['carrots', 'potatoes', 'onion', 'beef broth'] },
+      { text: 'Cover and cook at 300°F.', timerMin: 240 },
+      { text: 'Rest 10 minutes, then slice.', timerMin: 10 },
+    ],
+  },
+  {
+    id: 'crisp', title: 'Apple crisp', icon: 'leaf', color: 'clay', prepMin: 15, cookMin: 40, servings: 8, tags: ['Dessert', 'Medium', 'American'],
+    course: 'Sweets', photo: { palette: ['#F3E7DF', '#C29A55', '#9A4E33', '#F6E6BE'] }, favorite: true, from: 'Fall favorite',
+    ingredients: [
+      { qty: 6, unit: '', name: 'apples' }, { qty: 1, unit: 'cup', name: 'rolled oats' },
+      { qty: 0.5, unit: 'cup', name: 'brown sugar' }, { qty: 0.5, unit: 'cup', name: 'butter' }, { qty: 1, unit: 'tsp', name: 'cinnamon' },
+    ],
+    steps: [
+      { text: 'Slice the apples into a baking dish.', uses: ['apples'] },
+      { text: 'Mix the oats, sugar, butter and cinnamon.', uses: ['rolled oats', 'brown sugar', 'butter', 'cinnamon'] },
+      { text: 'Crumble over the apples and bake at 350°F.', timerMin: 40 },
+    ],
+  },
+  {
+    id: 'cookies', title: 'Chocolate chip cookies', icon: 'sparkle', color: 'plum', prepMin: 15, cookMin: 12, servings: 24, tags: ['Dessert', 'Quick', 'American'],
+    course: 'Sweets', photo: { palette: ['#EDE6F0', '#C29A55', '#5A4128', '#E9B566'] },
+    ingredients: [
+      { qty: 2.25, unit: 'cups', name: 'flour' }, { qty: 1, unit: 'cup', name: 'butter' },
+      { qty: 0.75, unit: 'cup', name: 'brown sugar' }, { qty: 2, unit: '', name: 'eggs' }, { qty: 2, unit: 'cups', name: 'chocolate chips' },
+    ],
+    steps: [
+      { text: 'Cream the butter and sugar.', uses: ['butter', 'brown sugar'] },
+      { text: 'Beat in the eggs, then the flour.', uses: ['eggs', 'flour'] },
+      { text: 'Fold in the chocolate chips.', uses: ['chocolate chips'] },
+      { text: 'Bake at 375°F until golden at the edges.', timerMin: 11 },
     ],
   },
 ]
@@ -203,10 +264,10 @@ export const MEAL_SLOTS: { id: MealSlot; label: string; icon: 'sunrise' | 'sun' 
 
 /** meal_plan for the current week, indexed [slot][day 0–6]. */
 export const MEAL_PLAN: Record<MealSlot, MealEntry[]> = {
-  breakfast: [{ text: 'Muffins to go' }, { recipeId: 'oats' }, { recipeId: 'oats' }, { recipeId: 'oats' }, { recipeId: 'oats' }, { recipeId: 'oats' }, { recipeId: 'pancakes' }],
+  breakfast: [{ text: 'Muffins to go' }, { recipeId: 'oats' }, { recipeId: 'oats' }, { recipeId: 'eggbites' }, { recipeId: 'oats' }, { recipeId: 'eggbites' }, { recipeId: 'pancakes' }],
   lunch: [{ text: 'After-church lunch out' }, { text: 'Leftover chili' }, null, { text: 'Leftovers' }, null, { text: 'Leftovers' }, null],
-  dinner: [{ recipeId: 'chili' }, { recipeId: 'pasta' }, { recipeId: 'tacos' }, { text: 'Leftovers' }, { recipeId: 'pancakes' }, { text: 'Date night — eat out' }, { recipeId: 'sheetpan' }],
-  snack: [null, { text: 'Apples & PB' }, { text: 'Yogurt' }, null, { text: 'Trail mix' }, null, { text: 'Popcorn' }],
+  dinner: [{ recipeId: 'chili' }, { recipeId: 'pasta' }, { recipeId: 'sheetpan' }, { recipeId: 'tacos' }, { text: 'Leftovers' }, { text: 'Date night — eat out' }, { recipeId: 'roast' }],
+  snack: [null, { text: 'Apples & PB' }, { text: 'Yogurt' }, null, { recipeId: 'cookies' }, null, { text: 'Popcorn' }],
 }
 
 let li = 0

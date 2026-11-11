@@ -92,9 +92,27 @@ Member colors are also reused as category accents (meal slots, reward tiles, lis
 | `--color-ledge` / `--color-ledge-edge` | `#B98E5E` / `#8E6A43` | Wooden picture ledge |
 | `--color-vinyl` / `--color-vinyl-groove` | `#1E1B18` / `#2A2622` | Records |
 
+### Kitchen (Recipes + Meals)
+
+| Token | Value | Use |
+|---|---|---|
+| `--color-paper` | `#FFFDF6` | Recipe cards (box, pull-out, board, drawer). Warmer than `--color-surface` so cards read as paper |
+| `--color-rule` | `#DCE6EC` | Ruled lines on recipe cards (28px rows in the box, 40px on the pull-out) |
+| `--color-box` / `--color-box-wood` / `--color-box-lip` | wall / ledge / `#A47A4C` | Inside, front and top edge of the recipe box |
+| `--color-brass` / `-edge` / `-ink` | `#D9B77A` / `#A8834B` / `#5A4128` | Name plate on the box |
+| `--color-board` | `#F7F4EF` | Fridge board behind the meal plan |
+| `--color-day` | `#EDE7DE` | Weekday tiles on the board (today is ink) |
+| `--note-breakfast` / `-lunch` / `-dinner` / `-snack` | `#F6E6BE` / `#DCE7EE` / `#F5DCCF` / `#E2EBD6` | Sticky notes, one color per meal row |
+| `--color-note-ink` | `#3F3934` | Handwriting on sticky notes |
+| `--shadow-card` / `--shadow-lifted` | | Paper cards at rest / a card being held (pull-out, flying) |
+
+**Course colors** reuse the member palette through `data-course`: Breakfast = honey, Dinner = clay, Sweets = plum. Put `data-course={recipe.course}` on an element and use `var(--member)` / `var(--member-tint)` inside it, the same way as `data-color`.
+
 ### Artwork colors
 
 Album and playlist art brings its own colors. Components never hard-code them: call `artVars(art)` (in `screens/jukebox/parts.tsx`), which sets `--art-bg` and `--art-fg` on the element, then use `var(--art-bg)` / `var(--art-fg)` in CSS. Now playing, the mini player, the vinyl label and the pick wash are tinted this way. Placeholder swatches in data files are the only other hex values allowed outside `tokens.css`.
+
+Recipe photos follow the same rule: `<FoodPhoto photo={recipe.photo} />` shows `photo.url` when there is one and otherwise draws a plate in `photo.palette`. Store recipe photos resized to 560×392 WebP (the largest size they're shown at).
 
 ---
 
@@ -180,8 +198,9 @@ Nav labels are 14px; **nothing on the kiosk is smaller than 13px**.
 - **Body patterns:**
   - *Board:* horizontal columns (Tasks). Native scroll with `scroll-snap`.
   - *Rail + panel:* a 340–440px list on the left, the main panel on the right (Lists, Rewards, Settings).
-  - *Panel + detail:* the main grid on the left, a 400–560px detail panel on the right (Recipes, Photos, Jukebox).
-  - *Grid panel:* one panel holding a grid (Calendar, Meals).
+  - *Panel + detail:* the main grid on the left, a 400–560px detail panel on the right (Photos, Jukebox).
+  - *Grid panel:* one panel holding a grid (Calendar).
+  - *Object scene:* a physical metaphor filling the panel area: the record wall (Jukebox), the recipe box (Recipes), the fridge board (Meals). Toolbars stay above it at normal size so filters and search are always one tap away.
 - Panels fill the remaining height (`flex: 1; min-height: 0`), and long content scrolls **inside** the panel (`.scroll-y`). The page itself never scrolls.
 
 ---
@@ -271,6 +290,11 @@ The `Suspense` fallback for tab screens in `App.tsx`: the real sidebar plus an e
 - **Media row:** 76px row, `#` or equalizer · 56px art + title/artist · album · time · 56px icon buttons. The playing row gets a fjord-tint fill and fjord title.
 - **Mini player:** 104px bar under browse views, tinted with the current art (`--art-bg`). The song area opens the full Now playing view.
 - **Favorite (♥):** `heart` / `heart-solid` icon button. Saved = clay. Always paired with a toast ("Saved “Harvest” to favorites").
+- **Recipe box (Recipes):** quick filters + search in one 64px row above the box. Course dividers (340×640, tinted tab with a count) and recipe cards (340×600, one every 310px so they overlap like index cards, ±1° tilt) in a horizontal scroll, with the wooden box front covering their bottom 90px. Card: course band · 220px photo (★ Family favorite badge) · course eyebrow · 34px serif title · time and serves chips · first three ingredients on ruled lines.
+- **Pull-out card:** tapping a recipe card lifts it out of the box, flies it to the centre at 1040×700 and flips it over to the full recipe (ingredients with a servings stepper on the left, numbered steps on the right, ruled paper, then *Add to meal plan* and *Start cooking*). Closing plays it backwards. Use it for any "look closer at one card" moment.
+- **Fridge board (Meals):** 100px row labels + 7 day columns × 4 meal rows on `--color-board`. A recipe is a small paper card (course band, 58px photo, title, time) held by a magnet in the course color; anything else is a sticky note in the row color, handwritten (serif italic); an empty slot is the dashed "+ Add" tile. Everything on the board has a slight hand-placed tilt.
+- **Pick drawer:** a 400px sheet from the bottom for filling one slot: heading ("Thu · Lunch / Pick a recipe") · search · filter chips · Clear slot · close, then one horizontal strip: quick notes (Leftovers, Eat out) · the write-in sticky · divider · recipe cards (230px, photo + title + course · time). Picking flies a copy onto the slot and the board card lands with a small bounce.
+- **Write-in:** a sticky note that turns into a 40-character text field with Cancel / Add, so a slot can hold anything ("Pizza night", "Grandma’s"). Saves as `{ text }` in the meal plan. Needs the on-screen keyboard on the Pi (see §11).
 - **Overlays over photos:** solid `--color-scrim` panels or 88–94% white panels. Never blur.
 
 ---
@@ -284,6 +308,16 @@ The `Suspense` fallback for tab screens in `App.tsx`: the real sidebar plus an e
 - Press feedback: `:active { transform: scale(0.97) }` on buttons, 0.99 on large rows.
 - Celebrations are one short CSS pop. No confetti libraries, no looping animation, no autoplay video.
 - `prefers-reduced-motion` turns animations off (already in `base.css`).
+
+### Kitchen motion (Recipes + Meals)
+
+One-shot only; nothing here loops except the steam.
+
+- **Drop in:** cards and dividers slide up into the box (500ms, 45ms stagger) on load and whenever the filter changes. Board items stick on from 26px above with a slight overshoot (450ms).
+- **Pull-out:** lift 300ms → fly to centre 600ms → flip 650ms; close reverses (flip back, then 450ms back into the slot). The overlay grows out of the card's measured `getBoundingClientRect()` (FLIP), so it works wherever the box is scrolled.
+- **Drawer → board:** a copy of the picked card moves with `translate` + `scale` to the slot in 600ms, then the real card lands with a 1.08 → 1 bounce. Never animate width/height.
+- **Add ingredients:** the cart wiggles once and a "+14 to Groceries" chip floats up and fades.
+- **Steam** over tonight's dinner: three wisps, 3.4s each, 1.1s apart. It's the only loop on these screens; keep it that slow.
 
 ### Music motion (Jukebox only)
 
@@ -316,7 +350,7 @@ The only looping animations allowed in the app, and only while music is playing:
 - Icon-only buttons need `aria-label`. Progress bars need `aria-label`. Live changes (servings, PIN dots) use `aria-live="polite"`.
 - Color is never the only signal: completed items also get a tick, the selected tab also changes weight, an asleep speaker also gets a dashed border and text.
 - Focus ring: 3px fjord outline with a 3px offset (`:focus-visible`), already global.
-- The mouse cursor is hidden globally (`cursor: none` in `base.css`). This is a wall touchscreen; the pointer does not follow taps and would otherwise sit in the middle of the screen.
+- The mouse cursor is hidden on the Pi production build (`html.hide-cursor` in `base.css`, applied when `import.meta.env.PROD`). Local `pnpm dev` keeps the cursor so laptop work is usable. On the wall touchscreen, the pointer does not follow taps and would otherwise sit in the middle of the screen.
 
 ---
 
@@ -326,8 +360,9 @@ These are rules, not suggestions.
 
 - **Styling:** CSS Modules + CSS custom properties only. Zero runtime CSS-in-JS. No Tailwind or MUI needed.
 - **Code splitting:** every screen is `React.lazy` in `App.tsx`. Keep shared code in `components/` small.
-- **Infinite animations:** only the Jukebox music motion above, only while playing, only on mounted views.
-- **Forbidden:** `backdrop-filter`/blur, large or stacked `box-shadow` (only `--shadow-float` on the FAB and `--shadow-dialog` on the PIN dialog), animating `width/height/top/left/background-color` in loops, autoplay video, big PNGs, JS scroll libraries, icon fonts, chart libraries.
+- **Infinite animations:** only the Jukebox music motion above (only while playing) and the steam on tonight's dinner, and only on mounted views.
+- **Text input:** the Pi has no keyboard. Search fields and the meal write-in need an on-screen keyboard: either the compositor's (e.g. `squeekboard` under Wayland) or a small in-app keyboard component that appears when an input is focused. Keep inputs short (the write-in is capped at 40 characters).
+- **Forbidden:** `backdrop-filter`/blur, large or stacked `box-shadow` (only `--shadow-float` on the FAB, `--shadow-dialog` on the PIN dialog, and the kitchen paper shadows `--shadow-card` / `--shadow-lifted`, which sit on static cards inside a scroll layer), animating `width/height/top/left/background-color` in loops, autoplay video, big PNGs, JS scroll libraries, icon fonts, chart libraries.
 - **Scrolling:** native overflow with `.scroll-x` / `.scroll-y`, plus `scroll-snap` for columns.
 - **Images:** serve resized photos (longest side ~1920 for the slideshow, ~400 for thumbnails). Use `loading="lazy" decoding="async"`. Mount only the current slideshow image and preload just the next.
 - **Timers:** the clock ticks once a minute (`useClock`). The idle detector uses one timeout. Countdown timers tick only while running.

@@ -1,10 +1,11 @@
 // Turn Supabase rows into the shapes the screens were built against (see data/mock.ts).
-import type {
-  CalendarEvent, CalendarSource, Database, JukeboxFavorite, JukeboxState, LedgerEntry, ListItem, Member, NowPlaying, QueueItem, Redemption, Speaker,
+import {
+  normalizeRecipeTags,
+  type CalendarEvent, type CalendarSource, type Course, type Database, type FoodPhoto, type Ingredient, type JukeboxFavorite, type JukeboxState, type LedgerEntry, type ListItem, type Member, type MemberColor, type NowPlaying, type QueueItem, type RecipeStep, type Redemption, type Speaker,
 } from '@hub/shared'
 import type { IconName } from '../components/Icon'
 import { weekday } from '../lib/format'
-import type { Reward, ShoppingList, Task } from '../lib/types'
+import type { Recipe as KioskRecipe, Reward, ShoppingList, Task } from '../lib/types'
 
 type Tables = Database['public']['Tables']
 type Row<T extends keyof Tables> = Tables[T]['Row']
@@ -225,4 +226,92 @@ export const toCalendarSource = (r: Row<'calendar_sources'>): CalendarSource => 
   enabled: r.enabled,
   accountKey: r.account_email ?? undefined,
   lastSyncedAt: r.last_synced_at ?? undefined,
+})
+
+function asIngredients(value: Row<'recipes'>['ingredients']): Ingredient[] {
+  if (!Array.isArray(value)) return []
+  return value.map((raw) => {
+    const i = (raw ?? {}) as Partial<Ingredient>
+    return {
+      qty: typeof i.qty === 'number' ? i.qty : Number(i.qty) || 0,
+      unit: String(i.unit ?? ''),
+      name: String(i.name ?? '').trim(),
+    }
+  }).filter((i) => i.name)
+}
+
+function asSteps(value: Row<'recipes'>['steps']): RecipeStep[] {
+  if (!Array.isArray(value)) return []
+  return value.map((raw) => {
+    const s = (raw ?? {}) as Partial<RecipeStep>
+    return {
+      text: String(s.text ?? '').trim(),
+      tip: s.tip ? String(s.tip) : undefined,
+      timerMin: typeof s.timerMin === 'number' ? s.timerMin : undefined,
+      uses: Array.isArray(s.uses) ? s.uses.map(String) : undefined,
+    }
+  }).filter((s) => s.text)
+}
+
+/** Placeholder plate colors until a real photo lands — content hex like album art swatches. */
+const PHOTO_PALETTE: Record<MemberColor, FoodPhoto['palette']> = {
+  clay: ['#F3E7DF', '#C27A4E', '#E9A27E', '#55623F'],
+  honey: ['#F4ECDA', '#E9B566', '#C29A55', '#F6E6BE'],
+  moss: ['#E9EDE1', '#F4D58D', '#6B7A55', '#F6E6BE'],
+  fjord: ['#E4EAEE', '#7D513C', '#E9A27E', '#C29A55'],
+  plum: ['#EDE6F0', '#C29A55', '#5A4128', '#E9B566'],
+}
+
+/** Derive course until `recipes.course` exists; map meal tags onto Breakfast / Dinner / Sweets. */
+export function courseFromTags(tags: string[]): Course {
+  if (tags.includes('Dessert') || tags.includes('Sweets')) return 'Sweets'
+  if (tags.includes('Breakfast')) return 'Breakfast'
+  return 'Dinner'
+}
+
+export const toRecipe = (r: Row<'recipes'>, imageUrl?: string | null): KioskRecipe => {
+  const tags = normalizeRecipeTags(r.tags, { prepMin: r.prep_min, cookMin: r.cook_min })
+  const row = r as Row<'recipes'> & { course?: Course | null; source?: string | null }
+  const course = row.course && ['Breakfast', 'Dinner', 'Sweets'].includes(row.course)
+    ? row.course
+    : courseFromTags(tags)
+  const photo: FoodPhoto = {
+    url: imageUrl ?? undefined,
+    palette: PHOTO_PALETTE[r.color] ?? PHOTO_PALETTE.fjord,
+  }
+  return {
+    id: r.id,
+    title: r.title,
+    icon: icon(r.icon),
+    color: r.color,
+    course,
+    photo,
+    favorite: r.favorite,
+    from: row.source ?? undefined,
+    prepMin: r.prep_min,
+    cookMin: r.cook_min,
+    servings: r.servings,
+    tags,
+    ingredients: asIngredients(r.ingredients),
+    steps: asSteps(r.steps),
+    imagePath: r.image_path,
+    imageUrl: imageUrl ?? undefined,
+    sourceUrl: r.source_url,
+  }
+}
+
+export type MealPlanRow = {
+  id: string
+  date: string
+  slot: Database['public']['Enums']['meal_slot']
+  recipeId: string | null
+  title: string | null
+}
+
+export const toMealPlanRow = (r: Row<'meal_plan'>): MealPlanRow => ({
+  id: r.id,
+  date: r.date,
+  slot: r.slot,
+  recipeId: r.recipe_id,
+  title: r.title,
 })

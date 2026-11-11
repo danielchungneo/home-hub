@@ -32,8 +32,8 @@ Meals, Recipes, Photos, weather, and most Settings sections still read `src/data
 - **Tasks:** per-person columns, routine tabs, tap to complete, progress, points, "all wrapped up" banner
 - **Calendar:** week view for the current week, person filters, all-day row, live "now" line
 - **Rewards:** balances computed from a ledger, redeem, approve with the PIN dialog, history
-- **Meals:** week grid, today highlighted, "add ingredients" confirmation
-- **Recipes:** search, tag filters, servings scaling with kitchen fractions, start cooking mode
+- **Meals:** fridge board (recipe cards with magnets, sticky notes, empty slots), Tonight hero with steam and a start-by time, pick drawer with search, filters, Leftovers / Eat out and a write-in note, flying-card placement, Clear slot, "add ingredients" cart wiggle
+- **Recipes:** recipe box with quick filters (course, under 30 min, family favorites) and search, drop-in animation, pull-out card that flips to the full recipe, servings scaling with kitchen fractions, start cooking mode
 - **Cooking mode:** step navigation, working countdown timer, Wake Lock when available
 - **Photos:** filters, add to or remove from the slideshow, play slideshow
 - **Lists:** switch lists, add items, check off, clear completed
@@ -47,10 +47,10 @@ Meals, Recipes, Photos, weather, and most Settings sections still read `src/data
 src/
   app/          App.tsx (screen switching, overlays, lazy loading), nav.tsx (useNav context)
   components/   AppShell, Button, primitives (Panel, Avatar, Segmented, …), Icon
-  screens/      One .tsx + .module.css per screen; Cooking/Idle/Sleep/PinDialog are overlays
+  screens/      One .tsx + .module.css per screen (bigger ones get a folder: jukebox/, recipes/, meals/); Cooking/Idle/Sleep/PinDialog are overlays
   data/mock.ts  Mock rows shaped like the Supabase tables in the design doc (§8)
   hooks/        useClock (ticks per minute), useIdle (single timeout)
-  lib/          format.ts (dates, times, quantities), members.ts (who() lookup),
+  lib/          format.ts (dates, times, quantities), members.ts (who() lookup), recipes.ts (filters, search, time labels),
                 types.ts (shared types pinned to the kiosk's IconName)
   styles/       tokens.css (the design tokens), base.css (reset, fonts, keyframes)
 ```

@@ -9,7 +9,7 @@ export interface Who {
   color: MemberColor
 }
 
-// Mock members stay in the lookup for screens that still read mock data (Calendar, Photos, …).
+// Mock members stay in the lookup for screens that still read mock data (Calendar, …).
 const STATIC: Who[] = [...MEMBERS, HOME_COLUMN, FAMILY]
 
 /** Look up a member, the Home column, or Family by id. Real members come from the cached members query. */

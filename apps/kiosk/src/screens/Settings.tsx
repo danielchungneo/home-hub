@@ -1,39 +1,29 @@
 import { useMemo, useState } from 'react'
-import { AppShell, PageHeader } from '../components/AppShell'
+import { useNav } from '../app/nav'
+import { AppShell, PageHeader, settingsSleepLabel } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Icon, type IconName } from '../components/Icon'
 import { Avatar, IconTile, Label, Panel, Switch } from '../components/primitives'
-import { useCalendarSources, useJukeboxCommand, useJukeboxState, useSpeakers, useToggleCalendarSource } from '../data/hooks'
+import {
+  useCalendarSources,
+  useHouseholdSettings,
+  useJukeboxCommand,
+  useJukeboxState,
+  useMembers,
+  useSetParentPin,
+  useSpeakers,
+  useToggleCalendarSource,
+  useUpdateHouseholdSettings,
+  useUpdateMember,
+} from '../data/hooks'
 import { useLive } from '../data/live'
-import { MEMBERS, SETTINGS } from '../data/mock'
+import { useClock } from '../hooks/useClock'
+import { formatTimeOfDay } from '../lib/format'
 import { who } from '../lib/members'
-import type { Member, MemberColor, Routine } from '@hub/shared'
+import type { HouseholdSettings, Member, MemberColor, Routine } from '@hub/shared'
 import s from './Settings.module.css'
 
 type SectionId = 'family' | 'calendars' | 'music' | 'sleep' | 'weather' | 'pin'
-
-type Row = { label: string; hint?: string } & ({ toggle: boolean } | { value: string })
-const ROWS: Record<Exclude<SectionId, 'family' | 'music' | 'calendars'>, Row[]> = {
-  sleep: [
-    { label: 'Sleep on a schedule', toggle: true },
-    { label: 'Sleep hours', value: `${SETTINGS.sleepStart} – ${SETTINGS.sleepEnd}` },
-    { label: 'While asleep, show', value: 'Dim clock' },
-    { label: 'Start slideshow after', value: `${SETTINGS.idleMinutes} minutes idle` },
-    { label: 'Wake on', hint: 'Motion sensor could come later', value: 'Tap' },
-  ],
-  weather: [
-    { label: 'Location', hint: 'Used only for the forecast', value: '[YOUR TOWN]' },
-    { label: 'Units', value: '°F' },
-    { label: 'Refresh every', value: '30 minutes' },
-  ],
-  pin: [
-    { label: 'Change PIN', value: '••••' },
-    { label: 'Approving rewards', hint: 'Needs the PIN', toggle: true },
-    { label: 'Opening settings', hint: 'Needs the PIN', toggle: true },
-    { label: 'Deleting things', hint: 'Needs the PIN', toggle: true },
-    { label: 'Lock again after', value: '5 minutes' },
-  ],
-}
 
 const COLORS: { value: MemberColor; label: string }[] = [
   { value: 'moss', label: 'Moss' }, { value: 'clay', label: 'Clay' }, { value: 'honey', label: 'Honey' }, { value: 'fjord', label: 'Fjord' }, { value: 'plum', label: 'Plum' },
@@ -41,6 +31,21 @@ const COLORS: { value: MemberColor; label: string }[] = [
 const ROUTINES: { value: Routine; label: string }[] = [
   { value: 'morning', label: 'Morning' }, { value: 'afternoon', label: 'Afternoon' }, { value: 'evening', label: 'Evening' }, { value: 'chores', label: 'Chores' },
 ]
+
+const IDLE_OPTIONS = [3, 5, 10, 15, 30]
+const SLIDE_OPTIONS = [10, 15, 20, 30, 45]
+const LOCK_OPTIONS = [1, 2, 5, 10, 15]
+const SLEEP_STARTS = ['21:00', '21:30', '22:00', '22:30', '23:00']
+const SLEEP_ENDS = ['05:00', '05:30', '06:00', '06:30', '07:00']
+
+function cycle<T>(options: T[], current: T): T {
+  const i = options.findIndex((v) => v === current)
+  return options[(i + 1) % options.length]!
+}
+
+function normalizeTime(value: string) {
+  return value.slice(0, 5)
+}
 
 function CalendarSettings() {
   const sources = useCalendarSources()
@@ -187,22 +192,276 @@ function MusicSettings() {
   )
 }
 
+function SleepSettings({ settings }: { settings: HouseholdSettings }) {
+  const update = useUpdateHouseholdSettings()
+  const patch = (input: Partial<HouseholdSettings>) => void update.mutateAsync(input).catch(() => {})
+
+  return (
+    <div className={s.rows}>
+      <div className={s.row}>
+        <span className={s.rowText}><span>Sleep hours</span><small>Dim clock overnight</small></span>
+        <Button
+          variant="secondary"
+          iconRight="chevron-right"
+          className={s.value}
+          onClick={() => patch({
+            sleepStart: cycle(SLEEP_STARTS, normalizeTime(settings.sleepStart)),
+            sleepEnd: settings.sleepEnd,
+          })}
+        >
+          {settingsSleepLabel(settings.sleepStart, settings.sleepEnd)}
+        </Button>
+      </div>
+      <div className={s.row}>
+        <span className={s.rowText}><span>Wake time</span></span>
+        <Button
+          variant="secondary"
+          iconRight="chevron-right"
+          className={s.value}
+          onClick={() => patch({ sleepEnd: cycle(SLEEP_ENDS, normalizeTime(settings.sleepEnd)) })}
+        >
+          {formatTimeOfDay(settings.sleepEnd)}
+        </Button>
+      </div>
+      <div className={s.row}>
+        <span className={s.rowText}><span>While asleep, show</span></span>
+        <Button variant="secondary" className={s.value}>Dim clock</Button>
+      </div>
+      <div className={s.row}>
+        <span className={s.rowText}><span>Start slideshow after</span></span>
+        <Button
+          variant="secondary"
+          iconRight="chevron-right"
+          className={s.value}
+          onClick={() => patch({ idleMinutes: cycle(IDLE_OPTIONS, settings.idleMinutes) })}
+        >
+          {settings.idleMinutes} minutes idle
+        </Button>
+      </div>
+      <div className={s.row}>
+        <span className={s.rowText}><span>Each slideshow photo</span></span>
+        <Button
+          variant="secondary"
+          iconRight="chevron-right"
+          className={s.value}
+          onClick={() => patch({ slideSeconds: cycle(SLIDE_OPTIONS, settings.slideSeconds) })}
+        >
+          {settings.slideSeconds} seconds
+        </Button>
+      </div>
+      <div className={s.row}>
+        <span className={s.rowText}><span>Wake on</span><small>Motion sensor could come later</small></span>
+        <Button variant="secondary" className={s.value}>Tap</Button>
+      </div>
+    </div>
+  )
+}
+
+function WeatherSettings({ settings }: { settings: HouseholdSettings }) {
+  const update = useUpdateHouseholdSettings()
+  const location = [settings.locationLabel, settings.locationZip].filter(Boolean).join(' · ') || 'Not set'
+
+  return (
+    <div className={s.rows}>
+      <div className={s.row}>
+        <span className={s.rowText}><span>Location</span><small>Used only for the forecast</small></span>
+        <Button variant="secondary" className={s.value}>{location}</Button>
+      </div>
+      <div className={s.row}>
+        <span className={s.rowText}><span>Units</span></span>
+        <Button
+          variant="secondary"
+          iconRight="chevron-right"
+          className={s.value}
+          onClick={() => void update.mutateAsync({ weatherUnits: settings.weatherUnits === 'f' ? 'c' : 'f' }).catch(() => {})}
+        >
+          {settings.weatherUnits === 'c' ? '°C' : '°F'}
+        </Button>
+      </div>
+      <div className={s.row}>
+        <span className={s.rowText}><span>Refresh every</span></span>
+        <Button variant="secondary" className={s.value}>30 minutes</Button>
+      </div>
+    </div>
+  )
+}
+
+function PinSettings({ settings }: { settings: HouseholdSettings }) {
+  const { requirePin } = useNav()
+  const update = useUpdateHouseholdSettings()
+  const setPin = useSetParentPin()
+  const patch = (input: Partial<HouseholdSettings>) => void update.mutateAsync(input).catch(() => {})
+
+  const changePin = () => {
+    requirePin({
+      title: 'To change the parent PIN',
+      detail: 'Enter the current PIN first',
+      onSuccess: () => {
+        requirePin({
+          title: 'Choose a new PIN',
+          detail: 'Four digits',
+          captureOnly: true,
+          onSuccess: (pin) => {
+            if (pin) void setPin.mutateAsync(pin).catch(() => {})
+          },
+        })
+      },
+    })
+  }
+
+  return (
+    <div className={s.rows}>
+      <div className={s.row}>
+        <span className={s.rowText}><span>Change PIN</span></span>
+        <Button variant="secondary" iconRight="chevron-right" className={s.value} onClick={changePin}>••••</Button>
+      </div>
+      <div className={s.row}>
+        <span className={s.rowText}><span>Approving rewards</span><small>Needs the PIN</small></span>
+        <Switch
+          checked={settings.pinProtectRewards}
+          label="Approving rewards"
+          onChange={(v) => patch({ pinProtectRewards: v })}
+        />
+      </div>
+      <div className={s.row}>
+        <span className={s.rowText}><span>Opening settings</span><small>Needs the PIN</small></span>
+        <Switch
+          checked={settings.pinProtectSettings}
+          label="Opening settings"
+          onChange={(v) => patch({ pinProtectSettings: v })}
+        />
+      </div>
+      <div className={s.row}>
+        <span className={s.rowText}><span>Deleting things</span><small>Needs the PIN</small></span>
+        <Switch
+          checked={settings.pinProtectDeletes}
+          label="Deleting things"
+          onChange={(v) => patch({ pinProtectDeletes: v })}
+        />
+      </div>
+      <div className={s.row}>
+        <span className={s.rowText}><span>Lock again after</span></span>
+        <Button
+          variant="secondary"
+          iconRight="chevron-right"
+          className={s.value}
+          onClick={() => patch({ pinLockMinutes: cycle(LOCK_OPTIONS, settings.pinLockMinutes) })}
+        >
+          {settings.pinLockMinutes} minute{settings.pinLockMinutes === 1 ? '' : 's'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function FamilySettings({ members }: { members: Member[] }) {
+  const update = useUpdateMember()
+  const patch = (
+    id: string,
+    p: Omit<Parameters<typeof update.mutate>[0], 'id'>,
+  ) => void update.mutateAsync({ id, ...p }).catch(() => {})
+
+  return (
+    <>
+      <div className={s.members}>
+        {members.map((m) => (
+          <div key={m.id} data-color={m.color} className={s.member}>
+            <div className={s.memberHead}>
+              <Avatar initial={m.initial} color={m.color} size="lg" />
+              <span className={s.memberName}>
+                <strong>{m.name}</strong>
+                <span>{m.role === 'parent' ? 'Parent' : 'Child · no login'} · {m.roleLabel}</span>
+              </span>
+              <button type="button" className={s.edit} aria-label={`Edit ${m.name}`}><Icon name="pencil" size={22} /></button>
+            </div>
+            <div className={s.field}>
+              <Label>Color</Label>
+              <div className={s.swatches}>
+                {COLORS.map((c) => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    data-color={c.value}
+                    aria-pressed={m.color === c.value}
+                    aria-label={c.label}
+                    className={m.color === c.value ? `${s.swatch} ${s.swatchOn}` : s.swatch}
+                    onClick={() => patch(m.id, { color: c.value })}
+                  >
+                    <span />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className={s.field}>
+              <Label>Routines</Label>
+              <div className={s.routines}>
+                {ROUTINES.map((r) => {
+                  const on = m.routines.includes(r.value)
+                  return (
+                    <button
+                      key={r.value}
+                      type="button"
+                      aria-pressed={on}
+                      className={on ? `${s.routine} ${s.routineOn}` : s.routine}
+                      onClick={() => patch(m.id, {
+                        routines: on ? m.routines.filter((x) => x !== r.value) : [...m.routines, r.value],
+                      })}
+                    >
+                      {r.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div className={s.pointsRow}>
+              <span>Earns points</span>
+              <Switch
+                checked={m.earnsPoints}
+                label={`${m.name} earns points`}
+                onChange={(v) => patch(m.id, { earnsPoints: v })}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      <Button variant="ghost" size="lg" icon="plus" className={s.addMember}>Add a family member</Button>
+    </>
+  )
+}
+
 export default function Settings() {
+  const now = useClock()
+  const { settingsUnlockedUntil } = useNav()
   const speakers = useSpeakers()
   const calendarSources = useCalendarSources()
+  const members = useMembers()
+  const settings = useHouseholdSettings()
+  useLive('members', 'members')
+
   const speakerCount = speakers.data?.length ?? 0
   const calendarCount = calendarSources.data?.length ?? 0
   const [section, setSection] = useState<SectionId>('family')
-  const [members, setMembers] = useState<Member[]>(MEMBERS)
-  const [toggles, setToggles] = useState<Record<string, boolean>>({})
-  const patch = (id: string, p: Partial<Member>) => setMembers((ms) => ms.map((m) => (m.id === id ? { ...m, ...p } : m)))
+
+  const lockMinsLeft = Math.max(0, Math.ceil((settingsUnlockedUntil - now.getTime()) / 60_000))
 
   const sections: { id: SectionId; label: string; sub: string; icon: IconName; color: MemberColor }[] = [
     { id: 'family', label: 'Family', sub: 'Members, colors, routines', icon: 'sofa', color: 'moss' },
     { id: 'calendars', label: 'Calendars', sub: calendarCount ? `${calendarCount} Google calendar${calendarCount === 1 ? '' : 's'}` : 'Link Google accounts', icon: 'calendar', color: 'fjord' },
     { id: 'music', label: 'Music & speakers', sub: speakerCount ? `Spotify · ${speakerCount} speakers` : 'Spotify · speakers', icon: 'music', color: 'clay' },
-    { id: 'sleep', label: 'Sleep & screen', sub: `${SETTINGS.sleepStart} – ${SETTINGS.sleepEnd}`, icon: 'moon', color: 'fjord' },
-    { id: 'weather', label: 'Location & weather', sub: 'Header forecast', icon: 'sun', color: 'honey' },
+    {
+      id: 'sleep',
+      label: 'Sleep & screen',
+      sub: settings.data ? settingsSleepLabel(settings.data.sleepStart, settings.data.sleepEnd) : '…',
+      icon: 'moon',
+      color: 'fjord',
+    },
+    {
+      id: 'weather',
+      label: 'Location & weather',
+      sub: settings.data?.locationLabel ?? 'Header forecast',
+      icon: 'sun',
+      color: 'honey',
+    },
     { id: 'pin', label: 'Parent PIN', sub: 'Approvals and settings', icon: 'key', color: 'clay' },
   ]
   const current = sections.find((x) => x.id === section)!
@@ -212,13 +471,25 @@ export default function Settings() {
       <PageHeader
         eyebrow="Parent mode"
         title="Settings"
-        actions={<span className={s.unlocked}><Icon name="unlock" size={20} />Unlocked · locks again in 5 min</span>}
+        actions={
+          <span className={s.unlocked}>
+            <Icon name="unlock" size={20} />
+            {lockMinsLeft > 0
+              ? `Unlocked · locks again in ${lockMinsLeft} min`
+              : 'Unlocked'}
+          </span>
+        }
       />
       <div className={s.layout}>
         <nav className={s.sections} aria-label="Settings sections">
           {sections.map((x) => (
-            <button key={x.id} type="button" aria-current={x.id === section ? 'page' : undefined}
-              className={x.id === section ? `${s.section} ${s.sectionOn}` : s.section} onClick={() => setSection(x.id)}>
+            <button
+              key={x.id}
+              type="button"
+              aria-current={x.id === section ? 'page' : undefined}
+              className={x.id === section ? `${s.section} ${s.sectionOn}` : s.section}
+              onClick={() => setSection(x.id)}
+            >
               <IconTile icon={x.icon} color={x.color} size={52} />
               <span className={s.sectionText}><strong>{x.label}</strong><span>{x.sub}</span></span>
             </button>
@@ -228,66 +499,17 @@ export default function Settings() {
         <Panel pad="lg" className={`${s.content} scroll-y`} aria-label={current.label}>
           <h2 className={s.h2}>{current.label}</h2>
           {section === 'family' ? (
-            <>
-              <div className={s.members}>
-                {members.map((m) => (
-                  <div key={m.id} data-color={m.color} className={s.member}>
-                    <div className={s.memberHead}>
-                      <Avatar initial={m.initial} color={m.color} size="lg" />
-                      <span className={s.memberName}><strong>{m.name}</strong><span>{m.role === 'parent' ? 'Parent' : 'Child · no login'} · {m.roleLabel}</span></span>
-                      <button type="button" className={s.edit} aria-label={`Edit ${m.name}`}><Icon name="pencil" size={22} /></button>
-                    </div>
-                    <div className={s.field}>
-                      <Label>Color</Label>
-                      <div className={s.swatches}>
-                        {COLORS.map((c) => (
-                          <button key={c.value} type="button" data-color={c.value} aria-pressed={m.color === c.value}
-                            aria-label={c.label} className={m.color === c.value ? `${s.swatch} ${s.swatchOn}` : s.swatch}
-                            onClick={() => patch(m.id, { color: c.value })}><span /></button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className={s.field}>
-                      <Label>Routines</Label>
-                      <div className={s.routines}>
-                        {ROUTINES.map((r) => {
-                          const on = m.routines.includes(r.value)
-                          return (
-                            <button key={r.value} type="button" aria-pressed={on} className={on ? `${s.routine} ${s.routineOn}` : s.routine}
-                              onClick={() => patch(m.id, { routines: on ? m.routines.filter((x) => x !== r.value) : [...m.routines, r.value] })}>
-                              {r.label}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                    <div className={s.pointsRow}>
-                      <span>Earns points</span>
-                      <Switch checked={m.earnsPoints} label={`${m.name} earns points`} onChange={(v) => patch(m.id, { earnsPoints: v })} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <Button variant="ghost" size="lg" icon="plus" className={s.addMember}>Add a family member</Button>
-            </>
+            members.data ? <FamilySettings members={members.data} /> : null
           ) : section === 'calendars' ? (
             <CalendarSettings />
           ) : section === 'music' ? (
             <MusicSettings />
+          ) : section === 'sleep' ? (
+            settings.data ? <SleepSettings settings={settings.data} /> : null
+          ) : section === 'weather' ? (
+            settings.data ? <WeatherSettings settings={settings.data} /> : null
           ) : (
-            <div className={s.rows}>
-              {ROWS[section].map((r) => {
-                const key = `${section}:${r.label}`
-                return (
-                  <div key={key} className={s.row}>
-                    <span className={s.rowText}><span>{r.label}</span>{r.hint && <small>{r.hint}</small>}</span>
-                    {'toggle' in r
-                      ? <Switch checked={toggles[key] ?? r.toggle} label={r.label} onChange={(v) => setToggles((t) => ({ ...t, [key]: v }))} />
-                      : <Button variant="secondary" iconRight="chevron-right" className={s.value}>{r.value}</Button>}
-                  </div>
-                )
-              })}
-            </div>
+            settings.data ? <PinSettings settings={settings.data} /> : null
           )}
         </Panel>
       </div>

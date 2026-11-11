@@ -146,6 +146,34 @@ left join (values
   ('shelby', '22222222-2222-2222-2222-222222222202'::uuid)
 ) as m(who, member_id) on m.who = i.who;
 
+-- Starter recipes (meal plan starts empty; fill it from the kiosk)
+insert into public.recipes (household_id, title, servings, prep_min, cook_min, ingredients, steps, tags, color, icon)
+values
+  ('11111111-1111-1111-1111-111111111111', 'Sheet-pan chicken & veggies', 4, 15, 25,
+   '[{"qty":2,"unit":"lb","name":"chicken thighs"},{"qty":2,"unit":"","name":"sweet potatoes, cubed"},{"qty":1,"unit":"head","name":"broccoli"},{"qty":3,"unit":"tbsp","name":"olive oil"},{"qty":1,"unit":"tsp","name":"smoked paprika"},{"qty":1,"unit":"tsp","name":"garlic powder"},{"qty":0,"unit":"","name":"Salt and pepper"}]'::jsonb,
+   '[{"text":"Heat the oven to 425°F and line a large sheet pan with parchment.","tip":"Parchment makes cleanup a lot easier."},{"text":"Cube the sweet potatoes and cut the broccoli into bite-size florets.","uses":["sweet potatoes, cubed","broccoli"]},{"text":"Toss the chicken and vegetables with the oil and spices.","uses":["chicken thighs","olive oil","smoked paprika","garlic powder","Salt and pepper"]},{"text":"Spread everything in one layer, with a little space between pieces.","tip":"Crowded pans steam instead of roast. Use two pans if needed."},{"text":"Roast until the chicken reaches 165°F and the potatoes are tender.","tip":"Flip the vegetables halfway through.","timerMin":25},{"text":"Let it rest for 5 minutes, then serve.","timerMin":5}]'::jsonb,
+   array['Dinner','Quick','American'], 'clay', 'dish'),
+  ('11111111-1111-1111-1111-111111111111', 'Slow-cooker chili', 6, 15, 360,
+   '[{"qty":1,"unit":"lb","name":"ground beef"},{"qty":2,"unit":"cans","name":"kidney beans"},{"qty":1,"unit":"can","name":"diced tomatoes"},{"qty":1,"unit":"","name":"onion, diced"},{"qty":2,"unit":"tbsp","name":"chili powder"},{"qty":1,"unit":"tsp","name":"cumin"}]'::jsonb,
+   '[{"text":"Brown the beef with the onion in a skillet.","uses":["ground beef","onion, diced"]},{"text":"Add everything to the slow cooker and stir.","uses":["kidney beans","diced tomatoes","chili powder","cumin"]},{"text":"Cook on low for 6 hours.","timerMin":360}]'::jsonb,
+   array['Dinner','Long','American'], 'honey', 'pot'),
+  ('11111111-1111-1111-1111-111111111111', 'Lemon parmesan pasta', 4, 10, 15,
+   '[{"qty":1,"unit":"lb","name":"spaghetti"},{"qty":1,"unit":"","name":"lemon, zest and juice"},{"qty":1,"unit":"cup","name":"grated parmesan"},{"qty":3,"unit":"tbsp","name":"butter"},{"qty":2,"unit":"cloves","name":"garlic"}]'::jsonb,
+   '[{"text":"Boil the spaghetti in salted water until al dente.","timerMin":10,"uses":["spaghetti"]},{"text":"Melt the butter with the garlic, then toss in the pasta, lemon and parmesan.","uses":["butter","garlic","lemon, zest and juice","grated parmesan"]}]'::jsonb,
+   array['Dinner','Quick','Italian'], 'moss', 'pot'),
+  ('11111111-1111-1111-1111-111111111111', 'Banana pancakes', 4, 10, 15,
+   '[{"qty":2,"unit":"","name":"ripe bananas"},{"qty":1.5,"unit":"cups","name":"flour"},{"qty":1,"unit":"cup","name":"milk"},{"qty":1,"unit":"","name":"egg"},{"qty":2,"unit":"tsp","name":"baking powder"}]'::jsonb,
+   '[{"text":"Mash the bananas, then whisk in the milk and egg.","uses":["ripe bananas","milk","egg"]},{"text":"Fold in the flour and baking powder.","uses":["flour","baking powder"]},{"text":"Cook 1/4 cup at a time on a hot griddle, flipping once."}]'::jsonb,
+   array['Breakfast','Quick','American'], 'honey', 'dish'),
+  ('11111111-1111-1111-1111-111111111111', 'Overnight oats', 2, 5, 0,
+   '[{"qty":1,"unit":"cup","name":"rolled oats"},{"qty":1,"unit":"cup","name":"milk"},{"qty":0.5,"unit":"cup","name":"Greek yogurt"},{"qty":1,"unit":"tbsp","name":"maple syrup"}]'::jsonb,
+   '[{"text":"Stir everything together in jars and refrigerate overnight."}]'::jsonb,
+   array['Breakfast','Quick','American'], 'fjord', 'mug'),
+  ('11111111-1111-1111-1111-111111111111', 'Taco night', 4, 10, 20,
+   '[{"qty":1,"unit":"lb","name":"ground turkey"},{"qty":8,"unit":"","name":"taco shells"},{"qty":2,"unit":"tbsp","name":"taco seasoning"},{"qty":1,"unit":"cup","name":"shredded cheese"},{"qty":1,"unit":"","name":"tomato, diced"}]'::jsonb,
+   '[{"text":"Brown the turkey, then stir in the seasoning with a splash of water.","uses":["ground turkey","taco seasoning"]},{"text":"Warm the shells and set out the toppings.","uses":["taco shells","shredded cheese","tomato, diced"]}]'::jsonb,
+   array['Dinner','Quick','Mexican'], 'clay', 'utensils');
+
 -- Jukebox: empty state row. Speakers are discovered by the Pi music-agent.
 -- Favorites are added from the kiosk (♥ on search results), e.g.:
 --   insert into jukebox_favorites (kind, uri, title, subtitle, image_url, sort_order)

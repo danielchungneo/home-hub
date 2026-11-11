@@ -4,7 +4,10 @@ import type { ScreenId } from '@hub/shared'
 export interface PinRequest {
   title: string
   detail?: string
-  onSuccess: () => void
+  /** Called after a correct PIN (or after captureOnly accepts four digits). */
+  onSuccess: (pin?: string) => void
+  /** Skip verify — collect four digits and pass them to onSuccess (used to set a new PIN). */
+  captureOnly?: boolean
 }
 
 export interface Nav {
@@ -14,8 +17,10 @@ export interface Nav {
   cook: (recipeId: string) => void
   /** Ask for the parent PIN, then run onSuccess. */
   requirePin: (req: PinRequest) => void
+  /** Settings stay unlocked until this timestamp (ms). */
+  settingsUnlockedUntil: number
+  markSettingsUnlocked: (until: number) => void
   sleep: () => void
-  showSlideshow: () => void
 }
 
 export const NavContext = createContext<Nav | null>(null)

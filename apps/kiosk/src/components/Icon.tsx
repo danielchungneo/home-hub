@@ -79,6 +79,8 @@ const UI = {
   'chevron-up': <path d="M5 15l7-7 7 7" />,
   grip: <path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" strokeWidth="3.2" />,
   queue: <path d="M4 6h16M4 12h16M4 18h10" />,
+  grid: <><rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><rect x="13" y="13" width="7" height="7" rx="1.5" /></>,
+  box: <><path d="M4 8l8-4 8 4v10l-8 4-8-4z" /><path d="M4 8l8 4 8-4M12 12v10" /></>,
 } satisfies Record<string, ReactNode>
 
 export type IllustrationName = keyof typeof ILLUSTRATION

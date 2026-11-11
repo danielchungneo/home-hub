@@ -1,0 +1,106 @@
+/* Full-screen layer over the page area (the sidebar stays visible). */
+.layer { position: fixed; top: 0; right: 0; bottom: 0; left: var(--sidebar-width); z-index: 20; }
+
+.scrim {
+  position: absolute; inset: 0;
+  background: var(--color-scrim);
+  opacity: 1;
+  transition: opacity 400ms ease;
+}
+.layer[data-phase='start'] .scrim,
+.layer[data-phase='return'] .scrim { opacity: 0; }
+
+.stage {
+  position: absolute; left: 50%; top: 50%;
+  width: 1040px; height: 700px;
+  margin: -350px 0 0 -520px;
+  perspective: 2400px;
+  pointer-events: none;
+}
+.wrap {
+  position: absolute; inset: 0;
+  transform-origin: 50% 50%;
+  transition: transform 600ms var(--ease-out), opacity var(--dur-base) ease;
+}
+.layer[data-phase='start'] .wrap { transition: none; }
+.layer[data-phase='lift'] .wrap { transition-duration: 300ms; }
+.layer[data-phase='return'] .wrap { transition-duration: 450ms, 300ms; opacity: 0; }
+
+.flipper {
+  position: absolute; inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 650ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.front, .back {
+  position: absolute; inset: 0;
+  -webkit-backface-visibility: hidden; backface-visibility: hidden;
+  display: flex; flex-direction: column;
+  border-radius: var(--radius-xl); overflow: hidden;
+  background: var(--color-paper);
+  box-shadow: var(--shadow-lifted);
+}
+.back { transform: rotateY(180deg); pointer-events: auto; }
+
+/* ---------- Front: big photo + title (what you see while it flies) ---------- */
+.frontBand { height: 24px; flex: none; background: var(--member); }
+.frontBody { flex: 1; display: flex; gap: var(--space-10); padding: var(--space-8); }
+.frontPhoto { width: 560px; height: 100%; flex: none; border-radius: 18px; display: block; }
+.frontText { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 18px; }
+.kicker { font-size: var(--text-lg); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--member); }
+.frontTitle { font-family: var(--font-display); font-size: var(--display-2xl); line-height: 1; }
+
+/* ---------- Back: the full recipe ---------- */
+.backBand { height: 14px; flex: none; background: var(--member); }
+.head { flex: none; display: flex; align-items: flex-start; gap: var(--space-5); padding: var(--space-6) var(--space-8) var(--space-4); }
+.thumb { width: 150px; height: 106px; flex: none; border-radius: 14px; display: block; }
+.headText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.kickerSm { font-size: 14px; font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--member); }
+.title { font-family: var(--font-display); font-size: var(--display-lg); line-height: 1; }
+.from { font-family: var(--font-display); font-style: italic; font-size: var(--text-lg); color: var(--color-ink-2); }
+.favOn { color: var(--clay); }
+.stamp {
+  margin-top: 14px; padding: var(--space-2) 14px;
+  border: 3px solid var(--clay); border-radius: 10px;
+  font-size: var(--text-sm); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); text-transform: uppercase;
+  color: var(--clay);
+  transform: rotate(-6deg);
+}
+
+/* Ruled paper: every row is 40px so text sits on the lines. */
+.ruled {
+  flex: 1; min-height: 0;
+  display: flex; gap: 36px;
+  padding: 0 var(--space-10);
+  background: repeating-linear-gradient(180deg, transparent 0 39px, var(--color-rule) 39px 40px);
+}
+.ingredients { width: 380px; flex: none; display: flex; flex-direction: column; min-height: 0; }
+.steps { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.ingredients > :global(.scroll-y), .steps > :global(.scroll-y) { flex: 1; min-height: 0; }
+.colHead { height: 64px; flex: none; display: flex; align-items: center; justify-content: space-between; }
+.colLabel { font-size: 14px; font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--color-ink-3); }
+.stepper { display: flex; align-items: center; gap: 6px; padding: var(--space-1); border-radius: var(--radius-pill); background: var(--color-surface-sunken); }
+.serv { min-width: 76px; text-align: center; font-size: var(--text-sm); font-weight: var(--weight-heavy); }
+/* min-height (not height) so long imported names can wrap onto the next ruled line. */
+.ing { min-height: 40px; display: flex; align-items: flex-start; gap: 14px; font-size: 18px; font-weight: 600; }
+.amt { width: 92px; flex: none; line-height: 40px; font-weight: var(--weight-heavy); color: var(--member); }
+.ingName {
+  flex: 1; min-width: 0;
+  font-family: var(--font-display); font-style: italic; font-size: 21px; line-height: 40px;
+}
+.steps ol { margin: 0; padding: 0; list-style: none; }
+.step { display: flex; gap: 14px; min-height: 80px; }
+.stepNum {
+  width: 36px; height: 36px; flex: none; margin-top: 2px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 18px; background: var(--member-tint); color: var(--member);
+  font-size: 16px; font-weight: var(--weight-heavy);
+}
+.stepText { font-family: var(--font-display); font-size: 22px; line-height: 40px; }
+
+.foot {
+  flex: none; display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-4) var(--space-8) var(--space-6) var(--space-10);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-paper);
+}
+.planLine { flex: 1; font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--color-ink-3); }

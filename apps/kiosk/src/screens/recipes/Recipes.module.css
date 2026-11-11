@@ -1,0 +1,260 @@
+/* ---------- Header: "Cooking tonight" shortcut ---------- */
+.tonight {
+  height: 64px;
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: 0 22px 0 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+}
+.tonight:active { transform: scale(0.98); }
+.tonightPhoto { width: 48px; height: 48px; flex: none; border-radius: 24px; display: block; }
+.tonightText { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.tonightKicker {
+  font-size: 12px; font-weight: var(--weight-heavy);
+  letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--clay);
+}
+.tonightTitle { font-size: var(--text-md); font-weight: var(--weight-heavy); }
+
+/* ---------- Quick filters + search (one 64px row) ---------- */
+.toolbar { height: 64px; flex: none; display: flex; align-items: center; gap: 14px; }
+.filters {
+  display: flex; gap: var(--space-1); padding: var(--space-1);
+  border-radius: var(--radius-pill); background: var(--color-rail);
+}
+.filter {
+  height: 56px;
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-md); font-weight: var(--weight-bold);
+  color: var(--color-ink);
+  transition: background-color var(--dur-fast), color var(--dur-fast);
+}
+.filter[aria-pressed='true'] { background: var(--color-ink); color: var(--color-on-ink); font-weight: var(--weight-heavy); }
+.dot { width: 10px; height: 10px; border-radius: 5px; background: var(--dot); }
+.filter[aria-pressed='true'] .dot { background: var(--color-on-ink); }
+.filter[data-filter='all'] { --dot: var(--color-ink); }
+.filter[data-filter='Breakfast'] { --dot: var(--honey); }
+.filter[data-filter='Dinner'] { --dot: var(--clay); }
+.filter[data-filter='Sweets'] { --dot: var(--plum); }
+.filter[data-filter='quick'] { --dot: var(--fjord); }
+.filter[data-filter='fav'] { --dot: var(--color-peach); }
+.count { font-size: 14px; font-weight: var(--weight-heavy); opacity: 0.65; }
+
+.search {
+  flex: 1; min-width: 0; height: 64px;
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: 0 var(--space-1) 0 var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+.search input {
+  flex: 1; min-width: 0;
+  border: none; background: transparent; outline: none;
+  font: inherit; font-size: 18px; font-weight: 600; color: var(--color-ink);
+}
+.search input::placeholder { color: var(--color-ink-3); }
+
+/* ---------- The recipe box ---------- */
+.box {
+  flex: 1; min-height: 0;
+  position: relative; overflow: hidden;
+  border-radius: var(--radius-2xl);
+  background: var(--color-box);
+}
+.hint {
+  position: absolute; top: var(--space-4); right: var(--space-5); z-index: 3;
+  height: 44px; display: flex; align-items: center; padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 253, 250, 0.85);
+  font-size: var(--text-sm); font-weight: var(--weight-heavy); color: var(--color-ink-2);
+}
+.boxScroll { position: absolute; inset: 0; overflow-y: hidden; }
+.boxInner { position: relative; height: 100%; min-width: 100%; }
+
+/* Each divider/card drops into the box, staggered by --n (45ms apart). */
+.divider, .slot {
+  position: absolute; bottom: 40px;
+  animation: dropIn 500ms var(--ease-out) both;
+  animation-delay: calc(var(--n) * 45ms);
+}
+.divider {
+  width: 340px; height: 640px;
+  border-radius: 14px;
+  background: var(--member-tint);
+  box-shadow: 0 4px 10px rgba(46, 42, 38, 0.10);
+}
+.tab {
+  position: absolute; top: -48px;
+  height: 52px; display: flex; align-items: center; gap: 10px;
+  padding: 0 22px;
+  border-radius: 14px 14px 0 0;
+  background: var(--member-tint);
+  font-size: 18px; font-weight: var(--weight-heavy); color: var(--member);
+}
+.tabCount { font-size: 14px; opacity: 0.75; }
+
+.slot { width: 340px; height: 600px; }
+.card {
+  position: relative;
+  width: 100%; height: 100%;
+  border-radius: 16px; overflow: hidden;
+  color: var(--color-ink);
+  background: var(--color-paper);
+  box-shadow: var(--shadow-card);
+  transform: translateY(var(--rest)) rotate(var(--tilt));
+  transition: transform var(--dur-slow) var(--ease-out), opacity var(--dur-base);
+}
+.cardOpen {
+  display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch;
+  width: 100%; height: 100%;
+  text-align: left; color: inherit;
+}
+.cardOpen:active { transform: translateY(-8px); }
+.cardFav {
+  position: absolute; top: 18px; right: 18px; z-index: 2;
+  background: var(--color-paper) !important;
+}
+.favOn { color: var(--clay); }
+/* While pulled out, the box card is the one in the overlay: hide it and leave a gap. */
+.cardOut { transform: translateY(-160px) rotate(var(--tilt)); opacity: 0; }
+
+.band { display: block; flex: none; height: 10px; background: var(--member); }
+.photoWrap { position: relative; display: block; flex: none; height: 220px; margin: 12px 12px 0; border-radius: 10px; overflow: hidden; }
+.photo { display: block; width: 100%; height: 100%; }
+.fav {
+  position: absolute; left: 10px; top: 10px;
+  padding: 5px 10px; border-radius: var(--radius-pill);
+  background: rgba(255, 253, 250, 0.92);
+  font-size: 12px; font-weight: var(--weight-heavy); letter-spacing: 1px; text-transform: uppercase;
+  color: var(--clay);
+}
+.body { display: flex; flex-direction: column; gap: var(--space-2); padding: 14px var(--space-5) 0; }
+.course { font-size: var(--text-xs); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--member); }
+.title { font-family: var(--font-display); font-size: var(--display-md); line-height: 1.02; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { padding: 4px 10px; border-radius: var(--radius-pill); background: var(--color-surface-sunken); font-size: 14px; font-weight: var(--weight-heavy); }
+.preview {
+  position: absolute; left: var(--space-5); right: var(--space-5); top: 470px;
+  display: flex; flex-direction: column;
+  font-family: var(--font-display); font-style: italic; font-size: 19px; line-height: 28px;
+  color: var(--color-ink-2);
+  background: repeating-linear-gradient(180deg, transparent 0 27px, var(--color-rule) 27px 28px);
+}
+.preview span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Box front: covers the bottom of the cards, like the lip of a real recipe box. */
+.boxFront {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+  height: 130px;
+  border-top: 12px solid var(--color-box-lip);
+  background: repeating-linear-gradient(90deg, rgba(46, 42, 38, 0.04) 0 2px, transparent 2px 46px), var(--color-box-wood);
+  pointer-events: none;
+}
+.plate {
+  position: absolute; left: 640px; top: 22px;
+  width: 420px; height: 70px;
+  display: flex; align-items: center; justify-content: center;
+  border: 3px solid var(--color-brass-edge); border-radius: 10px;
+  background: var(--color-brass);
+  font-family: var(--font-display); font-style: italic; font-size: 26px; color: var(--color-brass-ink);
+}
+.plate::before, .plate::after {
+  content: ''; position: absolute; top: 26px;
+  width: 10px; height: 10px; border-radius: 5px; background: var(--color-brass-edge);
+}
+.plate::before { left: 10px; }
+.plate::after { right: 10px; }
+
+.empty {
+  position: absolute; left: 0; right: 0; top: 220px;
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+  text-align: center; animation: fade var(--dur-base);
+}
+.emptyTitle { font-family: var(--font-display); font-size: var(--display-md); }
+.emptyText { font-size: 18px; font-weight: var(--weight-bold); color: var(--color-ink-2); }
+
+.toast {
+  position: fixed; left: calc(50% + var(--sidebar-width) / 2); bottom: 60px; z-index: 30;
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 24px;
+  border-radius: var(--radius-pill);
+  background: var(--color-ink); color: var(--color-on-ink);
+  font-size: var(--text-md); font-weight: var(--weight-heavy); white-space: nowrap;
+  animation: toastIn var(--dur-base) var(--ease-out);
+}
+
+.qrScrim {
+  position: fixed; inset: 0; z-index: 40;
+  display: grid; place-items: center;
+  background: var(--color-scrim);
+}
+.qrCard {
+  width: 440px;
+  display: flex; flex-direction: column; gap: var(--space-4);
+  padding: var(--space-6);
+  border-radius: var(--radius-3xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-dialog);
+}
+.qrHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.qrTitle { font-family: var(--font-display); font-size: var(--display-sm); }
+.qrImg { width: 360px; height: 360px; margin: 0 auto; border-radius: var(--radius-lg); background: var(--color-surface-sunken); }
+.qrHint { font-size: var(--text-md); font-weight: var(--weight-bold); color: var(--color-ink-2); text-align: center; }
+
+/* ---------- Grid view ---------- */
+.gridPanel {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+}
+.grid {
+  flex: 1; min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-5);
+  align-content: start;
+  padding: var(--space-2);
+}
+.gridEmpty {
+  grid-column: 1 / -1;
+  margin: var(--space-10) 0;
+  text-align: center;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink-2);
+}
+.gridCard {
+  position: relative;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: var(--color-paper);
+  box-shadow: var(--shadow-card);
+}
+.gridOpen {
+  display: flex; flex-direction: column; align-items: stretch;
+  width: 100%; min-height: 320px;
+  text-align: left; color: var(--color-ink);
+}
+.gridOpen:active { transform: scale(0.98); }
+.gridPhotoWrap {
+  display: block; flex: none; height: 160px;
+  margin: 10px 10px 0; border-radius: 12px; overflow: hidden;
+}
+.gridPhoto { display: block; width: 100%; height: 100%; }
+.gridBody {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: 12px var(--space-4) var(--space-5);
+}
+.gridTitle {
+  font-family: var(--font-display);
+  font-size: var(--display-sm);
+  line-height: 1.05;
+}
+.gridFav {
+  position: absolute; top: 18px; right: 18px; z-index: 2;
+  background: var(--color-paper) !important;
+}
+
+@keyframes dropIn { from { transform: translateY(300px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes toastIn { from { transform: translate(-50%, 16px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }

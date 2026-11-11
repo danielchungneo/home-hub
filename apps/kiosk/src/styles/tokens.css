@@ -49,6 +49,25 @@
   --color-vinyl: #1E1B18;          /* record */
   --color-vinyl-groove: #2A2622;
 
+  /* ---------- Kitchen (Recipes + Meals) ---------- */
+  --color-paper: #FFFDF6;          /* recipe cards: warm index-card paper */
+  --color-rule: #DCE6EC;           /* ruled lines on recipe cards */
+  --color-box: var(--color-wall);  /* inside of the recipe box */
+  --color-box-wood: var(--color-ledge);
+  --color-box-lip: #A47A4C;        /* top edge of the box front */
+  --color-brass: #D9B77A;          /* name plate on the box */
+  --color-brass-edge: #A8834B;
+  --color-brass-ink: #5A4128;
+  --color-board: #F7F4EF;          /* fridge board behind the meal plan */
+  --color-day: #EDE7DE;            /* weekday header tiles */
+  --color-note-ink: #3F3934;       /* handwriting on sticky notes */
+  --note-breakfast: #F6E6BE;       /* sticky notes, one color per meal row */
+  --note-lunch: #DCE7EE;
+  --note-dinner: #F5DCCF;
+  --note-snack: #E2EBD6;
+  --shadow-card: 0 4px 10px rgba(46, 42, 38, 0.14); /* paper cards in the box, drawer and board */
+  --shadow-lifted: 0 10px 26px rgba(0, 0, 0, 0.24); /* a card that is being held (pull-out, flying) */
+
   /* ---------- Type ---------- */
   --font-display: 'Newsreader Variable', Georgia, 'Times New Roman', serif;
   --font-body: 'Manrope Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -126,3 +145,8 @@
 [data-color='honey'] { --member: var(--honey); --member-tint: var(--honey-tint); }
 [data-color='fjord'] { --member: var(--fjord); --member-tint: var(--fjord-tint); }
 [data-color='plum']  { --member: var(--plum);  --member-tint: var(--plum-tint); }
+
+/* Recipe courses reuse the member palette: Breakfast honey, Dinner clay, Sweets plum. */
+[data-course='Breakfast'] { --member: var(--honey); --member-tint: var(--honey-tint); }
+[data-course='Dinner']    { --member: var(--clay);  --member-tint: var(--clay-tint); }
+[data-course='Sweets']    { --member: var(--plum);  --member-tint: var(--plum-tint); }

@@ -32,8 +32,15 @@
 .title { font-family: var(--font-display); font-weight: 400; font-size: var(--display-lg); line-height: 1; }
 .detail { font-size: 19px; font-weight: 600; line-height: 1.4; color: var(--color-ink-2); }
 .dots { height: 28px; display: flex; align-items: center; gap: 20px; }
+.dotsWrong { animation: shake 320ms var(--ease-out); }
 .dot { width: 22px; height: 22px; border: 2.5px solid var(--color-ink); border-radius: 50%; }
 .dotOn { background: var(--color-ink); }
+.wrong { margin: 0; font-size: var(--text-md); font-weight: var(--weight-bold); color: var(--color-alert); }
+@keyframes shake {
+  0%, 100% { transform: none; }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
 .pad { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .key {
   height: 96px;

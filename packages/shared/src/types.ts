@@ -7,7 +7,7 @@ export type MemberColor = 'moss' | 'clay' | 'honey' | 'fjord' | 'plum'
 export type Routine = 'morning' | 'afternoon' | 'evening' | 'chores'
 export type ScreenId =
   | 'calendar' | 'tasks' | 'rewards' | 'meals' | 'recipes'
-  | 'photos' | 'lists' | 'jukebox' | 'settings'
+  | 'lists' | 'jukebox' | 'settings'
 
 export interface Member {
   id: string
@@ -84,21 +84,61 @@ export interface Ingredient {
   name: string
 }
 
+export interface RecipeStep {
+  text: string
+  tip?: string
+  timerMin?: number
+  uses?: string[]
+}
+
+export type Course = 'Breakfast' | 'Dinner' | 'Sweets'
+
+/** Recipe photo. `url` is the resized image in Supabase Storage; `palette` draws a placeholder plate until then. */
+export interface FoodPhoto {
+  url?: string
+  /** [table, food 1, food 2, food 3] */
+  palette: [string, string, string, string]
+}
+
 export interface Recipe<I extends string = string> {
   id: string
   title: string
   icon: I
   color: MemberColor
+  course: Course
+  photo: FoodPhoto
+  favorite?: boolean
+  /** Where the recipe came from, shown in italics on the card ("From Grandma's recipe box"). */
+  from?: string
   prepMin: number
   cookMin: number
   servings: number
   tags: string[]
   ingredients: Ingredient[]
-  steps: { text: string; tip?: string; timerMin?: number; uses?: string[] }[]
+  steps: RecipeStep[]
+  imageUrl?: string
+  imagePath?: string | null
+  sourceUrl?: string | null
 }
 
 export type MealSlot = 'breakfast' | 'lunch' | 'dinner' | 'snack'
 export type MealEntry = { recipeId: string } | { text: string } | null
+
+/** Kiosk sleep / PIN / weather preferences (one row per household). */
+export interface HouseholdSettings {
+  householdId: string
+  sleepStart: string
+  sleepEnd: string
+  idleMinutes: number
+  slideSeconds: number
+  weatherUnits: 'f' | 'c'
+  locationLabel: string | null
+  locationZip: string | null
+  pinProtectRewards: boolean
+  pinProtectSettings: boolean
+  pinProtectDeletes: boolean
+  pinLockMinutes: number
+}
 
 export interface ListItem {
   id: string

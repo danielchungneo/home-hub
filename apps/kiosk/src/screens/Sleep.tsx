@@ -1,6 +1,6 @@
-import { WEATHER, SETTINGS } from '../data/mock'
+import { useHouseholdSettings, useWeather } from '../data/hooks'
 import { useClock } from '../hooks/useClock'
-import { clock, longDate } from '../lib/format'
+import { clock, formatTimeOfDay, longDate } from '../lib/format'
 import s from './Sleep.module.css'
 
 /**
@@ -10,11 +10,18 @@ import s from './Sleep.module.css'
  */
 export default function Sleep({ onWake }: { onWake: () => void }) {
   const now = useClock()
+  const weather = useWeather()
+  const settings = useHouseholdSettings()
+  const temp = weather.data?.temp
+  const sleepEnd = settings.data?.sleepEnd
+
   return (
     <button type="button" className={s.page} onClick={onWake} aria-label="Tap to wake the hub">
       <span className={s.time}>{clock(now)}</span>
-      <span className={s.date}>{longDate(now)} · {WEATHER.temp}°</span>
-      <span className={s.hint}>Sleeping until {SETTINGS.sleepEnd} · tap to wake</span>
+      <span className={s.date}>{longDate(now)}{temp != null ? ` · ${temp}°` : ''}</span>
+      <span className={s.hint}>
+        {sleepEnd ? `Sleeping until ${formatTimeOfDay(sleepEnd)} · tap to wake` : 'Tap to wake'}
+      </span>
     </button>
   )
 }

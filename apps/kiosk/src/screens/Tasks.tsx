@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { AppShell, Fab, PageHeader } from '../components/AppShell'
 import { Button, IconButton } from '../components/Button'
 import { Avatar, CheckMark, IconTile, Progress, Rail, Segmented } from '../components/primitives'
-import { useCompleted, useMembers, useTasks, useToggleTask } from '../data/hooks'
+import { useCompleted, useMembers, useTasks, useToggleTask, useWeather } from '../data/hooks'
 import { useLive } from '../data/live'
 import { localDate } from '../data/mappers'
-import { HOME_COLUMN, WEATHER } from '../data/mock'
+import { HOME_COLUMN } from '../data/mock'
 import { useClock } from '../hooks/useClock'
 import { clock, monthDay, weekday } from '../lib/format'
 import type { Member, Routine } from '@hub/shared'
@@ -25,24 +25,36 @@ export default function Tasks() {
   const members = useMembers()
   const tasks = useTasks()
   const completed = useCompleted(today)
+  const weather = useWeather()
   useLive('tasks', 'tasks')
   useLive('task_completions', 'completions')
 
   if (!members.data || !tasks.data || !completed.data) return <AppShell>{null}</AppShell>
-  return <TasksView now={now} today={today} members={members.data} tasks={tasks.data} completed={completed.data} />
+  return (
+    <TasksView
+      now={now}
+      today={today}
+      members={members.data}
+      tasks={tasks.data}
+      completed={completed.data}
+      weather={weather.data}
+    />
+  )
 }
 
-function TasksView({ now, today, members, tasks, completed }: {
+function TasksView({ now, today, members, tasks, completed, weather }: {
   now: Date; today: string; members: Member[]; tasks: Task[]; completed: string[]
+  weather?: { temp: number; condition: string } | null
 }) {
   const toggleTask = useToggleTask()
   const done = new Set(completed)
   const toggle = (id: string) => toggleTask.mutate({ taskId: id, done: !done.has(id), date: today })
+  const forecast = weather ? `${weather.temp}° ${weather.condition.toLowerCase()}` : '…'
 
   return (
     <AppShell fab={<Fab label="Quick add" onClick={() => {}} />}>
       <PageHeader
-        eyebrow={`${weekday(now)} · ${WEATHER.temp}° ${WEATHER.condition.toLowerCase()}`}
+        eyebrow={`${weekday(now)} · ${forecast}`}
         title={<>{monthDay(now)} <span className={s.clock}>{clock(now)}</span></>}
         actions={
           <Rail label="Day">

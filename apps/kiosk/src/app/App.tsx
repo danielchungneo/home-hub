@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { ErrorBoundary, ErrorScreen } from '../components/ErrorScreen'
 import { ScreenLoading } from '../components/ScreenLoading'
-import { SETTINGS } from '../data/mock'
+import { useHouseholdSettings } from '../data/hooks'
 import { useIdle } from '../hooks/useIdle'
 import type { ScreenId } from '@hub/shared'
 import { NavContext, type Nav, type PinRequest } from './nav'
@@ -12,9 +12,8 @@ const screenLoaders = {
   calendar: () => import('../screens/Calendar'),
   tasks: () => import('../screens/Tasks'),
   rewards: () => import('../screens/Rewards'),
-  meals: () => import('../screens/Meals'),
-  recipes: () => import('../screens/Recipes'),
-  photos: () => import('../screens/Photos'),
+  meals: () => import('../screens/meals/Meals'),
+  recipes: () => import('../screens/recipes/Recipes'),
   lists: () => import('../screens/Lists'),
   jukebox: () => import('../screens/jukebox/Jukebox'),
   settings: () => import('../screens/Settings'),
@@ -65,6 +64,7 @@ function fromHash() {
 
 export function App() {
   const queryClient = useQueryClient()
+  const settings = useHouseholdSettings()
   const initial = useMemo(fromHash, [])
   const [screen, setScreen] = useState<ScreenId>(initial.screen)
   const [cooking, setCooking] = useState<string | null>(initial.cooking)
@@ -72,7 +72,8 @@ export function App() {
     initial.pin ? { title: 'To approve Shelby’s reward', detail: 'Uninterrupted nap · 120 points', onSuccess: () => {} } : null,
   )
   const [sleeping, setSleeping] = useState(initial.sleep)
-  const [idle, forceIdle] = useIdle(SETTINGS.idleMinutes)
+  const [settingsUnlockedUntil, setSettingsUnlockedUntil] = useState(0)
+  const [idle, forceIdle] = useIdle(settings.data?.idleMinutes ?? 5)
   const [slideshow, setSlideshow] = useState(initial.idle)
   const [signInError, setSignInError] = useState<Error | null>(null)
   const [signInAttempt, setSignInAttempt] = useState(0)
@@ -130,9 +131,10 @@ export function App() {
     go: (s) => { setCooking(null); setScreen(s) },
     cook: (id) => setCooking(id),
     requirePin: (req) => setPin(req),
+    settingsUnlockedUntil,
+    markSettingsUnlocked: setSettingsUnlockedUntil,
     sleep: () => setSleeping(true),
-    showSlideshow: () => { forceIdle(); setSlideshow(true) },
-  }), [screen, forceIdle])
+  }), [screen, forceIdle, settingsUnlockedUntil])
 
   if (signInError) {
     return (

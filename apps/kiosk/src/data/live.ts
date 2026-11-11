@@ -16,6 +16,10 @@ type LiveTable =
   | 'jukebox_queue'
   | 'events'
   | 'calendar_sources'
+  | 'recipes'
+  | 'meal_plan'
+  | 'members'
+  | 'household_settings'
 
 let channelCount = 0
 

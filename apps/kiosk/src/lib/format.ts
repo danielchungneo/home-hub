@@ -96,3 +96,13 @@ export function weekRange(d: Date) {
     ? `${monthDay(s)} – ${e.getDate()}`
     : `${monthDay(s)} – ${monthDay(e)}`
 }
+
+/** Postgres `time` ("22:00:00" / "22:00") → "10:00 PM". */
+export function formatTimeOfDay(value: string) {
+  const [hs, ms] = value.split(':')
+  const h = Number(hs)
+  const m = Number(ms ?? 0)
+  if (!Number.isFinite(h)) return value
+  const h12 = h % 12 || 12
+  return `${h12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
+}

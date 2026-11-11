@@ -3,7 +3,7 @@ import { useNav } from '../app/nav'
 import { AppShell, PageHeader } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Avatar, IconTile, Label, Panel } from '../components/primitives'
-import { useDecideRedemption, useLedger, useMembers, usePendingRedemptions, useRedeem, useRewards } from '../data/hooks'
+import { useDecideRedemption, useHouseholdSettings, useLedger, useMembers, usePendingRedemptions, useRedeem, useRewards } from '../data/hooks'
 import { useLive } from '../data/live'
 import type { LedgerEntry, Member, Redemption } from '@hub/shared'
 import type { Reward } from '../lib/types'
@@ -25,6 +25,7 @@ function RewardsView({ members, rewards, ledger, pending }: {
   members: Member[]; rewards: Reward[]; ledger: LedgerEntry[]; pending: Redemption[]
 }) {
   const { requirePin } = useNav()
+  const settings = useHouseholdSettings()
   const redeem = useRedeem()
   const decide = useDecideRedemption()
   const earners = members.filter((m) => m.earnsPoints)
@@ -39,10 +40,15 @@ function RewardsView({ members, rewards, ledger, pending }: {
   const approve = (r: Redemption) => {
     const reward = rewards.find((x) => x.id === r.rewardId)!
     const member = members.find((m) => m.id === r.memberId)!
+    const apply = () => decide.mutate({ id: r.id, status: 'approved' })
+    if (!(settings.data?.pinProtectRewards ?? true)) {
+      apply()
+      return
+    }
     requirePin({
       title: `To approve ${member.name}’s reward`,
       detail: `${reward.title} · ${reward.cost} points`,
-      onSuccess: () => decide.mutate({ id: r.id, status: 'approved' }),
+      onSuccess: apply,
     })
   }
 
