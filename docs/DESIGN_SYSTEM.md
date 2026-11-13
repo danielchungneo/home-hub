@@ -9,7 +9,7 @@ The reference for every screen on the kiosk. When you build or change UI, follow
 ## 1. Principles
 
 1. **Calm, warm, readable across the room.** Oat and white surfaces, muted colors, big serif headings. Nothing glows, pulses or shouts.
-2. **Each person owns a color.** Daniel = moss, Shelby = clay, Noah = honey, Family/Home = fjord. That color marks their columns, events, avatars and checkmarks everywhere.
+2. **Each person owns a color.** Daniel = moss, Shelby = clay, Noah = honey by default; Family/Home/Up for grabs = **slate** (system-only, not in pickers). People pick from presets or a custom `#RRGGBB`. That color marks their columns, events, avatars and checkmarks everywhere.
 3. **Big, forgiving touch targets.** Kids, sticky hands, a screen on the wall. Nothing tappable under 56 px.
 4. **One idea per surface.** A page has one title, one main panel, and at most one primary (ink) button per panel.
 5. **Fast on a Pi 3 B+.** Static CSS, no runtime styling, animate only `transform` and `opacity`.
@@ -54,27 +54,35 @@ Surfaces are layered: **bg → surface (panel) → sunken (inside the panel)**. 
 
 ### Member palette
 
-Each color has a **deep** value (text, fills, avatars, checkmarks) and a **tint** (backgrounds). White on every deep color is ≥ 6.1:1, and each deep color on its own tint is ≥ 5.2:1, so deep-on-tint text is always safe.
+Each named color has a **deep** value (text, fills, avatars, checkmarks) and a **tint** (backgrounds). White on every deep color is ≥ 6.1:1, and each deep color on its own tint is ≥ 5.2:1, so deep-on-tint text is always safe.
 
 | Name | Deep | Tint | Default owner |
 |---|---|---|---|
 | moss | `#55623F` | `#E9EDE1` | Daniel |
 | clay | `#7D513C` | `#F3E7DF` | Shelby |
 | honey | `#735623` | `#F4ECDA` | Noah |
-| fjord | `#4B6270` | `#E4EAEE` | Family / Home column |
+| fjord | `#4B6270` | `#E4EAEE` | Selectable preset |
 | plum | `#6E5A72` | `#EDE6F0` | Spare (new member, guests) |
+| pine | `#3F5E4A` | `#E2EBE5` | Selectable preset |
+| berry | `#7A4555` | `#F0E4E8` | Selectable preset |
+| sand | `#8A6F4B` | `#F2EBE0` | Selectable preset |
+| ocean | `#3E6B6A` | `#E2ECEB` | Selectable preset |
+| rose | `#8B5E5E` | `#F1E6E6` | Selectable preset |
+| **slate** | `#6B6560` | `#EBE8E4` | **System only** — Family, Home, Up for grabs |
 
-**How to apply a member color:** put `data-color="moss"` (etc.) on the element, then use `var(--member)` and `var(--member-tint)` inside it. No inline colors.
+People can also store a custom `#RRGGBB` (Profiles / Settings color picker). Custom colors set `--member` / `--member-tint` inline via `memberColorProps()`; named tokens still use `data-color`.
+
+**How to apply a member color:** use `memberColorProps(color)` (named → `data-color`, custom → inline vars), then `var(--member)` / `var(--member-tint)` inside.
 
 ```tsx
-<section data-color={member.color} className={s.column}>…</section>
+<section {...memberColorProps(member.color)} className={s.column}>…</section>
 ```
 ```css
 .column .head { background: var(--member-tint); }
 .column .points { color: var(--member); }
 ```
 
-Member colors are also reused as category accents (meal slots, reward tiles, list icons). That's fine, as long as person-colored things stay tied to the right person.
+Member colors are also reused as category accents (meal slots, reward tiles, list icons). That's fine, as long as person-colored things stay tied to the right person. Never offer `slate` in a member color picker.
 
 ### Semantic
 
@@ -84,6 +92,7 @@ Member colors are also reused as category accents (meal slots, reward tiles, lis
 | `--color-alert` | `#B4533A` | The calendar "now" line, destructive emphasis |
 | `--color-warning` | clay | "Asleep · wake it" speaker state |
 | `--color-star` | `#F4D58D` | Filled "in slideshow" star |
+| `--color-star-gold` | bounty-edge | Star glyph wherever stars are money (Star Shop) |
 | `--color-peach` | `#E9A27E` | Running-timer button |
 | `--color-scrim` | rgba ink 62% | Text panels over photos |
 | `--color-night` / `--color-night-ink` | `#0B0A09` / `#8A8178` | Sleep screen only |
@@ -105,6 +114,17 @@ Member colors are also reused as category accents (meal slots, reward tiles, lis
 | `--note-breakfast` / `-lunch` / `-dinner` / `-snack` | `#F6E6BE` / `#DCE7EE` / `#F5DCCF` / `#E2EBD6` | Sticky notes, one color per meal row |
 | `--color-note-ink` | `#3F3934` | Handwriting on sticky notes |
 | `--shadow-card` / `--shadow-lifted` | | Paper cards at rest / a card being held (pull-out, flying) |
+
+### Tasks (bounty board)
+
+| Token | Value | Use |
+|---|---|---|
+| `--color-bounty` | star `#F4D58D` | *Bounty* tag fill |
+| `--color-bounty-edge` | `#E0B24F` | Claimed-bounty card border, star icon on tickets |
+| `--color-bounty-tint` | note-breakfast `#F6E6BE` | Icon tile on a claimed-bounty card |
+| `--color-bounty-ink` | brass-ink `#5A4128` | Text on the bounty tag, ticket points |
+
+The bounty board itself uses `--color-wall` and `--color-paper`, and the slate kicker marks it as shared, not personal.
 
 **Course colors** reuse the member palette through `data-course`: Breakfast = honey, Dinner = clay, Sweets = plum. Put `data-course={recipe.course}` on an element and use `var(--member)` / `var(--member-tint)` inside it, the same way as `data-color`.
 
@@ -142,7 +162,7 @@ Large serif text gets negative tracking: −1px at 64px, −6px at 200px.
 
 | Token | Size | Use |
 |---|---|---|
-| `--text-xs` | 13px | Tiny meta (counts under routine tabs) |
+| `--text-xs` | 13px | Tiny meta (counts under tabs) |
 | `--text-sm` | 15px | Captions, chips, secondary lines |
 | `--text-md` | 17px | Button labels, body |
 | `--text-lg` | 20px | List rows, card titles |
@@ -182,10 +202,10 @@ Nav labels are 14px; **nothing on the kiosk is smaller than 13px**.
 | Token | px | Rule |
 |---|---|---|
 | `--touch-min` | 56 | The smallest tappable thing anywhere |
-| `--touch-kid` | 64 | Default for things kids tap (task check, routine tab ≥ 60) |
+| `--touch-kid` | 64 | Default for things kids tap (task check ≥ 60) |
 | `--touch-big` | 88 | FAB, the main actions on full-screen modes |
 | `--sidebar-width` | 120 | |
-| `--column-width` | 412 | Task columns (4 fit at 1920px) |
+| `--column-width` | 412 | Horizontal board columns (4 fit at 1920px) |
 
 ---
 
@@ -196,7 +216,8 @@ Nav labels are 14px; **nothing on the kiosk is smaller than 13px**.
 - **Sidebar:** 8 tabs (Calendar, Tasks, Rewards, Meals, Recipes, Photos, Lists, Jukebox), then a spacer, then Sleep and Settings pinned to the bottom. Item 96×80, radius 18. Active item: surface fill, ink, weight 800.
 - **Page header** (`<PageHeader>`): eyebrow + 64px serif title on the left; actions bottom-aligned on the right. One header per page.
 - **Body patterns:**
-  - *Board:* horizontal columns (Tasks). Native scroll with `scroll-snap`.
+  - *Focus + side board:* one person's content on the left, a fixed 476px side board on the right (Tasks: daily/weekly lists + bounty board).
+  - *Board:* horizontal columns. Native scroll with `scroll-snap`.
   - *Rail + panel:* a 340–440px list on the left, the main panel on the right (Lists, Rewards, Settings).
   - *Panel + detail:* the main grid on the left, a 400–560px detail panel on the right (Photos, Jukebox).
   - *Grid panel:* one panel holding a grid (Calendar).
@@ -232,7 +253,7 @@ A pill-shaped `--color-rail` track grouping header controls: `[‹] [Today] [›
 ### Segmented
 `<Segmented options value onChange label variant="rail"|"member" block>`
 - `rail`: page-level view switches (Day / Week / Month / Agenda).
-- `member`: routine tabs inside a person's column. The selected tab fills with `--member`, and an optional `sub` line shows `done/total`.
+- `member`: person-colored segmented control (e.g. daily/weekly in the Add sheet). The selected tab fills with `--member`, and an optional `sub` line shows a count.
 
 ### Panel
 `<Panel as pad>`: white surface, radius 28. `pad`: none / sm (16) / md (28) / lg (32).
@@ -277,8 +298,32 @@ The `Suspense` fallback for tab screens in `App.tsx`: the real sidebar plus an e
 
 ## 7. Patterns
 
-- **Person column (Tasks):** header block in `--member-tint` (avatar, name, `n/total done today`, points on the right, progress bar) → member segmented tabs → a "{Routine} all wrapped up" banner when the routine is done → task rows.
-- **Task row:** 92px row, 1px border, radius 20: `IconTile` (64) · title (21px bold) + "+N points" in `--member` · `CheckMark`. The whole row toggles.
+- **Person switcher (Tasks):** rail of 64px pills (avatar 48 + name + "N left"). The selected pill fills with `--member`, and switching re-keys the page body so it slides in.
+- **Person hero (Tasks):** 150px band in `--member-tint`: 96px avatar · greeting + one progress segment per task + "x of y today · x of y this week" · points today (56px serif) and balance with progress to the next reward. People who don't earn points get a note pill instead of the numbers.
+- **Daily / weekly lists:** two equal surface panels side by side ("Today" and "This week"), each with an icon tile, kicker, title, count, a + that opens Add with that frequency already chosen, a thin progress bar, and an "all wrapped up" banner when everything's done.
+- **Task card:** 84px, 1px border, radius 20: 58px tile · title (20px heavy) with "+N pts" in `--member` and the schedule ("Weekdays", "Every other week") · due pill on weekly tasks (later / *today* in member tint / *late* in alert on clay tint) · 52px check. Done = member-tint fill, checked. A claimed bounty gets a 2px `--color-bounty-edge` border, a bounty-tint tile and a *Bounty* tag. The whole card toggles.
+- **Bounty board:** 476px `--color-wall` panel with pinned paper tickets (`--color-paper`, ±1° tilt, a pin dot in the claimer's color or slate): icon tile · title + due line · star points (30px serif) and *Claim for {name}* in the current person's color. Claimed tickets go to the bottom at 75% opacity with a rotated "{Name} claimed" stamp.
+- **Add sheet (library picker):** a 950px dialog with a two-column body. Left: *1 · Task*, with "Most used" chips over a bordered combobox (search row, then 72px library rows, then a fjord **Create "…"** row when nothing matches exactly); a picked template becomes a tinted summary card with *Change*; creating opens a name field and an icon grid. Right: *2 · Who* (2×2 cards), *3 · How often* (Daily/Weekly segmented → Repeats switch → day presets + circle day toggles, or Due-by day squares), *4 · Points* stepper. The footer is a plain-sentence summary, then Cancel and the primary action.
+- **Up next card (Calendar):** 200px band in the next event's member tint: a 132px countdown ring (fills as the start gets closer) with minutes in the middle · kicker "Up next · {name}" · 32px serif title · time and place · "Leave by …" in the member color when the event has travel time. With nothing left today it reads "Nothing else today" with a moon.
+- **Today timeline:** a vertical track with an ink fill down to a "Now · 9:42am" pill. Each event is a 64px row with a time label, a dot in the member color (larger with a tint ring for the next event, grey for past ones), a muted card and an avatar. Past events are struck through at 60% opacity.
+- **Countdown chip:** a 56px pill with a 42px tinted badge (number of days over a tiny "days") and the title. At most three, nearest first; past dates drop off.
+- **Week grid:** day headers with weekday, date (today in an alert-red circle) and the forecast (stroke weather glyph + high). An all-day row, then 50px hours. Events are member-tint cards (14px heavy title, time only if ≥ 1 hour); past events at 55%. The current event card turns solid while its details are open. Tapping a header zooms into that day (bigger cards with the place).
+- **Event details:** a 420px card that grows out of the side of the tapped event: tinted head (avatar, who, day and time, close) · 36px serif title · place · "Leave by" pill · italic note · *Remind me* (ink → tint when set, the bell rings) and *Edit*.
+- **Live list:**
+  - **Header:** a "Live with … phones" pill with stacked faces and a green dot.
+  - **Rail:** list cards with a progress bar and the count left (it pops when it changes), and a "Live from phones" feed below.
+  - **Main panel:** an add field that shows its aisle guess ("→ Dairy & eggs") as you type; "Usually on it" chips; aisle groups in store walking order, in two columns, each with a tinted icon.
+  - **Cart panel:** a drawn cart that fills with blocks in aisle colors, a count badge, and strikethrough chips you tap to put back.
+- **List item:** 64px row, round 44px check, 18px heavy text, qty pill, assignee avatar. Something just added gets the aisle tint for a moment; if it came from a phone it also gets a "New · {name}" badge in that person's color.
+- **Star Shop (Rewards):** points are called **stars** in the UI and always shown with the gold star glyph (`<Star>` in `screens/rewards/ProductSheet.tsx`, `--color-star-gold`).
+  - **Wallet:** a 176px band in the shopper's tint. It has a star jar (one star per 20), the balance in 88px serif counting up, "+N earned this week", and a **Saving for** goal: the wishlisted reward with a progress bar and "N more stars · about N weeks of chores".
+  - **Aisles:** Everything / Treats / Time off / Family fun / I can afford, with counts.
+  - **Shelf:** a `--color-wall` panel with 4 items per wooden plank (`--color-ledge`). An item card has a tinted art area with the icon, then the aisle, title, and either "N stars left after" (affordable) or a progress bar with "N more stars". Affordable items get a "You can get this" ribbon. The price hangs on a tag on a string; a deal shows the old price struck through.
+  - **Deal of the week:** an ink card with a tilted art tile, the deal price, the struck-through old price and a "Save N" pill.
+  - **Approval ticket:** a paper ticket with "{Name} wants · waiting for {other parent}", the reward and its price, then *Not now* and *Approve with PIN*. Once approved, an "Approved" stamp replaces the buttons.
+  - **Receipt:** paper with dashed rules and a torn bottom edge, listing this week's ledger (+ in success, − in alert) with the balance at the bottom.
+- **Product sheet:** a big tinted art panel with sparkles, plus the aisle, a 60px title and an italic blurb. The maths reads *You have − Price = Left after / Still need*. Then *Save for this* (♥) and *Buy for N stars*. After buying, a paper receipt prints with a "Waiting for {other parent}" stamp.
+- **Stock the shop:** PIN-gated sheet to add, edit, or retire rewards. Catalog list on the left style of Add sheet; form has title + blurb (soft keyboard), aisle chips, star-price stepper, color swatches and an icon grid. Retiring sets `active = false` so past redemptions stay intact.
 - **List row:** 72px, `CheckMark` (52) · text · qty chip · assignee avatar (sm). Checked items move to an "In the cart" strip of moss-tint chips with a "Clear completed" button.
 - **Settings row:** min 84px, label + optional hint on the left; a `Switch` or a `secondary` value button with a chevron on the right; divider between rows.
 - **Approval banner:** surface card at the top of the page, with `IconTile` · uppercase eyebrow in the requester's color ("WAITING FOR A PARENT") · sentence · `Not now` (secondary) · `Approve with PIN` (primary, lock icon).
@@ -308,6 +353,44 @@ The `Suspense` fallback for tab screens in `App.tsx`: the real sidebar plus an e
 - Press feedback: `:active { transform: scale(0.97) }` on buttons, 0.99 on large rows.
 - Celebrations are one short CSS pop. No confetti libraries, no looping animation, no autoplay video.
 - `prefers-reduced-motion` turns animations off (already in `base.css`).
+
+### Star Shop motion
+
+The shop is allowed to be a bit showy; everything still plays once.
+
+- **Wallet:** stars drop into the jar 70ms apart, the balance counts up in 12 eased steps (~660ms) and pops when it lands, the star spins in, and the goal bar fills (1s).
+- **Shelves:** items rise in 55ms apart; each price tag swings in on its string and settles at its tilt. One light sweep crosses each affordable item.
+- **Buy:** 7 stars fly from the wallet number to the buy button (600ms, 55ms apart), the wallet counts down, then the receipt prints (scaleY from the top, 700ms) and the stamp thumps on.
+- **Approvals:** a new ticket drops in. Approving stamps it, then it slides off; *Not now* slides it off right away and refunds the stars.
+- **Wishlist:** the heart pops, and the wallet's goal updates.
+
+### Calendar motion
+
+- **Week / day change:** the grid slides 60px in the direction you moved, and the title follows at 20px (400ms). Events drop in 12px with a slight overshoot, 14ms apart.
+- **Now:** the red line's dot pops in after 600ms. The timeline fill grows down to now (scaleY, 1s). The countdown ring fills once on load (stroke-dashoffset, 1.2s), and then only moves with the minute clock.
+- **Filters:** the person's avatar pops and their events leave or arrive with the grid.
+- **Details:** grows from the event's side (scale 0.6 → 1, 400ms overshoot) and shrinks away (180ms). *Remind me* rings the bell once.
+- **Coming up:** chips rise in 80ms apart.
+
+### Lists motion
+
+- **Check off:** the check fills and pops, a line draws through the text (350ms), the row slides out right (350ms), then a block drops into the cart, the cart bumps and its badge updates.
+- **Add:** a suggestion chip shrinks away (220ms) and the new row slides in from the left in the aisle tint, which fades over 900ms. An item from a phone keeps its tint and "New · {name}" badge for 6s, and a feed entry drops in at the top.
+- **Clear cart:** blocks fly up and out, chips slide off to the right 40ms apart (700ms total).
+- **Meals:** the cart icon wiggles, then the ingredients cascade into Groceries 110ms apart.
+- **Switch list:** the title rises and the groups fade up, staggered 70ms.
+
+### Tasks motion
+
+One-shot only; nothing on this screen loops.
+
+- **Switch person:** the body slides in 24px with a fade (350ms) and the title rises 8px. Pills cross-fade color (350ms).
+- **Cards:** rise in with a 45ms stagger on load and when switching person.
+- **Complete:** the check pops (`anim-pop`), a "+N" in the member color floats up 46px and fades (1s), today's points pop, and the progress segments fill with a slight overshoot (40ms apart). Finished cards stay where they are; they only sink to the bottom on the next visit.
+- **Claim a bounty:** the ticket lifts (32% of 820ms), then flies toward the weekly list, shrinks to 0.55 and fades. The new card slides in from the right with an overshoot (500ms).
+- **Add sheet:** slides up from the bottom (500ms) over a fading scrim; library rows fade up 30ms apart; day toggles and the points value pop when changed; closing drops the sheet 120px and fades it (300ms).
+
+**CSS Modules note:** keyframe names in a `.module.css` file are scoped to that file, so `animation: rise` there does **not** reach the global `rise` in `base.css`. Either use the `.anim-pop` / `.anim-rise` / `.anim-fade` classes in JSX, or define the keyframes in the module itself.
 
 ### Kitchen motion (Recipes + Meals)
 
@@ -361,6 +444,7 @@ These are rules, not suggestions.
 - **Styling:** CSS Modules + CSS custom properties only. Zero runtime CSS-in-JS. No Tailwind or MUI needed.
 - **Code splitting:** every screen is `React.lazy` in `App.tsx`. Keep shared code in `components/` small.
 - **Infinite animations:** only the Jukebox music motion above (only while playing) and the steam on tonight's dinner, and only on mounted views.
+- **Non-transform exceptions:** the Calendar countdown ring animates `stroke-dashoffset` on one 132px SVG, once on load and at most once a minute. Don't use this for anything bigger or more frequent.
 - **Text input:** the Pi has no keyboard. Search fields and the meal write-in need an on-screen keyboard: either the compositor's (e.g. `squeekboard` under Wayland) or a small in-app keyboard component that appears when an input is focused. Keep inputs short (the write-in is capped at 40 characters).
 - **Forbidden:** `backdrop-filter`/blur, large or stacked `box-shadow` (only `--shadow-float` on the FAB, `--shadow-dialog` on the PIN dialog, and the kitchen paper shadows `--shadow-card` / `--shadow-lifted`, which sit on static cards inside a scroll layer), animating `width/height/top/left/background-color` in loops, autoplay video, big PNGs, JS scroll libraries, icon fonts, chart libraries.
 - **Scrolling:** native overflow with `.scroll-x` / `.scroll-y`, plus `scroll-snap` for columns.
@@ -387,7 +471,7 @@ These are rules, not suggestions.
 
 - One folder per concern: `components/` (shared UI), `screens/` (one file + one `.module.css` per screen), `data/` (mock data, later TanStack Query hooks), `hooks/`, `lib/` (pure helpers), `app/` (App + navigation context).
 - Screens get data from hooks or `data/` modules shaped like the Supabase tables (`types.ts`). Swap mock data for queries without changing the JSX.
-- Member color always flows through `data-color` + CSS variables. Use inline `style` only for computed geometry (calendar event `top`/`height`, progress `scaleX`).
+- Member color flows through `memberColorProps()` → `data-color` for named tokens, or inline `--member` / `--member-tint` for custom hex. Use other inline `style` only for computed geometry (calendar event `top`/`height`, progress `scaleX`).
 - Class names: camelCase in modules (`.taskTitle`). Compose with template strings; no classnames library.
 - New screen: create `screens/Name.tsx` + `Name.module.css`, wrap it in `<AppShell>` + `<PageHeader>`, add it to `screens` in `App.tsx` and to `TABS` in `AppShell.tsx`.
 
@@ -398,7 +482,7 @@ These are rules, not suggestions.
 - [ ] No raw hex values outside `tokens.css` (except photo placeholders and artwork swatches in data)
 - [ ] Every tappable element ≥ 56px and is a `<button>`/`<a>`/`<input>`
 - [ ] Icon-only buttons have `aria-label`; toggles expose state
-- [ ] Person-colored UI uses `data-color` and `var(--member)` / `var(--member-tint)`
+- [ ] Person-colored UI uses `memberColorProps()` and `var(--member)` / `var(--member-tint)`
 - [ ] Only `transform`/`opacity` animated; no blur, no heavy shadows
 - [ ] Long content scrolls inside a panel, and the page doesn't scroll
 - [ ] Copy is sentence case, short, and names people

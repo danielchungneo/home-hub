@@ -1,0 +1,151 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  vertical-align: middle;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.interactive {
+  cursor: pointer;
+}
+
+.interactive:focus-visible {
+  outline: 3px solid var(--member, var(--fjord));
+  outline-offset: 3px;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.character,
+.eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* One-shot motions — transform only, sized with % so they scale with the avatar. */
+.squish {
+  animation: blob-squish 480ms var(--ease-out) both;
+}
+
+.hop {
+  animation: blob-hop 580ms var(--ease-out) both;
+}
+
+.wiggle {
+  animation: blob-wiggle 560ms ease-in-out both;
+}
+
+.nod {
+  animation: blob-nod 480ms ease-in-out both;
+}
+
+.celebrate {
+  animation: blob-celebrate 720ms var(--ease-out) both;
+}
+
+.blink {
+  animation: blob-blink 250ms ease-in-out both;
+}
+
+@keyframes blob-squish {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  34% {
+    transform: scale(1.09, 0.9);
+  }
+  66% {
+    transform: scale(0.97, 1.05);
+  }
+}
+
+@keyframes blob-hop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  35% {
+    transform: translateY(-10%) scale(0.98, 1.04);
+  }
+  72% {
+    transform: translateY(0) scale(1.06, 0.93);
+  }
+}
+
+@keyframes blob-blink {
+  0%,
+  35%,
+  70%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.08);
+  }
+}
+
+@keyframes blob-wiggle {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  24% {
+    transform: rotate(-7deg);
+  }
+  49% {
+    transform: rotate(6deg);
+  }
+  74% {
+    transform: rotate(-3deg);
+  }
+}
+
+@keyframes blob-nod {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  40% {
+    transform: rotate(7deg) translateY(3%);
+  }
+  70% {
+    transform: rotate(-2deg);
+  }
+}
+
+@keyframes blob-celebrate {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0) scale(1);
+  }
+  24% {
+    transform: translateY(-10%) rotate(-6deg) scale(1.04);
+  }
+  49% {
+    transform: translateY(-14%) rotate(7deg);
+  }
+  75% {
+    transform: translateY(0) rotate(-3deg) scale(1.05, 0.95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .character,
+  .eyes {
+    animation: none !important;
+  }
+}

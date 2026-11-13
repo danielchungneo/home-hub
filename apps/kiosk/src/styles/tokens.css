@@ -30,6 +30,13 @@
   --honey: #735623;  --honey-tint: #F4ECDA;
   --fjord: #4B6270;  --fjord-tint: #E4EAEE;
   --plum: #6E5A72;   --plum-tint: #EDE6F0;
+  --pine: #3F5E4A;   --pine-tint: #E2EBE5;
+  --berry: #7A4555;  --berry-tint: #F0E4E8;
+  --sand: #8A6F4B;   --sand-tint: #F2EBE0;
+  --ocean: #3E6B6A;  --ocean-tint: #E2ECEB;
+  --rose: #8B5E5E;   --rose-tint: #F1E6E6;
+  /* System-only (Family / Home / Up for grabs) — never offered in member pickers */
+  --slate: #6B6560;  --slate-tint: #EBE8E4;
 
   /* ---------- Semantic ---------- */
   --color-success: var(--moss);
@@ -65,6 +72,13 @@
   --note-lunch: #DCE7EE;
   --note-dinner: #F5DCCF;
   --note-snack: #E2EBD6;
+  /* ---------- Tasks: bounty board ---------- */
+  --color-bounty: var(--color-star);         /* "Bounty" tag fill, star points */
+  --color-bounty-edge: #E0B24F;              /* claimed-bounty card border, star icon */
+  --color-bounty-tint: var(--note-breakfast);/* icon tile on a claimed-bounty card */
+  --color-bounty-ink: var(--color-brass-ink);/* text on the bounty tag, ticket points */
+  --color-star-gold: var(--color-bounty-edge); /* the star glyph everywhere stars are money */
+
   --shadow-card: 0 4px 10px rgba(46, 42, 38, 0.14); /* paper cards in the box, drawer and board */
   --shadow-lifted: 0 10px 26px rgba(0, 0, 0, 0.24); /* a card that is being held (pull-out, flying) */
 
@@ -137,14 +151,22 @@
 }
 
 /*
- * Member theming: put data-color="moss|clay|honey|fjord|plum" on any element and
- * use var(--member) / var(--member-tint) inside it. No inline colors needed.
+ * Member theming: put data-color="<token>" on any element and use
+ * var(--member) / var(--member-tint) inside it. Custom #RRGGBB colors set the
+ * same CSS variables inline via memberColorProps() instead of data-color.
+ * `slate` is system-only (Family / Home / Up for grabs).
  */
 [data-color='moss']  { --member: var(--moss);  --member-tint: var(--moss-tint); }
 [data-color='clay']  { --member: var(--clay);  --member-tint: var(--clay-tint); }
 [data-color='honey'] { --member: var(--honey); --member-tint: var(--honey-tint); }
 [data-color='fjord'] { --member: var(--fjord); --member-tint: var(--fjord-tint); }
 [data-color='plum']  { --member: var(--plum);  --member-tint: var(--plum-tint); }
+[data-color='pine']  { --member: var(--pine);  --member-tint: var(--pine-tint); }
+[data-color='berry'] { --member: var(--berry); --member-tint: var(--berry-tint); }
+[data-color='sand']  { --member: var(--sand);  --member-tint: var(--sand-tint); }
+[data-color='ocean'] { --member: var(--ocean); --member-tint: var(--ocean-tint); }
+[data-color='rose']  { --member: var(--rose);  --member-tint: var(--rose-tint); }
+[data-color='slate'] { --member: var(--slate); --member-tint: var(--slate-tint); }
 
 /* Recipe courses reuse the member palette: Breakfast honey, Dinner clay, Sweets plum. */
 [data-course='Breakfast'] { --member: var(--honey); --member-tint: var(--honey-tint); }

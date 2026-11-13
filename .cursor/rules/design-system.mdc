@@ -10,13 +10,16 @@ Before writing or changing UI, read @docs/DESIGN_SYSTEM.md and follow it. For th
 
 - Colors, type, spacing, radii and motion come ONLY from CSS variables in `src/styles/tokens.css`. Never write hex values in components. If a value is missing, add a token (and document it in docs/DESIGN_SYSTEM.md) first.
 - Styling is CSS Modules (`Name.module.css`) + CSS variables. No Tailwind, MUI, Emotion, styled-components or other runtime CSS-in-JS.
-- Person-colored UI uses `data-color="moss|clay|honey|fjord|plum"` and `var(--member)` / `var(--member-tint)`. Daniel = moss, Shelby = clay, Noah = honey, Family/Home = fjord.
+- Person-colored UI uses `memberColorProps(color)` → `data-color` for named presets (`moss|clay|honey|fjord|plum|pine|berry|sand|ocean|rose`) or inline `--member` / `--member-tint` for custom `#RRGGBB`. Family/Home/Up for grabs = system-only `slate` (never in pickers). Daniel = moss, Shelby = clay, Noah = honey by default.
 - Reuse the components in `src/components/` (AppShell, PageHeader, Button/IconButton, Rail, Segmented, Panel, Label, Avatar, CheckMark, IconTile, Progress, Switch, Chip, StatusPill, Fab, Icon). Don't recreate them per screen.
 - Fonts: Newsreader (`--font-display`) for titles, names, numbers and clocks at weight 400; Manrope (`--font-body`) 500/700/800 for everything else. Minimum text size 13px.
 - Every tappable element is a real `<button>`/`<a>`/`<input>` and at least 56px. Icon-only buttons need `aria-label`. Toggles expose `aria-pressed`, `aria-checked` or `aria-current`.
 - Icons come from `src/components/Icon.tsx` (inline SVG, stroke 2.4, currentColor). No icon libraries or emoji.
 - Animate only `transform` and `opacity`, using the `--dur-*` and `--ease-out` tokens. No `backdrop-filter`, blur, big shadows, autoplay video, JS scroll libraries or chart libraries.
 - Recipe UI: course colors come from `data-course="Breakfast|Dinner|Sweets"` (honey/clay/plum via `var(--member)`); recipe photos go through `<FoodPhoto>`; kitchen surfaces use the paper/rule/board/note tokens. Follow the recipe box, pull-out card, fridge board and pick drawer patterns in DESIGN_SYSTEM.md §7.
+- Tasks UI: person-focused page with daily + weekly lists and the bounty board; new tasks come from the task library via the Add sheet. Follow docs/TASKS.md and the Tasks patterns in DESIGN_SYSTEM.md §7.
+- Calendar and Lists: follow the Up next / timeline / week grid / event details and live list / cart patterns and their motion sections in DESIGN_SYSTEM.md. Aisles and their colors come from `src/lib/lists.ts`.
+- Rewards is "the Star Shop": points are "stars" in all copy and always use the `<Star>` glyph. Follow the Star Shop patterns and motion in DESIGN_SYSTEM.md.
 - Each screen is lazy-loaded in `src/app/App.tsx`. Pages don't scroll; panels scroll inside with `.scroll-y` / `.scroll-x`.
 - Copy is sentence case, short and warm, and uses people's names.
 - Parent-only actions go through `useNav().requirePin(...)` and show a lock icon.
