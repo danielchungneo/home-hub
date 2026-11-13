@@ -51,3 +51,9 @@
 }
 .key:active { transform: scale(0.96); }
 .digit { background: var(--color-surface-sunken); font-family: var(--font-display); font-size: 40px; font-weight: 500; }
+
+/* Local copies: CSS Modules scope keyframe names, so the global ones in base.css can't be referenced from here. */
+@keyframes rise {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}

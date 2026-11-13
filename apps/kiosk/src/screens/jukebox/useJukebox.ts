@@ -141,22 +141,48 @@ export function useJukebox() {
     track: npTrack,
   }
 
-  const elapsedMs = () => player.positionMs
+  // progressMs is only refreshed ~every 5s; extrapolate so end-of-song timing stays honest.
+  const progressSnap = useRef({ uri: null as string | null, ms: 0, at: 0 })
+  useEffect(() => {
+    progressSnap.current = {
+      uri: player.current,
+      ms: player.positionMs,
+      at: Date.now(),
+    }
+  }, [player.current, player.positionMs, player.playing])
 
-  // When the song ends, ask the agent to pop the app queue and play the next track.
+  const elapsedMs = () => {
+    const snap = progressSnap.current
+    if (!player.playing || !player.current || snap.uri !== player.current) return player.positionMs
+    return Math.min(player.durationMs || Infinity, snap.ms + (Date.now() - snap.at))
+  }
+
+  // Reset dedupe when the track changes so the next song can auto-advance once.
+  useEffect(() => {
+    advanceSent.current = null
+  }, [player.current])
+
+  // When the song ends, pop the app queue. Skip when Up next is empty: either the
+  // last app-owned track (Spotify stops) or a context playlist (Spotify advances).
+  // Sending advance with an empty queue used to pause and kill the next song.
   useEffect(() => {
     if (!player.playing || !player.current || !player.durationMs) return
-    const remaining = player.durationMs - player.positionMs
-    if (remaining > 1500) {
-      advanceSent.current = null
-      const id = window.setTimeout(() => {
-        if (advanceSent.current === player.current) return
-        advanceSent.current = player.current
-        send('advance')
-      }, remaining + 200)
-      return () => window.clearTimeout(id)
-    }
-  }, [player.playing, player.current, player.durationMs, player.positionMs, send])
+    if (!queueRows.length) return
+
+    const trackUri = player.current
+    const snap = progressSnap.current
+    const elapsed =
+      snap.uri === trackUri ? snap.ms + (Date.now() - snap.at) : player.positionMs
+    const remaining = player.durationMs - elapsed
+    const delay = Math.max(0, remaining) + 200
+
+    const id = window.setTimeout(() => {
+      if (advanceSent.current === trackUri) return
+      advanceSent.current = trackUri
+      send('advance')
+    }, delay)
+    return () => window.clearTimeout(id)
+  }, [player.playing, player.current, player.durationMs, player.positionMs, queueRows.length, send])
 
   const resolveTrack = useCallback(
     (uri: string): Track | undefined => {

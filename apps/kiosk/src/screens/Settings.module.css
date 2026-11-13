@@ -42,11 +42,73 @@
 .swatch { width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; border: 3px solid transparent; border-radius: 50%; }
 .swatch span { width: 40px; height: 40px; border-radius: 50%; background: var(--member); }
 .swatchOn { border-color: var(--color-ink); }
-.routines { display: flex; flex-wrap: wrap; gap: 8px; }
-.routine { height: 52px; padding: 0 18px; border: 2px solid var(--color-track); border-radius: var(--radius-pill); font-size: var(--text-sm); font-weight: var(--weight-heavy); color: var(--color-ink-2); }
-.routineOn { border-color: transparent; background: var(--member); color: var(--color-on-ink); }
 .pointsRow { display: flex; align-items: center; justify-content: space-between; padding-top: var(--space-4); border-top: 1px solid var(--color-divider); font-size: 18px; font-weight: var(--weight-bold); }
 .addMember { height: 76px; border: 2px dashed var(--color-border-strong); border-radius: 22px; color: var(--color-ink-2); }
+.memberInactive { opacity: 0.72; }
+
+.confirmScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-scrim);
+  animation: confirmScrimIn var(--dur-base) ease both;
+}
+.memberDialog {
+  width: min(640px, calc(100% - 80px));
+  max-height: calc(100% - 80px);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: 36px 40px 32px;
+  border-radius: var(--radius-3xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-dialog);
+  animation: confirmRise var(--dur-base) var(--ease-out);
+}
+.confirmText { display: flex; flex-direction: column; gap: 10px; text-align: center; }
+.confirmTitle { font-family: var(--font-display); font-weight: 400; font-size: var(--display-lg); line-height: 1.05; }
+.confirmDetail { font-size: 18px; font-weight: 600; line-height: 1.4; color: var(--color-ink-2); }
+.confirmActions { display: flex; flex-direction: column; gap: var(--space-3); }
+.addField {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-sunken);
+  color: var(--color-ink-3);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+.addField input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.addField input::placeholder { color: var(--color-ink-3); }
+.formError {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--color-warning);
+  text-align: center;
+}
+@keyframes confirmScrimIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes confirmRise {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
 
 .rows { display: flex; flex-direction: column; max-width: 960px; }
 .row { min-height: 84px; display: flex; align-items: center; gap: 18px; border-bottom: 1px solid var(--color-divider); }

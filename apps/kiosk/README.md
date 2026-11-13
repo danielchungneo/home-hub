@@ -1,6 +1,6 @@
 # Kiosk — Chung Family Hub
 
-The touchscreen UI for the family hub: React 18 + Vite + TypeScript, styled with CSS Modules and design tokens. Every screen from the design pass is built and wired to mock data, so you can click through the whole app before Supabase exists.
+The touchscreen UI for the family hub: React 18 + Vite + TypeScript, styled with CSS Modules and design tokens.
 
 - **Design rules:** [`docs/DESIGN_SYSTEM.md`](../../docs/DESIGN_SYSTEM.md). Read it before building UI. Jukebox feature spec: [`docs/JUKEBOX.md`](../../docs/JUKEBOX.md).
 - **Cursor:** the repo-root `.cursor/rules/design-system.mdc` applies the design system automatically when you edit `apps/kiosk/src/**/*.tsx` or `*.css`.
@@ -19,27 +19,25 @@ pnpm --filter @hub/kiosk preview       # serve dist/ like the Pi will
 
 Open the browser at **1920×1080** (DevTools device toolbar → Responsive → 1920 × 1080).
 
-Jump straight to a screen with a hash: `#calendar`, `#tasks`, `#rewards`, `#meals`, `#recipes`, `#photos`, `#lists`, `#jukebox` (also `#jukebox-now`, `#jukebox-albums`, `#jukebox-playlists`), `#settings`, plus the full-screen modes `#idle`, `#sleep`, `#cooking` and `#pin`.
+Jump straight to a screen with a hash: `#calendar`, `#tasks` (also `#tasks-add`), `#rewards`, `#meals`, `#recipes`, `#photos`, `#lists`, `#jukebox` (also `#jukebox-now`, `#jukebox-albums`, `#jukebox-playlists`), `#settings`, plus the full-screen modes `#idle`, `#sleep`, `#cooking` and `#pin`.
 
-## Data
+## Data (live vs still to wire)
 
-**Tasks, Rewards, Lists, Jukebox and Calendar** (plus the members and the slideshow's task count) read from and write to Supabase. Hooks live in `src/data/hooks.ts`, row-to-UI mapping in `src/data/mappers.ts`, and `src/data/live.ts` subscribes each screen to Realtime for its own tables. The kiosk signs in as a dedicated device user from `.env` (see `.env.example`).
+Hooks live in `src/data/hooks.ts`, row-to-UI mapping in `src/data/mappers.ts`, and `src/data/live.ts` subscribes each screen to Realtime. The kiosk signs in as a dedicated device user from `.env` (see `.env.example`).
 
-Meals, Recipes, Photos, weather, and most Settings sections still read `src/data/mock.ts` until those tables exist. Google Calendar linking: `packages/google-calendar/README.md`.
+| Area | Status |
+|------|--------|
+| **Members / Settings** | Live (family CRUD, PIN, sleep, calendars, speakers) |
+| **Calendar events** | Live (Google sync). Coming-up countdowns and week-header forecast **not wired** |
+| **Rewards (Star Shop)** | Live |
+| **Lists** | Live. “Usually on it” chips empty until a history view exists |
+| **Meals / Recipes / Cooking** | Live |
+| **Jukebox** | Live |
+| **Weather** | Live via Open-Meteo when household lat/lon is set |
+| **Tasks** | Lists + toggle completions live. **Template library, add task, and bounties not wired** |
+| **Photos / Idle slideshow** | **Not wired** (Idle shows clock + today glance only) |
 
-## What works with mock data
-
-- **Tasks:** per-person columns, routine tabs, tap to complete, progress, points, "all wrapped up" banner
-- **Calendar:** week view for the current week, person filters, all-day row, live "now" line
-- **Rewards:** balances computed from a ledger, redeem, approve with the PIN dialog, history
-- **Meals:** fridge board (recipe cards with magnets, sticky notes, empty slots), Tonight hero with steam and a start-by time, pick drawer with search, filters, Leftovers / Eat out and a write-in note, flying-card placement, Clear slot, "add ingredients" cart wiggle
-- **Recipes:** recipe box with quick filters (course, under 30 min, family favorites) and search, drop-in animation, pull-out card that flips to the full recipe, servings scaling with kitchen fractions, start cooking mode
-- **Cooking mode:** step navigation, working countdown timer, Wake Lock when available
-- **Photos:** filters, add to or remove from the slideshow, play slideshow
-- **Lists:** switch lists, add items, check off, clear completed
-- **Jukebox:** Songs / Playlists / Albums from favorites, record wall with the pick animation, Now playing with calm motion, Up next queue, Spotify search with ♥ to favorite (spec: [`docs/JUKEBOX.md`](../../docs/JUKEBOX.md))
-- **Settings:** family colors, routines and points, plus the other sections as toggle/value rows
-- **Idle slideshow** after 5 minutes without touch, and **Sleep** from the sidebar
+Google Calendar linking: `packages/google-calendar/README.md`. Tasks UI spec: [`docs/TASKS.md`](../../docs/TASKS.md).
 
 ## Project layout
 
@@ -47,25 +45,22 @@ Meals, Recipes, Photos, weather, and most Settings sections still read `src/data
 src/
   app/          App.tsx (screen switching, overlays, lazy loading), nav.tsx (useNav context)
   components/   AppShell, Button, primitives (Panel, Avatar, Segmented, …), Icon
-  screens/      One .tsx + .module.css per screen (bigger ones get a folder: jukebox/, recipes/, meals/); Cooking/Idle/Sleep/PinDialog are overlays
-  data/mock.ts  Mock rows shaped like the Supabase tables in the design doc (§8)
-  hooks/        useClock (ticks per minute), useIdle (single timeout)
-  lib/          format.ts (dates, times, quantities), members.ts (who() lookup), recipes.ts (filters, search, time labels),
-                types.ts (shared types pinned to the kiosk's IconName)
-  styles/       tokens.css (the design tokens), base.css (reset, fonts, keyframes)
+  screens/      One .tsx + .module.css per screen (bigger ones get a folder)
+  data/         hooks.ts, mappers.ts, live.ts, queryClient.ts
+  hooks/        useClock, useIdle, useCountUp
+  lib/          format, members, mealSlots, recipes, tasks, calendar, lists, weather, …
+  styles/       tokens.css, base.css
 ```
 
 UI types matching the data model live in `packages/shared/src/types.ts` and are imported from `@hub/shared`.
 
-## Next steps toward the real thing
+## Still to do
 
-1. ~~Drop this folder into the monorepo as `apps/kiosk` and move `types.ts` into `packages/shared`.~~ Done. DB types are generated into `packages/shared/src/database.types.ts` with `pnpm db:types`.
-2. ~~Add `@supabase/supabase-js` + TanStack Query~~ Done for Tasks, Rewards and Lists. Keep replacing exports in `data/mock.ts` with hooks in `data/hooks.ts` as their tables land.
-3. Subscribe to Realtime only for the current screen (today's completions, this week's meals, and so on).
-4. Weather: fetch Open-Meteo every 15–30 minutes and replace `WEATHER` in `mock.ts`.
-5. Jukebox: turn handlers into `jukebox_commands` inserts and read `jukebox_state`.
-6. PIN: check against `household_settings.parent_pin_hash` (see `PinDialog.tsx`).
-7. Photos: replace `PhotoPlaceholder` with `<img loading="lazy" decoding="async">` using signed URLs.
+1. Tasks: wire `task_templates` + `bounties` queries/mutations and the Add sheet / claim flow (see `docs/TASKS.md`).
+2. Calendar: countdowns table/hook; multi-day forecast for week headers.
+3. Lists: usual-items from purchase history (or a stored usual list).
+4. Photos: Storage + slideshow on Idle (replace `PhotoPlaceholder`).
+5. Weather: set household location in Settings if the header shows “Set location”.
 
 ## Pi notes
 

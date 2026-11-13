@@ -1,7 +1,10 @@
-// Turn Supabase rows into the shapes the screens were built against (see data/mock.ts).
+// Turn Supabase rows into the shapes the screens use.
 import {
+  coerceMemberColor,
+  isMemberColorPreset,
+  normalizePersonColor,
   normalizeRecipeTags,
-  type CalendarEvent, type CalendarSource, type Course, type Database, type FoodPhoto, type Ingredient, type JukeboxFavorite, type JukeboxState, type LedgerEntry, type ListItem, type Member, type MemberColor, type NowPlaying, type QueueItem, type RecipeStep, type Redemption, type Speaker,
+  type CalendarEvent, type CalendarSource, type Course, type Database, type FoodPhoto, type Ingredient, type JukeboxFavorite, type JukeboxState, type LedgerEntry, type ListItem, type Member, type MemberColor, type NowPlaying, type QueueItem, type RecipeStep, type Redemption, type RewardAisle, type RewardDeal, type Speaker,
 } from '@hub/shared'
 import type { IconName } from '../components/Icon'
 import { weekday } from '../lib/format'
@@ -22,33 +25,69 @@ export const toMember = (r: Row<'members'>): Member => ({
   initial: r.name.charAt(0).toUpperCase(),
   role: r.role,
   roleLabel: r.role_label ?? (r.role === 'parent' ? 'Parent' : 'Child'),
-  color: r.color,
+  color: normalizePersonColor(r.color, 'plum'),
+  avatar: r.avatar?.trim() || 'pebble',
   earnsPoints: r.earns_points,
-  routines: r.routine_filters,
+  active: r.active,
 })
 
-export const toTask = (r: Row<'tasks'>): Task => ({
-  id: r.id,
-  memberId: r.member_id ?? HOME_ID,
-  title: r.title,
-  icon: icon(r.icon),
-  routine: r.routine,
-  points: r.points,
-})
+/** Map a v2 tasks row (template_id + schedule columns) into the UI Task shape. */
+export const toTask = (r: Row<'tasks'>): Task => {
+  const frequency = (r.frequency ?? 'daily') as Task['frequency']
+  let schedule: Task['schedule']
+  if (frequency === 'daily') {
+    schedule = r.once_on
+      ? { kind: 'once', date: r.once_on }
+      : { kind: 'days', days: r.days ?? [0, 1, 2, 3, 4, 5, 6] }
+  } else if (r.week_of != null || r.bounty_id != null) {
+    schedule = { kind: 'thisWeek', dueDay: r.due_day ?? 6 }
+  } else {
+    schedule = { kind: 'weekly', every: (r.every_weeks === 2 ? 2 : 1), dueDay: r.due_day ?? 6 }
+  }
+  return {
+    id: r.id,
+    templateId: r.template_id!,
+    memberId: r.member_id ?? HOME_ID,
+    frequency,
+    schedule,
+    points: r.points,
+    bountyId: r.bounty_id ?? undefined,
+  }
+}
 
 export const toReward = (r: Row<'rewards'>): Reward => ({
   id: r.id,
   title: r.title,
   cost: r.cost,
   icon: icon(r.icon),
-  color: r.color,
+  color: coerceMemberColor(r.color),
+  aisle: r.aisle as RewardAisle,
+  blurb: r.blurb,
 })
 
 export const toRedemption = (r: Row<'reward_redemptions'>): Redemption => ({
   id: r.id,
   memberId: r.member_id,
   rewardId: r.reward_id,
+  cost: r.cost,
 })
+
+export const toRewardDeal = (r: Row<'reward_deals'>, now = new Date()): RewardDeal => ({
+  rewardId: r.reward_id,
+  cost: r.cost,
+  ends: weekdayName(r.ends_on, now),
+})
+
+/** "Sunday" etc. for deal copy; falls back to the ISO date. */
+function weekdayName(isoDate: string, now = new Date()): string {
+  const [y, m, d] = isoDate.split('-').map(Number)
+  if (!y || !m || !d) return isoDate
+  const date = new Date(y, m - 1, d)
+  if (Number.isNaN(date.getTime())) return isoDate
+  // Keep "ends Sunday" stable relative to local kiosk time.
+  void now
+  return date.toLocaleDateString('en-US', { weekday: 'long' })
+}
 
 export const toLedgerEntry = (r: Row<'points_ledger'>, now = new Date()): LedgerEntry => ({
   id: r.id,
@@ -71,7 +110,7 @@ export const toList = (r: Row<'lists'> & { list_items: Row<'list_items'>[] }): S
   id: r.id,
   name: r.name,
   icon: icon(r.icon),
-  color: r.color,
+  color: coerceMemberColor(r.color),
   items: r.list_items.map(toListItem),
 })
 
@@ -191,6 +230,20 @@ function decimalHour(d: Date) {
   return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600
 }
 
+/** Local calendar date as YYYY-MM-DD. */
+function localDateKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** Whole local days between two YYYY-MM-DD keys (noon anchors avoid DST slips). */
+function daysBetweenKeys(fromKey: string, toKey: string) {
+  const [fy, fm, fd] = fromKey.split('-').map(Number)
+  const [ty, tm, td] = toKey.split('-').map(Number)
+  const from = new Date(fy!, fm! - 1, fd!, 12, 0, 0)
+  const to = new Date(ty!, tm! - 1, td!, 12, 0, 0)
+  return Math.round((to.getTime() - from.getTime()) / 86_400_000)
+}
+
 /** Map a cached Google event into the UI shape (day is offset from rangeStart). */
 export function toCalendarEvent(r: Row<'events'>, rangeStart: Date, rangeEnd?: Date): CalendarEvent | null {
   const start = new Date(r.starts_at)
@@ -198,7 +251,46 @@ export function toCalendarEvent(r: Row<'events'>, rangeStart: Date, rangeEnd?: D
   const endBound = rangeEnd ? new Date(rangeEnd) : new Date(rangeStart)
   if (!rangeEnd) endBound.setDate(endBound.getDate() + 7)
 
-  // Include events that intersect the requested range.
+  // Optional columns the sync job can add later (location → where, description → note, travel_min).
+  const extra = r as Row<'events'> & {
+    location?: string | null
+    description?: string | null
+    travel_min?: number | null
+  }
+  const where = extra.location?.trim() || undefined
+  const note = extra.description?.trim().split(/\r?\n/)[0]?.trim() || undefined
+  const travelMin = typeof extra.travel_min === 'number' && extra.travel_min > 0 ? extra.travel_min : undefined
+
+  // All-day events are stored as UTC calendar-date bounds (…T00:00:00.000Z). Interpreting
+  // those as local Date instants shifts them a day earlier in US timezones — use the date
+  // keys Google meant, not the local wall clock.
+  if (r.all_day) {
+    const startKey = r.starts_at.slice(0, 10)
+    const endKey = r.ends_at.slice(0, 10)
+    const rangeStartKey = localDateKey(rangeStart)
+    const rangeEndKey = localDateKey(endBound) // exclusive
+    if (endKey < rangeStartKey || startKey >= rangeEndKey) return null
+
+    const firstVisibleKey = startKey < rangeStartKey ? rangeStartKey : startKey
+    const day = Math.max(0, daysBetweenKeys(rangeStartKey, firstVisibleKey))
+
+    return {
+      id: r.id,
+      title: r.title,
+      day,
+      start: 0,
+      end: 0,
+      who: r.member_id ?? FAMILY_WHO,
+      allDay: true,
+      startsAt: r.starts_at,
+      endsAt: r.ends_at,
+      where,
+      note,
+      travelMin,
+    }
+  }
+
+  // Timed events: include anything that intersects the requested range.
   if (end <= rangeStart || start >= endBound) return null
 
   const dayAnchor = start < rangeStart ? rangeStart : start
@@ -208,12 +300,15 @@ export function toCalendarEvent(r: Row<'events'>, rangeStart: Date, rangeEnd?: D
     id: r.id,
     title: r.title,
     day,
-    start: r.all_day ? 0 : decimalHour(start),
-    end: r.all_day ? 0 : Math.max(decimalHour(start) + 0.25, decimalHour(end)),
+    start: decimalHour(start),
+    end: Math.max(decimalHour(start) + 0.25, decimalHour(end)),
     who: r.member_id ?? FAMILY_WHO,
-    allDay: r.all_day,
+    allDay: false,
     startsAt: r.starts_at,
     endsAt: r.ends_at,
+    where,
+    note,
+    travelMin,
   }
 }
 
@@ -222,7 +317,7 @@ export const toCalendarSource = (r: Row<'calendar_sources'>): CalendarSource => 
   name: r.name,
   externalId: r.external_id,
   memberId: r.member_id,
-  color: r.color ?? undefined,
+  color: r.color ? coerceMemberColor(r.color) : undefined,
   enabled: r.enabled,
   accountKey: r.account_email ?? undefined,
   lastSyncedAt: r.last_synced_at ?? undefined,
@@ -260,6 +355,11 @@ const PHOTO_PALETTE: Record<MemberColor, FoodPhoto['palette']> = {
   moss: ['#E9EDE1', '#F4D58D', '#6B7A55', '#F6E6BE'],
   fjord: ['#E4EAEE', '#7D513C', '#E9A27E', '#C29A55'],
   plum: ['#EDE6F0', '#C29A55', '#5A4128', '#E9B566'],
+  pine: ['#E2EBE5', '#3F5E4A', '#F4D58D', '#6B7A55'],
+  berry: ['#F0E4E8', '#7A4555', '#E9A27E', '#C29A55'],
+  sand: ['#F2EBE0', '#8A6F4B', '#E9B566', '#F6E6BE'],
+  ocean: ['#E2ECEB', '#3E6B6A', '#7D513C', '#C29A55'],
+  rose: ['#F1E6E6', '#8B5E5E', '#E9A27E', '#F4D58D'],
 }
 
 /** Derive course until `recipes.course` exists; map meal tags onto Breakfast / Dinner / Sweets. */
@@ -277,13 +377,13 @@ export const toRecipe = (r: Row<'recipes'>, imageUrl?: string | null): KioskReci
     : courseFromTags(tags)
   const photo: FoodPhoto = {
     url: imageUrl ?? undefined,
-    palette: PHOTO_PALETTE[r.color] ?? PHOTO_PALETTE.fjord,
+    palette: (isMemberColorPreset(r.color) ? PHOTO_PALETTE[r.color] : undefined) ?? PHOTO_PALETTE.fjord,
   }
   return {
     id: r.id,
     title: r.title,
     icon: icon(r.icon),
-    color: r.color,
+    color: coerceMemberColor(r.color),
     course,
     photo,
     favorite: r.favorite,

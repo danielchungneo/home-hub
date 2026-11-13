@@ -423,3 +423,13 @@
   100% { opacity: 1; }
 }
 @keyframes reveal { from { opacity: 1; } to { opacity: 0; } }
+
+/* Local copies: CSS Modules scope keyframe names, so the global ones in base.css can't be referenced from here. */
+@keyframes rise {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

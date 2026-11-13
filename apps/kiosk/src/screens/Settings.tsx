@@ -2,10 +2,17 @@ import { useMemo, useState } from 'react'
 import { useNav } from '../app/nav'
 import { AppShell, PageHeader, settingsSleepLabel } from '../components/AppShell'
 import { Button } from '../components/Button'
+import { ColorPicker } from '../components/ColorPicker'
 import { Icon, type IconName } from '../components/Icon'
-import { Avatar, IconTile, Label, Panel, Switch } from '../components/primitives'
+import { SoftKeyboard } from '../components/SoftKeyboard'
+import { MemberBlobAvatar } from '../components/MemberBlobAvatar'
+import { IconTile, Label, Panel, Segmented, Switch } from '../components/primitives'
 import {
+  useAllMembers,
+  useAssignCalendarSource,
   useCalendarSources,
+  useCreateMember,
+  useDeleteMember,
   useHouseholdSettings,
   useJukeboxCommand,
   useJukeboxState,
@@ -15,22 +22,17 @@ import {
   useToggleCalendarSource,
   useUpdateHouseholdSettings,
   useUpdateMember,
+  type MemberInput,
 } from '../data/hooks'
 import { useLive } from '../data/live'
 import { useClock } from '../hooks/useClock'
+import { memberColorProps } from '../lib/colors'
 import { formatTimeOfDay } from '../lib/format'
 import { who } from '../lib/members'
-import type { HouseholdSettings, Member, MemberColor, Routine } from '@hub/shared'
+import type { HouseholdSettings, Member, MemberColor } from '@hub/shared'
 import s from './Settings.module.css'
 
 type SectionId = 'family' | 'calendars' | 'music' | 'sleep' | 'weather' | 'pin'
-
-const COLORS: { value: MemberColor; label: string }[] = [
-  { value: 'moss', label: 'Moss' }, { value: 'clay', label: 'Clay' }, { value: 'honey', label: 'Honey' }, { value: 'fjord', label: 'Fjord' }, { value: 'plum', label: 'Plum' },
-]
-const ROUTINES: { value: Routine; label: string }[] = [
-  { value: 'morning', label: 'Morning' }, { value: 'afternoon', label: 'Afternoon' }, { value: 'evening', label: 'Evening' }, { value: 'chores', label: 'Chores' },
-]
 
 const IDLE_OPTIONS = [3, 5, 10, 15, 30]
 const SLIDE_OPTIONS = [10, 15, 20, 30, 45]
@@ -49,24 +51,39 @@ function normalizeTime(value: string) {
 
 function CalendarSettings() {
   const sources = useCalendarSources()
+  const members = useMembers()
   const toggle = useToggleCalendarSource()
+  const assign = useAssignCalendarSource()
   useLive('calendar_sources', 'calendarSources')
   const list = sources.data ?? []
+  const whoOptions = useMemo(
+    () => [...(members.data ?? []).map((m) => m.id), 'family'] as string[],
+    [members.data],
+  )
 
   return (
     <div className={s.rows}>
       {list.map((src) => {
         const person = who(src.memberId ?? 'family')
-        const hint = [
-          src.accountKey ? `Google · ${src.accountKey}` : 'Google',
-          `shows as ${person.name}`,
-        ].join(' · ')
+        const hint = src.accountKey ? `Google · ${src.accountKey}` : 'Google'
         return (
-          <div key={src.id} className={s.row} data-color={src.color ?? person.color}>
+          <div key={src.id} className={s.row} {...memberColorProps(src.color ?? person.color)}>
             <span className={s.rowText}>
               <span>{src.name}</span>
               <small>{hint}</small>
             </span>
+            <Button
+              variant="secondary"
+              className={s.value}
+              aria-label={`Show ${src.name} as ${person.name}. Tap to change.`}
+              onClick={() => {
+                const cur = src.memberId ?? 'family'
+                const next = cycle(whoOptions, cur)
+                void assign.mutateAsync({ id: src.id, memberId: next === 'family' ? null : next })
+              }}
+            >
+              {person.name}
+            </Button>
             <Switch
               checked={src.enabled}
               label={`Show ${src.name}`}
@@ -80,6 +97,9 @@ function CalendarSettings() {
           No calendars linked yet. On your PC run <code>pnpm google:calendar-login</code> for each Google account.
         </p>
       )}
+      <p className={s.speakerEmpty}>
+        New Google calendars (like Outlook work) need a re-link: <code>pnpm google:calendar-login -- --member daniel</code>, then set “shows as” above and sync from Calendar.
+      </p>
       <div className={s.row}>
         <span className={s.rowText}>
           <span>Edit events on the hub</span>
@@ -354,9 +374,139 @@ function PinSettings({ settings }: { settings: HouseholdSettings }) {
   )
 }
 
+type MemberField = 'name' | 'roleLabel' | null
+
+const blankMember = (): MemberInput => ({
+  name: '',
+  role: 'child',
+  roleLabel: '',
+  color: 'plum',
+  avatar: 'pebble',
+  earnsPoints: true,
+  active: true,
+})
+
+function titleCaseName(value: string) {
+  return value
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/(^|\s)\S/g, (ch) => ch.toUpperCase())
+}
+
 function FamilySettings({ members }: { members: Member[] }) {
+  const { requirePin } = useNav()
+  const settings = useHouseholdSettings()
   const update = useUpdateMember()
-  const patch = (
+  const create = useCreateMember()
+  const remove = useDeleteMember()
+
+  const [editingId, setEditingId] = useState<string | null | 'new'>(null)
+  const [draft, setDraft] = useState<MemberInput>(blankMember())
+  const [field, setField] = useState<MemberField>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const editing = editingId && editingId !== 'new' ? members.find((m) => m.id === editingId) : undefined
+  const open = editingId !== null
+
+  const openNew = () => {
+    setEditingId('new')
+    setDraft(blankMember())
+    setField('name')
+    setConfirmDelete(false)
+    setError(null)
+  }
+  const openEdit = (m: Member) => {
+    setEditingId(m.id)
+    setDraft({
+      name: m.name,
+      role: m.role,
+      roleLabel: m.roleLabel,
+      color: m.color,
+      avatar: m.avatar || 'pebble',
+      earnsPoints: m.earnsPoints,
+      active: m.active,
+    })
+    setField(null)
+    setConfirmDelete(false)
+    setError(null)
+  }
+  const closeEditor = () => {
+    if (busy) return
+    setEditingId(null)
+    setField(null)
+    setConfirmDelete(false)
+    setError(null)
+  }
+
+  const canSave = draft.name.trim().length > 0
+
+  const save = async () => {
+    if (!canSave || busy || editingId === null) return
+    setBusy(true)
+    setError(null)
+    const input: MemberInput = {
+      name: titleCaseName(draft.name),
+      role: draft.role,
+      roleLabel: draft.roleLabel.trim() || (draft.role === 'parent' ? 'Parent' : 'Child'),
+      color: draft.color,
+      avatar: draft.avatar || 'pebble',
+      earnsPoints: draft.earnsPoints,
+      active: draft.active,
+    }
+    try {
+      if (editingId === 'new') await create.mutateAsync(input)
+      else await update.mutateAsync({ id: editingId, ...input })
+      setEditingId(null)
+      setField(null)
+      setConfirmDelete(false)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Couldn’t save that person.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const runDelete = async () => {
+    if (!editing || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      await remove.mutateAsync(editing.id)
+      setConfirmDelete(false)
+      setEditingId(null)
+      setField(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Couldn’t remove that person.')
+      setConfirmDelete(false)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const askDelete = () => {
+    if (!editing) return
+    const proceed = () => setConfirmDelete(true)
+    if (settings.data?.pinProtectDeletes) {
+      requirePin({
+        title: `To remove ${editing.name}`,
+        detail: 'This deletes their tasks, stars, and wishlist.',
+        onSuccess: proceed,
+      })
+    } else {
+      proceed()
+    }
+  }
+
+  const keyboardValue = field === 'name' ? draft.name : field === 'roleLabel' ? draft.roleLabel : ''
+  const onKeyboard = (next: string) => {
+    if (field === 'name') setDraft((d) => ({ ...d, name: next.slice(0, 24) }))
+    if (field === 'roleLabel') setDraft((d) => ({ ...d, roleLabel: next.slice(0, 24) }))
+  }
+
+  const quickPatch = (
     id: string,
     p: Omit<Parameters<typeof update.mutate>[0], 'id'>,
   ) => void update.mutateAsync({ id, ...p }).catch(() => {})
@@ -365,66 +515,181 @@ function FamilySettings({ members }: { members: Member[] }) {
     <>
       <div className={s.members}>
         {members.map((m) => (
-          <div key={m.id} data-color={m.color} className={s.member}>
+          <div key={m.id} {...memberColorProps(m.color)} className={m.active ? s.member : `${s.member} ${s.memberInactive}`}>
             <div className={s.memberHead}>
-              <Avatar initial={m.initial} color={m.color} size="lg" />
+              <MemberBlobAvatar memberId={m.id} size={72} showBackground={!m.active} decorative />
               <span className={s.memberName}>
                 <strong>{m.name}</strong>
-                <span>{m.role === 'parent' ? 'Parent' : 'Child · no login'} · {m.roleLabel}</span>
+                <span>
+                  {m.active ? '' : 'Inactive · '}
+                  {m.role === 'parent' ? 'Parent' : 'Child · no login'} · {m.roleLabel}
+                  {' · '}Name and look live in Profiles
+                </span>
               </span>
-              <button type="button" className={s.edit} aria-label={`Edit ${m.name}`}><Icon name="pencil" size={22} /></button>
-            </div>
-            <div className={s.field}>
-              <Label>Color</Label>
-              <div className={s.swatches}>
-                {COLORS.map((c) => (
-                  <button
-                    key={c.value}
-                    type="button"
-                    data-color={c.value}
-                    aria-pressed={m.color === c.value}
-                    aria-label={c.label}
-                    className={m.color === c.value ? `${s.swatch} ${s.swatchOn}` : s.swatch}
-                    onClick={() => patch(m.id, { color: c.value })}
-                  >
-                    <span />
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className={s.field}>
-              <Label>Routines</Label>
-              <div className={s.routines}>
-                {ROUTINES.map((r) => {
-                  const on = m.routines.includes(r.value)
-                  return (
-                    <button
-                      key={r.value}
-                      type="button"
-                      aria-pressed={on}
-                      className={on ? `${s.routine} ${s.routineOn}` : s.routine}
-                      onClick={() => patch(m.id, {
-                        routines: on ? m.routines.filter((x) => x !== r.value) : [...m.routines, r.value],
-                      })}
-                    >
-                      {r.label}
-                    </button>
-                  )
-                })}
-              </div>
+              <button type="button" className={s.edit} aria-label={`Edit ${m.name}`} onClick={() => openEdit(m)}>
+                <Icon name="pencil" size={22} />
+              </button>
             </div>
             <div className={s.pointsRow}>
               <span>Earns points</span>
               <Switch
                 checked={m.earnsPoints}
                 label={`${m.name} earns points`}
-                onChange={(v) => patch(m.id, { earnsPoints: v })}
+                onChange={(v) => quickPatch(m.id, { earnsPoints: v })}
+              />
+            </div>
+            <div className={s.pointsRow}>
+              <span>Active in the hub</span>
+              <Switch
+                checked={m.active}
+                label={`${m.name} is active`}
+                onChange={(v) => quickPatch(m.id, { active: v })}
               />
             </div>
           </div>
         ))}
       </div>
-      <Button variant="ghost" size="lg" icon="plus" className={s.addMember}>Add a family member</Button>
+      <Button variant="ghost" size="lg" icon="plus" className={s.addMember} onClick={openNew}>
+        Add a family member
+      </Button>
+
+      {open && (
+        <div className={s.confirmScrim} onClick={closeEditor}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="member-editor-title"
+            className={s.memberDialog}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {confirmDelete && editing ? (
+              <>
+                <div className={s.confirmText}>
+                  <h2 id="member-editor-title" className={s.confirmTitle}>Remove {editing.name}?</h2>
+                  <p className={s.confirmDetail}>
+                    This permanently deletes their tasks, star balance, redemptions, and wishlist.
+                    Calendars and list assignments stay, but won’t show as {editing.name}.
+                    Prefer hiding them? Mark inactive instead.
+                  </p>
+                </div>
+                {error && <p className={s.formError}>{error}</p>}
+                <div className={s.confirmActions}>
+                  <Button variant="secondary" size="lg" block disabled={busy} onClick={() => setConfirmDelete(false)}>
+                    Keep {editing.name}
+                  </Button>
+                  <Button variant="primary" size="lg" block icon="trash" disabled={busy} onClick={() => void runDelete()}>
+                    {busy ? 'Removing…' : 'Remove forever'}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className={s.confirmText}>
+                  <h2 id="member-editor-title" className={s.confirmTitle}>
+                    {editingId === 'new' ? 'Add a family member' : `Edit ${editing?.name ?? 'member'}`}
+                  </h2>
+                  <p className={s.confirmDetail}>
+                    {editingId === 'new'
+                      ? 'Start with a name and role. They can pick their color and avatar in Profiles.'
+                      : 'Manage role, points, and whether they show in the hub. Name, color, and avatar live in Profiles.'}
+                  </p>
+                </div>
+
+                {editingId === 'new' && (
+                  <>
+                    <label className={s.addField}>
+                      <Icon name="sofa" size={24} stroke={2.6} />
+                      <span className="sr-only">Name</span>
+                      <input
+                        value={draft.name}
+                        onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value.slice(0, 24) }))}
+                        onFocus={() => setField('name')}
+                        placeholder="Name"
+                        autoComplete="off"
+                        inputMode="none"
+                      />
+                    </label>
+
+                    <div className={s.field}>
+                      <Label>Starting color</Label>
+                      <ColorPicker
+                        value={draft.color}
+                        onChange={(color) => setDraft((d) => ({ ...d, color }))}
+                        label="Starting color"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <label className={s.addField}>
+                  <Icon name="pencil" size={24} stroke={2.6} />
+                  <span className="sr-only">Role label</span>
+                  <input
+                    value={draft.roleLabel}
+                    onChange={(e) => setDraft((d) => ({ ...d, roleLabel: e.target.value.slice(0, 24) }))}
+                    onFocus={() => setField('roleLabel')}
+                    placeholder={draft.role === 'parent' ? 'Dad, Mom…' : 'Kid, baby care…'}
+                    autoComplete="off"
+                    inputMode="none"
+                  />
+                </label>
+
+                <Segmented
+                  label="Role"
+                  block
+                  value={draft.role}
+                  onChange={(role) => setDraft((d) => ({ ...d, role }))}
+                  options={[
+                    { value: 'parent', label: 'Parent', sub: 'Can approve' },
+                    { value: 'child', label: 'Child', sub: 'No login' },
+                  ]}
+                />
+
+                <div className={s.pointsRow}>
+                  <span>Earns points</span>
+                  <Switch
+                    checked={draft.earnsPoints}
+                    label="Earns points"
+                    onChange={(v) => setDraft((d) => ({ ...d, earnsPoints: v }))}
+                  />
+                </div>
+                <div className={s.pointsRow}>
+                  <span>Active in the hub</span>
+                  <Switch
+                    checked={draft.active}
+                    label="Active in the hub"
+                    onChange={(v) => setDraft((d) => ({ ...d, active: v }))}
+                  />
+                </div>
+
+                {error && <p className={s.formError}>{error}</p>}
+
+                <div className={s.confirmActions}>
+                  <Button variant="primary" size="lg" block disabled={!canSave || busy} onClick={() => void save()}>
+                    {busy ? 'Saving…' : editingId === 'new' ? 'Add member' : 'Save'}
+                  </Button>
+                  <Button variant="secondary" size="lg" block disabled={busy} onClick={closeEditor}>
+                    Cancel
+                  </Button>
+                  {editingId !== 'new' && (
+                    <Button variant="ghost" size="lg" block icon="trash" disabled={busy} onClick={askDelete}>
+                      Remove forever
+                    </Button>
+                  )}
+                </div>
+
+                {field && (
+                  <SoftKeyboard
+                    value={keyboardValue}
+                    onChange={onKeyboard}
+                    onDone={() => setField(null)}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   )
 }
@@ -434,7 +699,7 @@ export default function Settings() {
   const { settingsUnlockedUntil } = useNav()
   const speakers = useSpeakers()
   const calendarSources = useCalendarSources()
-  const members = useMembers()
+  const members = useAllMembers()
   const settings = useHouseholdSettings()
   useLive('members', 'members')
 
@@ -445,7 +710,7 @@ export default function Settings() {
   const lockMinsLeft = Math.max(0, Math.ceil((settingsUnlockedUntil - now.getTime()) / 60_000))
 
   const sections: { id: SectionId; label: string; sub: string; icon: IconName; color: MemberColor }[] = [
-    { id: 'family', label: 'Family', sub: 'Members, colors, routines', icon: 'sofa', color: 'moss' },
+    { id: 'family', label: 'Family', sub: 'Add, hide, remove members', icon: 'sofa', color: 'moss' },
     { id: 'calendars', label: 'Calendars', sub: calendarCount ? `${calendarCount} Google calendar${calendarCount === 1 ? '' : 's'}` : 'Link Google accounts', icon: 'calendar', color: 'fjord' },
     { id: 'music', label: 'Music & speakers', sub: speakerCount ? `Spotify · ${speakerCount} speakers` : 'Spotify · speakers', icon: 'music', color: 'clay' },
     {

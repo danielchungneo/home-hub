@@ -258,3 +258,9 @@
 
 @keyframes dropIn { from { transform: translateY(300px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes toastIn { from { transform: translate(-50%, 16px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
+
+/* Local copies: CSS Modules scope keyframe names, so the global ones in base.css can't be referenced from here. */
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

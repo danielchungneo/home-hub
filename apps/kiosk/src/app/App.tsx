@@ -9,13 +9,14 @@ import { NavContext, type Nav, type PinRequest } from './nav'
 
 // One chunk per screen: the Pi only parses what's on screen at first, then preloads the rest in the background.
 const screenLoaders = {
-  calendar: () => import('../screens/Calendar'),
-  tasks: () => import('../screens/Tasks'),
-  rewards: () => import('../screens/Rewards'),
+  calendar: () => import('../screens/calendar/Calendar'),
+  tasks: () => import('../screens/tasks/Tasks'),
+  rewards: () => import('../screens/rewards/Rewards'),
   meals: () => import('../screens/meals/Meals'),
   recipes: () => import('../screens/recipes/Recipes'),
-  lists: () => import('../screens/Lists'),
+  lists: () => import('../screens/lists/Lists'),
   jukebox: () => import('../screens/jukebox/Jukebox'),
+  profiles: () => import('../screens/profiles/Profiles'),
   settings: () => import('../screens/Settings'),
 } satisfies Record<ScreenId, () => Promise<{ default: () => JSX.Element }>>
 
@@ -54,7 +55,7 @@ function whenIdle(fn: () => void) {
 function fromHash() {
   const h = window.location.hash.replace('#', '')
   return {
-    screen: (h in screens ? h : h.startsWith('jukebox') ? 'jukebox' : 'tasks') as ScreenId,
+    screen: (h in screens ? h : h.startsWith('jukebox') ? 'jukebox' : 'tasks') as ScreenId, // #tasks-add opens the Add sheet
     idle: h === 'idle',
     sleep: h === 'sleep',
     cooking: h === 'cooking' ? 'sheetpan' : null,
@@ -69,7 +70,7 @@ export function App() {
   const [screen, setScreen] = useState<ScreenId>(initial.screen)
   const [cooking, setCooking] = useState<string | null>(initial.cooking)
   const [pin, setPin] = useState<PinRequest | null>(
-    initial.pin ? { title: 'To approve Shelby’s reward', detail: 'Uninterrupted nap · 120 points', onSuccess: () => {} } : null,
+    initial.pin ? { title: 'To approve Shelby’s reward', detail: 'Uninterrupted nap · 120 stars', onSuccess: () => {} } : null,
   )
   const [sleeping, setSleeping] = useState(initial.sleep)
   const [settingsUnlockedUntil, setSettingsUnlockedUntil] = useState(0)

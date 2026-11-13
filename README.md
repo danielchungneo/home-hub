@@ -7,11 +7,11 @@ Design source of truth: [`smarthome-hub-design.md`](./smarthome-hub-design.md).
 ## Structure
 
 ```
-apps/kiosk          @hub/kiosk — React 18 + Vite touchscreen UI (mock data for now)
+apps/kiosk          @hub/kiosk — React 18 + Vite touchscreen UI (Supabase-backed)
 apps/mobile         @hub/mobile — Expo placeholder (Login / Home)
 apps/music-agent    @hub/music-agent — phase-2 Node stub (not needed for v1)
 packages/shared     @hub/shared — UI types, DB types, Supabase client factory, constants
-docs/               DESIGN_SYSTEM.md, JUKEBOX.md
+docs/               DESIGN_SYSTEM.md, JUKEBOX.md, TASKS.md
 supabase/           Migrations, seed, config
 pi/                 Raspberry Pi setup, Caddy config and deploy scripts
 ```
@@ -53,7 +53,7 @@ pnpm deploy:pi
 powershell -ExecutionPolicy Bypass -File pi/deploy.ps1 -PiHost other-pi.local -PiUser someone
 ```
 
-This builds the kiosk, copies `apps/kiosk/dist` to the Pi with `scp`, replaces `/var/www/hub`, fixes file permissions (files copied from Windows arrive unreadable to Caddy, which shows a white page), and restarts `getty@tty1` to relaunch the kiosk browser. On macOS/Linux use `pi/deploy.sh [host] [user]`.
+This builds the kiosk, copies `apps/kiosk/dist` to the Pi with `scp`, replaces `/var/www/hub`, fixes file permissions with owner `chmod` (files copied from Windows arrive as `drwx------`; if Caddy can’t read `/var/www/hub/assets` it serves `index.html` for JS/CSS and the kiosk shows a white page), and restarts `getty@tty1` to relaunch the kiosk browser. On boot, `~/hub-kiosk-tools/ensure-hub-ready.sh` re-applies that chmod and waits until a real JS asset is served before Chromium starts. On macOS/Linux use `pi/deploy.sh [host] [user]`.
 
 **Skip the password prompts** by setting up an SSH key once:
 
@@ -85,8 +85,7 @@ Expo SDK 54+ supports pnpm’s default **isolated** linker in monorepos, so this
 
 ## What’s intentionally unfinished
 
-- Kiosk Tasks, Rewards, Lists, Jukebox and Calendar use Supabase; meals/recipes/photos still use mock data.
+- Kiosk is mostly on Supabase. Still unwired: task templates / add / bounties, calendar countdowns + week forecast, list “usuals”, photos slideshow. See `apps/kiosk/README.md`.
 - Google Calendar: link accounts with `pnpm google:calendar-login`, then `pnpm google:calendar-sync` (see `packages/google-calendar/README.md`).
 - Mobile is placeholders only until after the Pi kiosk is working.
 - Music agent Cast wake is unofficial (needs `SPOTIFY_SP_DC`); see `apps/music-agent/README.md`.
-- Meals/recipes/photos tables: later.

@@ -114,3 +114,9 @@
 .cardTitle { font-family: var(--font-display); font-size: 22px; line-height: 1.05; }
 .cardMeta { font-size: 14px; font-weight: var(--weight-bold); color: var(--color-ink-3); }
 .none { align-self: center; padding: 0 var(--space-6); font-size: 18px; font-weight: var(--weight-bold); color: var(--color-ink-2); }
+
+/* Local copies: CSS Modules scope keyframe names, so the global ones in base.css can't be referenced from here. */
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

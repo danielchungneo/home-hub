@@ -10,12 +10,11 @@ import {
   normalizeIngredientName,
   normalizeRecipeTags,
   parseGroceryQty,
-  type CalendarEvent, type CalendarSource, type Database, type GroceryQty, type HouseholdSettings, type Ingredient, type Json, type JukeboxFavorite, type ListItem, type MediaKind, type MemberColor, type QueueItem, type RecipeStep, type Redemption, type Routine,
+  type CalendarEvent, type CalendarSource, type Database, type GroceryQty, type HouseholdSettings, type Ingredient, type Json, type JukeboxFavorite, type ListItem, type MediaKind, type Member, type MemberColor, type QueueItem, type RecipeStep, type Redemption, type RewardAisle, type RewardDeal,
 } from '@hub/shared'
 import { ensureSession, supabase } from '../lib/supabase'
 import { fetchOpenMeteo, type Weather } from '../lib/weather'
-import type { Recipe, ShoppingList } from '../lib/types'
-import { WEATHER as FALLBACK_WEATHER } from './mock'
+import type { Recipe, Reward, ShoppingList } from '../lib/types'
 import {
   localDate,
   toCalendarEvent,
@@ -30,6 +29,7 @@ import {
   toRecipe,
   toRedemption,
   toReward,
+  toRewardDeal,
   toSpeaker,
   toTask,
   type MealPlanRow,
@@ -68,14 +68,24 @@ const tasksQuery = () =>
   queryOptions({
     queryKey: ['tasks'],
     queryFn: async () =>
-      (await run(() => supabase.from('tasks').select('*').is('archived_at', null).order('sort_order'))).map(toTask),
+      (
+        await run(() =>
+          supabase
+            .from('tasks')
+            .select('*')
+            .is('archived_at', null)
+            .not('template_id', 'is', null)
+            .order('created_at'),
+        )
+      ).map(toTask),
   })
 
-const completedQuery = (date: string) =>
+/** Completions for a period day (daily) or the week's Sunday (weekly) — see docs/TASKS.md. */
+const completedQuery = (period: string) =>
   queryOptions({
-    queryKey: ['completions', date],
+    queryKey: ['completions', period],
     queryFn: async () =>
-      (await run(() => supabase.from('task_completions').select('task_id').eq('for_date', date))).map((r) => r.task_id),
+      (await run(() => supabase.from('task_completions').select('task_id').eq('period', period))).map((r) => r.task_id),
   })
 
 const rewardsQuery = () =>
@@ -104,6 +114,36 @@ const redemptionsQuery = () =>
           supabase.from('reward_redemptions').select('*').eq('status', 'requested').order('requested_at'),
         )
       ).map(toRedemption),
+  })
+
+const rewardDealQuery = () =>
+  queryOptions({
+    queryKey: ['rewardDeal'],
+    queryFn: async (): Promise<RewardDeal | null> => {
+      const today = localDate()
+      const rows = await run(() =>
+        supabase
+          .from('reward_deals')
+          .select('*')
+          .lte('starts_on', today)
+          .gte('ends_on', today)
+          .order('starts_on', { ascending: false })
+          .limit(1),
+      )
+      const row = rows[0]
+      return row ? toRewardDeal(row) : null
+    },
+  })
+
+const wishlistQuery = () =>
+  queryOptions({
+    queryKey: ['wishlist'],
+    queryFn: async () => {
+      const rows = await run(() => supabase.from('wishlist').select('*'))
+      const out: Record<string, string | null> = {}
+      for (const row of rows) out[row.member_id] = row.reward_id
+      return out
+    },
   })
 
 const listsQuery = () =>
@@ -196,6 +236,8 @@ export const prefetchLiveScreens = (queryClient: QueryClient) => {
     queryClient.prefetchQuery(rewardsQuery()),
     queryClient.prefetchQuery(ledgerQuery()),
     queryClient.prefetchQuery(redemptionsQuery()),
+    queryClient.prefetchQuery(rewardDealQuery()),
+    queryClient.prefetchQuery(wishlistQuery()),
     queryClient.prefetchQuery(listsQuery()),
     queryClient.prefetchQuery(speakersQuery()),
     queryClient.prefetchQuery(favoritesQuery()),
@@ -308,7 +350,7 @@ const weatherQuery = () =>
     queryKey: ['weather'],
     staleTime: 15 * 60_000,
     refetchInterval: 30 * 60_000,
-    queryFn: async (): Promise<Weather> => {
+    queryFn: async (): Promise<Weather | null> => {
       await ensureSession()
       const [{ data: household, error: hErr }, { data: settings, error: sErr }] = await Promise.all([
         supabase.from('households').select('location_lat, location_lon').limit(1).maybeSingle(),
@@ -318,9 +360,7 @@ const weatherQuery = () =>
       if (sErr) throw new Error(sErr.message)
       const lat = household?.location_lat
       const lon = household?.location_lon
-      if (lat == null || lon == null) {
-        return { ...FALLBACK_WEATHER, fetchedAt: Date.now() }
-      }
+      if (lat == null || lon == null) return null
       const units = settings?.weather_units === 'c' ? 'c' : 'f'
       return fetchOpenMeteo(lat, lon, units)
     },
@@ -328,7 +368,15 @@ const weatherQuery = () =>
 
 // Members
 
-export const useMembers = () => useQuery(membersQuery())
+/** Active household people for rails, pickers, and shops. Cache still holds everyone for `who()`. */
+export const useMembers = () =>
+  useQuery({
+    ...membersQuery(),
+    select: (rows) => rows.filter((m) => m.active),
+  })
+
+/** Full roster including inactive — Settings family editor. */
+export const useAllMembers = () => useQuery(membersQuery())
 
 export const useHouseholdSettings = () => useQuery(householdSettingsQuery())
 
@@ -380,25 +428,116 @@ export function useUpdateHouseholdSettings() {
   })
 }
 
+export type MemberInput = {
+  name: string
+  role: Member['role']
+  roleLabel: string
+  /** Named preset or `#RRGGBB` (never system `slate`). */
+  color: string
+  avatar: string
+  earnsPoints: boolean
+  active: boolean
+}
+
 export function useUpdateMember() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (input: {
       id: string
-      color?: MemberColor
-      routines?: Routine[]
-      earnsPoints?: boolean
+      name?: string
+      role?: Member['role']
       roleLabel?: string
+      color?: string
+      avatar?: string
+      earnsPoints?: boolean
+      active?: boolean
     }) => {
-      await run(() =>
-        supabase.from('members').update({
-          color: input.color,
-          routine_filters: input.routines,
-          earns_points: input.earnsPoints,
-          role_label: input.roleLabel,
-        }).eq('id', input.id),
-      )
+      const patch: Database['public']['Tables']['members']['Update'] = {}
+      if (input.name !== undefined) patch.name = input.name
+      if (input.role !== undefined) patch.role = input.role
+      if (input.roleLabel !== undefined) patch.role_label = input.roleLabel
+      if (input.color !== undefined) patch.color = input.color
+      if (input.avatar !== undefined) patch.avatar = input.avatar
+      if (input.earnsPoints !== undefined) patch.earns_points = input.earnsPoints
+      if (input.active !== undefined) patch.active = input.active
+      await run(() => supabase.from('members').update(patch).eq('id', input.id))
     },
+    onMutate: async (input) =>
+      optimistic<Member[]>(queryClient, ['members'], (list) =>
+        list.map((m) => {
+          if (m.id !== input.id) return m
+          const name = input.name ?? m.name
+          return {
+            ...m,
+            name,
+            initial: name.charAt(0).toUpperCase(),
+            role: input.role ?? m.role,
+            roleLabel: input.roleLabel ?? m.roleLabel,
+            color: input.color ?? m.color,
+            avatar: input.avatar ?? m.avatar,
+            earnsPoints: input.earnsPoints ?? m.earnsPoints,
+            active: input.active ?? m.active,
+          }
+        }),
+      ),
+    onError: (_err, _vars, rollback) => rollback?.(),
+    onSettled: () => refetch(queryClient, 'members'),
+  })
+}
+
+export function useCreateMember() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: MemberInput) => {
+      const existing = queryClient.getQueryData<Member[]>(['members']) ?? []
+      const row = await run(() =>
+        supabase
+          .from('members')
+          .insert({
+            name: input.name,
+            role: input.role,
+            role_label: input.roleLabel || (input.role === 'parent' ? 'Parent' : 'Child'),
+            color: input.color,
+            avatar: input.avatar || 'pebble',
+            earns_points: input.earnsPoints,
+            active: input.active,
+            sort_order: existing.length + 1,
+          })
+          .select('*')
+          .single(),
+      ) as Parameters<typeof toMember>[0]
+      return toMember(row)
+    },
+    onMutate: (input) =>
+      optimistic<Member[]>(queryClient, ['members'], (list) => [
+        ...list,
+        {
+          id: `pending-${Date.now()}`,
+          name: input.name,
+          initial: input.name.charAt(0).toUpperCase(),
+          role: input.role,
+          roleLabel: input.roleLabel || (input.role === 'parent' ? 'Parent' : 'Child'),
+          color: input.color,
+          avatar: input.avatar || 'pebble',
+          earnsPoints: input.earnsPoints,
+          active: input.active,
+        },
+      ]),
+    onError: (_err, _vars, rollback) => rollback?.(),
+    onSettled: () => refetch(queryClient, 'members'),
+  })
+}
+
+/** Hard delete — cascades tasks, points, redemptions, and wishlist for this person. */
+export function useDeleteMember() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await run(() => supabase.from('members').delete().eq('id', id))
+    },
+    onMutate: (id) =>
+      optimistic<Member[]>(queryClient, ['members'], (list) => list.filter((m) => m.id !== id)),
+    onError: (_err, _vars, rollback) => rollback?.(),
     onSettled: () => refetch(queryClient, 'members'),
   })
 }
@@ -420,6 +559,30 @@ export function useToggleCalendarSource() {
       const key = ['calendarSources'] as const
       const rollback = await optimistic<CalendarSource[]>(queryClient, key, (old) =>
         old.map((s) => (s.id === id ? { ...s, enabled } : s)),
+      )
+      return { rollback }
+    },
+    onError: (_e, _v, ctx) => ctx?.rollback(),
+    onSettled: () => refetch(queryClient, 'calendarSources', 'events'),
+  })
+}
+
+/** Who a Google calendar’s events show as on the hub. Clears sync_token so the next sync rewrites event colors. */
+export function useAssignCalendarSource() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, memberId }: { id: string; memberId: string | null }) => {
+      await run(() =>
+        supabase
+          .from('calendar_sources')
+          .update({ member_id: memberId, sync_token: null })
+          .eq('id', id),
+      )
+    },
+    onMutate: async ({ id, memberId }) => {
+      const key = ['calendarSources'] as const
+      const rollback = await optimistic<CalendarSource[]>(queryClient, key, (old) =>
+        old.map((s) => (s.id === id ? { ...s, memberId } : s)),
       )
       return { rollback }
     },
@@ -464,12 +627,12 @@ export const useCompleted = (date: string = localDate()) => useQuery(completedQu
 export function useToggleTask() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ taskId, done, date }: { taskId: string; done: boolean; date: string }) =>
+    mutationFn: ({ taskId, done, period }: { taskId: string; done: boolean; period: string }) =>
       done
-        ? run(() => supabase.from('task_completions').insert({ task_id: taskId, for_date: date }))
-        : run(() => supabase.from('task_completions').delete().eq('task_id', taskId).eq('for_date', date)),
-    onMutate: ({ taskId, done, date }) =>
-      optimistic<string[]>(queryClient, ['completions', date], (ids) =>
+        ? run(() => supabase.from('task_completions').insert({ task_id: taskId, period, for_date: period }))
+        : run(() => supabase.from('task_completions').delete().eq('task_id', taskId).eq('period', period)),
+    onMutate: ({ taskId, done, period }) =>
+      optimistic<string[]>(queryClient, ['completions', period], (ids) =>
         done ? [...ids, taskId] : ids.filter((id) => id !== taskId),
       ),
     onError: (_err, _vars, rollback) => rollback?.(),
@@ -485,22 +648,29 @@ export const useLedger = () => useQuery(ledgerQuery())
 
 export const usePendingRedemptions = () => useQuery(redemptionsQuery())
 
+export const useRewardDeal = () => useQuery(rewardDealQuery())
+
+export const useWishlist = () => useQuery(wishlistQuery())
+
+/** Buy: insert redemption (trigger holds stars in the ledger right away). */
 export function useRedeem() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ memberId, rewardId }: { memberId: string; rewardId: string }) =>
-      run(() => supabase.from('reward_redemptions').insert({ member_id: memberId, reward_id: rewardId })),
-    onMutate: ({ memberId, rewardId }) =>
+    mutationFn: ({ memberId, rewardId, cost }: { memberId: string; rewardId: string; cost: number }) =>
+      run(() =>
+        supabase.from('reward_redemptions').insert({ member_id: memberId, reward_id: rewardId, cost }),
+      ),
+    onMutate: ({ memberId, rewardId, cost }) =>
       optimistic<Redemption[]>(queryClient, ['redemptions'], (list) => [
         ...list,
-        { id: `pending-${Date.now()}`, memberId, rewardId },
+        { id: `pending-${Date.now()}`, memberId, rewardId, cost },
       ]),
     onError: (_err, _vars, rollback) => rollback?.(),
-    onSettled: () => refetch(queryClient, 'redemptions'),
+    onSettled: () => refetch(queryClient, 'redemptions', 'ledger'),
   })
 }
 
-/** Approving spends the points (a database trigger writes the ledger row). */
+/** Approve = status only. Deny = status + ledger refund (database trigger). */
 export function useDecideRedemption() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -509,6 +679,150 @@ export function useDecideRedemption() {
     onMutate: ({ id }) => optimistic<Redemption[]>(queryClient, ['redemptions'], (list) => list.filter((r) => r.id !== id)),
     onError: (_err, _vars, rollback) => rollback?.(),
     onSettled: () => refetch(queryClient, 'redemptions', 'ledger'),
+  })
+}
+
+/** One wishlist goal per person. Tapping the same reward again clears it. */
+export function useToggleWishlist() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ memberId, rewardId }: { memberId: string; rewardId: string }) => {
+      const current = queryClient.getQueryData<Record<string, string | null>>(['wishlist']) ?? {}
+      if (current[memberId] === rewardId) {
+        await run(() => supabase.from('wishlist').delete().eq('member_id', memberId))
+        return null
+      }
+      await run(() =>
+        supabase.from('wishlist').upsert({ member_id: memberId, reward_id: rewardId }, { onConflict: 'member_id' }),
+      )
+      return rewardId
+    },
+    onMutate: ({ memberId, rewardId }) =>
+      optimistic<Record<string, string | null>>(queryClient, ['wishlist'], (w) => ({
+        ...w,
+        [memberId]: w[memberId] === rewardId ? null : rewardId,
+      })),
+    onError: (_err, _vars, rollback) => rollback?.(),
+    onSettled: () => refetch(queryClient, 'wishlist'),
+  })
+}
+
+export type RewardInput = {
+  title: string
+  blurb: string
+  aisle: RewardAisle
+  cost: number
+  icon: string
+  color: MemberColor
+}
+
+/** Stock the shop: create a reward. */
+export function useCreateReward() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: RewardInput) => {
+      const existing = queryClient.getQueryData<Reward[]>(['rewards']) ?? []
+      const sortOrder = existing.length + 1
+      const row = await run(() =>
+        supabase
+          .from('rewards')
+          .insert({
+            title: input.title,
+            blurb: input.blurb,
+            aisle: input.aisle,
+            cost: input.cost,
+            icon: input.icon,
+            color: input.color,
+            sort_order: sortOrder,
+            active: true,
+          })
+          .select('*')
+          .single(),
+      ) as Parameters<typeof toReward>[0]
+      return toReward(row)
+    },
+    onMutate: (input) =>
+      optimistic<Reward[]>(queryClient, ['rewards'], (list) => [
+        ...list,
+        {
+          id: `pending-${Date.now()}`,
+          title: input.title,
+          blurb: input.blurb,
+          aisle: input.aisle,
+          cost: input.cost,
+          icon: input.icon as Reward['icon'],
+          color: input.color,
+        },
+      ]),
+    onError: (_err, _vars, rollback) => rollback?.(),
+    onSettled: () => refetch(queryClient, 'rewards'),
+  })
+}
+
+/** Stock the shop: edit a reward. */
+export function useUpdateReward() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...input }: RewardInput & { id: string }) =>
+      run(() =>
+        supabase
+          .from('rewards')
+          .update({
+            title: input.title,
+            blurb: input.blurb,
+            aisle: input.aisle,
+            cost: input.cost,
+            icon: input.icon,
+            color: input.color,
+          })
+          .eq('id', id),
+      ),
+    onMutate: ({ id, ...input }) =>
+      optimistic<Reward[]>(queryClient, ['rewards'], (list) =>
+        list.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                title: input.title,
+                blurb: input.blurb,
+                aisle: input.aisle,
+                cost: input.cost,
+                icon: input.icon as Reward['icon'],
+                color: input.color,
+              }
+            : r,
+        ),
+      ),
+    onError: (_err, _vars, rollback) => rollback?.(),
+    onSettled: () => refetch(queryClient, 'rewards'),
+  })
+}
+
+/** Soft-delete: set active = false so past redemptions keep their reward. */
+export function useDeleteReward() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await run(() => supabase.from('rewards').update({ active: false }).eq('id', id))
+      await run(() => supabase.from('wishlist').delete().eq('reward_id', id))
+      await run(() => supabase.from('reward_deals').delete().eq('reward_id', id))
+    },
+    onMutate: async (id) => {
+      const rollRewards = await optimistic<Reward[]>(queryClient, ['rewards'], (list) => list.filter((r) => r.id !== id))
+      const rollWish = await optimistic<Record<string, string | null>>(queryClient, ['wishlist'], (w) => {
+        const next = { ...w }
+        for (const [memberId, rewardId] of Object.entries(next)) {
+          if (rewardId === id) next[memberId] = null
+        }
+        return next
+      })
+      const rollDeal = await optimistic<RewardDeal | null>(queryClient, ['rewardDeal'], (deal) =>
+        deal?.rewardId === id ? null : deal,
+      )
+      return () => { rollRewards(); rollWish(); rollDeal() }
+    },
+    onError: (_err, _vars, rollback) => rollback?.(),
+    onSettled: () => refetch(queryClient, 'rewards', 'rewardDeal', 'wishlist'),
   })
 }
 
@@ -522,14 +836,73 @@ const patchItems = (listId: string, fn: (items: ListItem[]) => ListItem[]) => (l
 export function useAddListItem() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ listId, text }: { listId: string; text: string }) =>
-      run(() => supabase.from('list_items').insert({ list_id: listId, text, category: 'Added' })),
-    onMutate: ({ listId, text }) =>
+    mutationFn: ({ listId, text, category, qty }: { listId: string; text: string; category?: string; qty?: string }) =>
+      run(() => supabase.from('list_items').insert({
+        list_id: listId,
+        text,
+        category: category ?? 'Other',
+        quantity: qty ?? null,
+      })),
+    onMutate: ({ listId, text, category, qty }) =>
       optimistic<ShoppingList[]>(queryClient, ['lists'], patchItems(listId, (items) => [
         ...items,
-        { id: `pending-${Date.now()}`, text, category: 'Added', checked: false },
+        { id: `pending-${Date.now()}`, text, category: category ?? 'Other', qty, checked: false },
       ])),
     onError: (_err, _vars, rollback) => rollback?.(),
+    onSettled: () => refetch(queryClient, 'lists'),
+  })
+}
+
+export function useDeleteListItem() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id }: { listId: string; id: string }) =>
+      run(() => supabase.from('list_items').delete().eq('id', id)),
+    onMutate: ({ listId, id }) =>
+      optimistic<ShoppingList[]>(queryClient, ['lists'], patchItems(listId, (items) => items.filter((i) => i.id !== id))),
+    onError: (_err, _vars, rollback) => rollback?.(),
+    onSettled: () => refetch(queryClient, 'lists'),
+  })
+}
+
+export function useCreateList() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      name,
+      icon,
+      color,
+      sortOrder,
+    }: {
+      name: string
+      icon: string
+      color: MemberColor
+      sortOrder: number
+    }) => {
+      const row = await run(() =>
+        supabase
+          .from('lists')
+          .insert({ name, icon, color, sort_order: sortOrder })
+          .select('id')
+          .single(),
+      ) as { id: string }
+      return row.id
+    },
+    onMutate: async ({ name, icon, color }) => {
+      const pendingId = `pending-${Date.now()}`
+      const rollback = await optimistic<ShoppingList[]>(queryClient, ['lists'], (lists) => [
+        ...lists,
+        { id: pendingId, name, icon: icon as ShoppingList['icon'], color, items: [] },
+      ])
+      return { rollback, pendingId }
+    },
+    onSuccess: (id, _vars, ctx) => {
+      if (!ctx?.pendingId) return
+      queryClient.setQueryData<ShoppingList[]>(['lists'], (old) =>
+        old?.map((l) => (l.id === ctx.pendingId ? { ...l, id } : l)),
+      )
+    },
+    onError: (_err, _vars, ctx) => ctx?.rollback(),
     onSettled: () => refetch(queryClient, 'lists'),
   })
 }

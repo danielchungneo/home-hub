@@ -15,6 +15,7 @@ const TABS: { id: ScreenId; label: string; icon: IconName }[] = [
   { id: 'recipes', label: 'Recipes', icon: 'book' },
   { id: 'lists', label: 'Lists', icon: 'list' },
   { id: 'jukebox', label: 'Jukebox', icon: 'music' },
+  { id: 'profiles', label: 'Profiles', icon: 'sofa' },
 ]
 
 /** Left icon rail. Sleep and Settings are pinned to the bottom. */
@@ -78,7 +79,7 @@ export function HeaderMeta() {
   const now = useClock()
   const weather = useWeather()
   const w = weather.data
-  const forecast = w ? `${w.temp}° ${w.condition.toLowerCase()}` : '…'
+  const forecast = w ? `${w.temp}° ${w.condition.toLowerCase()}` : 'Set location in Settings'
   return <>{`${weekday(now)} · ${time(now)} · ${forecast}`}</>
 }
 
