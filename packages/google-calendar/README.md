@@ -24,7 +24,11 @@ pnpm google:calendar-login -- --member daniel   # your Google account
 pnpm google:calendar-login -- --member shelby   # Shelby’s Google account
 ```
 
-Primary calendar maps to that member; other calendars on the account map to Family.
+Primary calendar maps to that member; other calendars on the account default to Family.
+
+If you add a calendar later in Google (for example Outlook work synced in as **Dan’s Work**), run login again so it appears under Settings → Calendars. Then tap the person chip next to it (Daniel / Shelby / …) so events use that member’s color, and sync from the Calendar screen.
+
+The hub does not use Google’s calendar colors — only household member colors (Daniel = moss, Family = fjord, etc.).
 
 ## Sync
 

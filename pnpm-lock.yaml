@@ -84,6 +84,9 @@ importers:
       '@fontsource-variable/newsreader':
         specifier: 5.3.0
         version: 5.3.0
+      '@hub/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       react:
         specifier: 18.3.1
         version: 18.3.1

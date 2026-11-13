@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { aisleSortKey } from '@hub/shared'
 import {
   addItem,
   fetchList,
@@ -17,32 +18,13 @@ function CheckIcon() {
   )
 }
 
-const AISLE_ORDER = [
-  'Produce',
-  'Meat & seafood',
-  'Dairy & eggs',
-  'Bakery',
-  'Deli',
-  'Frozen',
-  'Pantry',
-  'Beverages',
-  'Household',
-  'Baby',
-  'Other',
-]
-
-function aisleRank(cat: string) {
-  const idx = AISLE_ORDER.indexOf(cat)
-  return idx === -1 ? AISLE_ORDER.length : idx
-}
-
 function groupOpen(items: ShopItem[]) {
   const open = items.filter((i) => !i.checked)
   const groups = open.reduce<Record<string, ShopItem[]>>((acc, item) => {
     ;(acc[item.category] ??= []).push(item)
     return acc
   }, {})
-  return Object.entries(groups).sort(([a], [b]) => aisleRank(a) - aisleRank(b) || a.localeCompare(b))
+  return Object.entries(groups).sort(([a], [b]) => aisleSortKey(a) - aisleSortKey(b) || a.localeCompare(b))
 }
 
 export function App() {

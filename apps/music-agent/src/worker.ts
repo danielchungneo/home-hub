@@ -278,11 +278,18 @@ export async function processCommand(cmd: CommandRow) {
           .limit(1)
           .maybeSingle()
         if (!head) {
-          await pausePlayback(deviceId)
+          // Do not pause. An empty queue is normal for context_uri playlists
+          // (Spotify advances itself) and for duplicate end-of-song advances;
+          // pausing here stops the track that just started.
           break
         }
-        await transferPlayback(deviceId, false)
-        await sleep(300)
+        const current = await getPlayback()
+        if (current?.item?.uri === head.spotify_uri && current.is_playing) {
+          // Duplicate advance after we already started this track — just consume the row.
+          await db.from('jukebox_queue').delete().eq('id', head.id)
+          break
+        }
+        // Stay on the active device; transfer(play:false) pauses Connect speakers.
         await startPlayback({ deviceId, uri: head.spotify_uri })
         await db.from('jukebox_queue').delete().eq('id', head.id)
         break

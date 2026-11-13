@@ -73,8 +73,19 @@ type TokenResponse = {
 type CalendarListItem = {
   id?: string
   summary?: string
+  /** Sidebar label when the user renamed a calendar in Google Calendar. */
+  summaryOverride?: string
   primary?: boolean
   backgroundColor?: string
+}
+
+function calendarDisplayName(cal: CalendarListItem): string {
+  return cal.summaryOverride?.trim() || cal.summary?.trim() || cal.id || 'Calendar'
+}
+
+/** Outlook / Exchange calendars Google imports use this id suffix. */
+function isImportedCalendar(id: string): boolean {
+  return id.endsWith('@import.calendar.google.com')
 }
 
 /** Google often omits subscribed "interesting" calendars from calendarList; holidays are still readable by id. */
@@ -204,14 +215,35 @@ async function saveAccount(tokens: TokenResponse, email: string, calendars: Cale
   console.log('\nCalendars:')
 
   for (const cal of byId.values()) {
-    if (!cal.id || !cal.summary) continue
-    const memberId = cal.primary ? primaryMemberId : null
+    if (!cal.id) continue
+    const name = calendarDisplayName(cal)
+    if (!name) continue
+
+    // Keep an existing secondary mapping (e.g. work calendar → Daniel) across re-login.
+    const { data: existing } = await db
+      .from('calendar_sources')
+      .select('member_id, name')
+      .eq('household_id', householdId)
+      .eq('integration_id', integrationId!)
+      .eq('external_id', cal.id)
+      .maybeSingle()
+
+    // Never clobber a Settings mapping. New primary / Outlook imports default to --member.
+    const memberId = existing
+      ? existing.member_id
+      : (cal.primary || isImportedCalendar(cal.id) ? primaryMemberId : null)
+    // Prefer a nicer local name (e.g. "Dan's Work") over Google's generic "Calendar" import label.
+    const savedName =
+      existing?.name && existing.name !== cal.summary && !cal.summaryOverride
+        ? existing.name
+        : name
+
     const { error } = await db.from('calendar_sources').upsert(
       {
         household_id: householdId,
         integration_id: integrationId!,
         external_id: cal.id,
-        name: cal.summary,
+        name: savedName,
         member_id: memberId,
         account_email: email,
         enabled: true,
@@ -219,8 +251,11 @@ async function saveAccount(tokens: TokenResponse, email: string, calendars: Cale
       { onConflict: 'household_id,integration_id,external_id' },
     )
     if (error) throw new Error(error.message)
-    const who = cal.primary ? memberSlug : 'family'
-    console.log(`  - ${cal.summary}${cal.primary ? ' (primary)' : ''} → ${who}`)
+    const whoLabel =
+      memberId == null
+        ? 'family'
+        : (Object.entries(MEMBER_IDS).find(([, id]) => id === memberId)?.[0] ?? memberId)
+    console.log(`  - ${savedName}${cal.primary ? ' (primary)' : ''}${isImportedCalendar(cal.id) ? ' (import)' : ''} → ${whoLabel}`)
   }
 
   console.log('\nDone. Run `pnpm google:calendar-sync` (or wait for the edge cron) to pull events.')
