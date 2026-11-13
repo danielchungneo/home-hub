@@ -3,11 +3,17 @@
 // Icon-bearing types take the app's icon-name union as `I`; it defaults to string
 // so this package stays independent of any one app's icon set.
 
-export type MemberColor = 'moss' | 'clay' | 'honey' | 'fjord' | 'plum'
-export type Routine = 'morning' | 'afternoon' | 'evening' | 'chores'
+import type { MemberColor } from './colors'
+
 export type ScreenId =
   | 'calendar' | 'tasks' | 'rewards' | 'meals' | 'recipes'
-  | 'lists' | 'jukebox' | 'settings'
+  | 'lists' | 'jukebox' | 'profiles' | 'settings'
+
+/**
+ * Blob character id stored on `members.avatar`. Validated in the kiosk against
+ * the BlobAvatar registry; unknown values fall back to pebble at render time.
+ */
+export type MemberAvatarId = string
 
 export interface Member {
   id: string
@@ -15,18 +21,62 @@ export interface Member {
   initial: string
   role: 'parent' | 'child'
   roleLabel: string
-  color: MemberColor
+  /**
+   * Named preset (see `MemberColor`) or custom `#RRGGBB`.
+   * Never `slate` — that token is reserved for Family / Home / Up for grabs.
+   */
+  color: string
+  /** Blob character id, e.g. "pebble". Defaults to pebble when unset in the DB. */
+  avatar: MemberAvatarId
   earnsPoints: boolean
-  routines: Routine[]
+  /** False hides them from rails and pickers; history stays. */
+  active: boolean
 }
 
-export interface Task<I extends string = string> {
+// ---------- Tasks (see docs/TASKS.md) ----------
+
+export type Frequency = 'daily' | 'weekly'
+
+/** task_templates: the reusable library the Add sheet picks from. */
+export interface TaskTemplate<I extends string = string> {
   id: string
-  memberId: string // a member id, or 'home' for shared chores
   title: string
   icon: I
-  routine: Routine
+  /** Default points; a task can override. */
   points: number
+  /** Whether it's usually a daily or a weekly task. */
+  frequency: Frequency
+  /** How many times it's been picked; sorts the library. */
+  uses: number
+}
+
+/** When a task shows up. Days are 0 = Sunday … 6 = Saturday. */
+export type Schedule =
+  | { kind: 'days'; days: number[] }                 // daily, on these weekdays
+  | { kind: 'once'; date: string }                   // daily, one day only (yyyy-mm-dd)
+  | { kind: 'weekly'; every: 1 | 2; dueDay: number } // weekly, due by dueDay
+  | { kind: 'thisWeek'; dueDay: number }             // weekly, this week only
+
+/** tasks: one template assigned to one person on a schedule. */
+export interface Task {
+  id: string
+  templateId: string
+  memberId: string
+  frequency: Frequency
+  schedule: Schedule
+  points: number
+  /** Set when the task came from claiming a bounty. */
+  bountyId?: string
+}
+
+/** bounties: up-for-grabs tasks. Whoever claims it does it and gets the points. */
+export interface Bounty {
+  id: string
+  templateId: string
+  points: number
+  /** Due by this weekday; null = any time this week. */
+  dueDay: number | null
+  claimedBy: string | null
 }
 
 export interface CalendarEvent {
@@ -42,7 +92,21 @@ export interface CalendarEvent {
   /** Absolute start (ISO); used by Idle / range filters. */
   startsAt?: string
   endsAt?: string
+  /** Shown in event details and the Up next card (from Google location). */
+  where?: string
+  /** Minutes of travel; shows "Leave by …" (from sync-job cache). */
+  travelMin?: number
+  /** One-line note (from Google description). */
+  note?: string
+  /** Repeats every week (mock only: real recurring events arrive expanded). */
+  weekly?: boolean
 }
+
+/** A big day the family is counting down to ("Thanksgiving · 16 days"). */
+export interface Countdown { id: string; title: string; date: string; color: MemberColor }
+
+export type WeatherKind = 'sunny' | 'cloudy' | 'rainy'
+export interface DayWeather { kind: WeatherKind; high: number }
 
 /** One Google calendar linked for the household. */
 export interface CalendarSource {
@@ -56,12 +120,25 @@ export interface CalendarSource {
   lastSyncedAt?: string
 }
 
+export type RewardAisle = 'Treats' | 'Time off' | 'Family fun'
+
 export interface Reward<I extends string = string> {
   id: string
   title: string
+  /** Price in stars. */
   cost: number
   icon: I
   color: MemberColor
+  aisle: RewardAisle
+  /** One line for the product sheet. */
+  blurb: string
+}
+
+/** A weekly discount on one reward. */
+export interface RewardDeal {
+  rewardId: string
+  cost: number
+  ends: string
 }
 
 export interface LedgerEntry {
@@ -72,10 +149,13 @@ export interface LedgerEntry {
   when: string
 }
 
+/** A purchase waiting for the other parent. Stars are held (already in the ledger) until approved or denied. */
 export interface Redemption {
   id: string
   memberId: string
   rewardId: string
+  /** What was paid, so a deal price is refunded correctly. */
+  cost: number
 }
 
 export interface Ingredient {
@@ -155,6 +235,8 @@ export interface ShoppingList<I extends string = string> {
   icon: I
   color: MemberColor
   items: ListItem[]
+  /** One-tap "Usually on it" chips: things that often end up on this list. */
+  usual?: { text: string; category: string }[]
 }
 
 export interface Speaker {

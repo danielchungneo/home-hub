@@ -1,8 +1,23 @@
 export type { Database, Json } from './database.types';
 export { createHubClient } from './supabase';
 export type { HubClient, HubClientOptions } from './supabase';
-export { TASK_ROUTINES, MEMBER_ROLES, PROFILE_KINDS, REDEMPTION_STATUSES } from './constants';
-export type { TaskRoutine, MemberRole, ProfileKind, RedemptionStatus } from './constants';
+export { TASK_FREQUENCIES, MEMBER_ROLES, PROFILE_KINDS, REDEMPTION_STATUSES } from './constants';
+export type { TaskFrequency, MemberRole, ProfileKind, RedemptionStatus } from './constants';
+export {
+  MEMBER_COLOR_PRESETS,
+  MEMBER_COLOR_PRESET_OPTIONS,
+  SYSTEM_COLOR,
+  THEME_COLOR_HEX,
+  isHexColor,
+  isMemberColorPreset,
+  isThemeColorToken,
+  coerceMemberColor,
+  normalizeHexColor,
+  normalizePersonColor,
+  resolveThemeColor,
+  tintFromHex,
+} from './colors';
+export type { MemberColor, SystemColor, ThemeColorToken } from './colors';
 export {
   ALL_RECIPE_TAGS,
   RECIPE_CUISINES,

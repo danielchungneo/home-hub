@@ -54,18 +54,23 @@ export function isShoppableIngredient(name: string): boolean {
   return true
 }
 
-/** Rough store-walk order when Kroger aisle data isn't available yet. */
+/**
+ * Store-walk order from the produce entrance:
+ * Produce → Bakery → Meat → center aisles → Dairy → Frozen → checkout.
+ * Center-store heuristics (Pantry, Beverages, …) sit where numbered aisles go
+ * when Kroger hasn't returned an aisle number yet.
+ */
 export const GROCERY_AISLE_ORDER = [
   'Produce',
-  'Meat & seafood',
-  'Dairy & eggs',
   'Bakery',
   'Deli',
-  'Frozen',
+  'Meat & seafood',
   'Pantry',
   'Beverages',
   'Household',
   'Baby',
+  'Dairy & eggs',
+  'Frozen',
   'Other',
 ] as const
 
@@ -144,22 +149,42 @@ export function guessGroceryAisle(name: string): GroceryAisle {
   return 'Other'
 }
 
-/** Prefer numbered Kroger aisles, then store departments, then heuristic buckets. */
+/**
+ * Sort key for top-to-bottom store walk from the produce entrance:
+ * Produce → Bakery → (Deli) → Meat → Aisle N → Dairy → Frozen.
+ */
 export function aisleSortKey(aisle: string): number {
   const numbered = aisle.match(/aisle\s+(\d+)/i)
-  if (numbered) return Number(numbered[1])
+  // Numbered center aisles sit after meat / before dairy.
+  if (numbered) return 400 + Number(numbered[1])
 
   const upper = aisle.trim().toUpperCase()
-  if (upper.includes('PRODUCE') || upper.includes('VEGETABLE') || upper.includes('FRUIT')) return 200
-  if (upper.includes('MEAT') || upper.includes('SEAFOOD') || upper.includes('BUTCHER')) return 220
-  if (upper.includes('DAIRY') || upper.includes('EGG')) return 240
-  if (upper.includes('BAKERY') || upper.includes('BREAD')) return 260
-  if (upper.includes('DELI')) return 280
-  if (upper.includes('FROZEN')) return 300
-  if (upper.includes('BEVERAGE') || upper.includes('DRINK')) return 320
+  if (upper.includes('PRODUCE') || upper.includes('VEGETABLE') || upper.includes('FRUIT')) return 10
+  if (upper.includes('BAKERY') || upper.includes('BREAD')) return 20
+  if (upper.includes('DELI')) return 25
+  if (upper.includes('MEAT') || upper.includes('SEAFOOD') || upper.includes('BUTCHER')) return 30
+  if (upper.includes('BEVERAGE') || upper.includes('DRINK')) return 420
+  if (upper.includes('DAIRY') || upper.includes('EGG')) return 500
+  if (upper.includes('FROZEN')) return 510
+  if (upper.includes('CHECKOUT') || upper.includes('FRONT END')) return 600
 
+  // Match GROCERY_AISLE_ORDER slots to the same walk (center-store heuristics ≈ aisles).
+  const slots: Record<GroceryAisle, number> = {
+    Produce: 10,
+    Bakery: 20,
+    Deli: 25,
+    'Meat & seafood': 30,
+    Pantry: 410,
+    Beverages: 420,
+    Household: 430,
+    Baby: 440,
+    'Dairy & eggs': 500,
+    Frozen: 510,
+    Other: 900,
+  }
   const idx = GROCERY_AISLE_ORDER.indexOf(aisle as GroceryAisle)
-  return 1000 + (idx === -1 ? GROCERY_AISLE_ORDER.length : idx)
+  if (idx !== -1) return slots[GROCERY_AISLE_ORDER[idx]!]
+  return 900
 }
 
 /** Shorten a recipe ingredient into a Kroger product search term. */

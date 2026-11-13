@@ -727,8 +727,10 @@ export type Database = {
       }
       members: {
         Row: {
+          active: boolean
           avatar: string | null
-          color: Database["public"]["Enums"]["member_color"]
+          /** Named preset or `#RRGGBB` (not system `slate`). */
+          color: string
           created_at: string
           earns_points: boolean
           household_id: string
@@ -742,8 +744,9 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          active?: boolean
           avatar?: string | null
-          color?: Database["public"]["Enums"]["member_color"]
+          color?: string
           created_at?: string
           earns_points?: boolean
           household_id?: string
@@ -757,8 +760,9 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          active?: boolean
           avatar?: string | null
-          color?: Database["public"]["Enums"]["member_color"]
+          color?: string
           created_at?: string
           earns_points?: boolean
           household_id?: string
@@ -940,8 +944,57 @@ export type Database = {
           },
         ]
       }
+      reward_deals: {
+        Row: {
+          cost: number
+          created_at: string
+          ends_on: string
+          household_id: string
+          id: string
+          reward_id: string
+          starts_on: string
+          updated_at: string
+        }
+        Insert: {
+          cost: number
+          created_at?: string
+          ends_on: string
+          household_id?: string
+          id?: string
+          reward_id: string
+          starts_on?: string
+          updated_at?: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          ends_on?: string
+          household_id?: string
+          id?: string
+          reward_id?: string
+          starts_on?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_deals_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_deals_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "rewards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reward_redemptions: {
         Row: {
+          cost: number
           created_at: string
           decided_by: string | null
           household_id: string
@@ -953,6 +1006,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cost: number
           created_at?: string
           decided_by?: string | null
           household_id?: string
@@ -964,6 +1018,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cost?: number
           created_at?: string
           decided_by?: string | null
           household_id?: string
@@ -1008,6 +1063,8 @@ export type Database = {
       rewards: {
         Row: {
           active: boolean
+          aisle: string
+          blurb: string
           color: Database["public"]["Enums"]["member_color"]
           cost: number
           created_at: string
@@ -1020,6 +1077,8 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          aisle: string
+          blurb: string
           color?: Database["public"]["Enums"]["member_color"]
           cost: number
           created_at?: string
@@ -1032,6 +1091,8 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          aisle?: string
+          blurb?: string
           color?: Database["public"]["Enums"]["member_color"]
           cost?: number
           created_at?: string
@@ -1108,37 +1169,114 @@ export type Database = {
           },
         ]
       }
+      bounties: {
+        Row: {
+          claimed_at: string | null
+          claimed_by: string | null
+          created_at: string
+          created_by: string | null
+          due_day: number | null
+          household_id: string
+          id: string
+          points: number
+          template_id: string
+          updated_at: string
+          week_of: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_day?: number | null
+          household_id?: string
+          id?: string
+          points: number
+          template_id: string
+          updated_at?: string
+          week_of: string
+        }
+        Update: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_day?: number | null
+          household_id?: string
+          id?: string
+          points?: number
+          template_id?: string
+          updated_at?: string
+          week_of?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bounties_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bounties_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bounties_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bounties_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "task_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_completions: {
         Row: {
           approved_by: string | null
           completed_at: string
+          completed_by: string | null
           created_at: string
           for_date: string
           household_id: string
           id: string
           member_id: string | null
+          period: string
           task_id: string
           updated_at: string
         }
         Insert: {
           approved_by?: string | null
           completed_at?: string
+          completed_by?: string | null
           created_at?: string
-          for_date: string
+          for_date?: string
           household_id?: string
           id?: string
           member_id?: string | null
+          period: string
           task_id: string
           updated_at?: string
         }
         Update: {
           approved_by?: string | null
           completed_at?: string
+          completed_by?: string | null
           created_at?: string
           for_date?: string
           household_id?: string
           id?: string
           member_id?: string | null
+          period?: string
           task_id?: string
           updated_at?: string
         }
@@ -1146,6 +1284,13 @@ export type Database = {
           {
             foreignKeyName: "task_completions_approved_by_fkey"
             columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_completions_completed_by_fkey"
+            columns: ["completed_by"]
             isOneToOne: false
             referencedRelation: "members"
             referencedColumns: ["id"]
@@ -1173,53 +1318,138 @@ export type Database = {
           },
         ]
       }
+      task_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          frequency: Database["public"]["Enums"]["task_frequency"]
+          household_id: string
+          icon: string
+          id: string
+          points: number
+          title: string
+          updated_at: string
+          uses: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          frequency: Database["public"]["Enums"]["task_frequency"]
+          household_id?: string
+          icon: string
+          id?: string
+          points?: number
+          title: string
+          updated_at?: string
+          uses?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          frequency?: Database["public"]["Enums"]["task_frequency"]
+          household_id?: string
+          icon?: string
+          id?: string
+          points?: number
+          title?: string
+          updated_at?: string
+          uses?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_templates_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           archived_at: string | null
+          bounty_id: string | null
           created_at: string
+          days: number[] | null
           due_date: string | null
+          due_day: number | null
+          every_weeks: number | null
+          frequency: Database["public"]["Enums"]["task_frequency"] | null
           household_id: string
           icon: string | null
           id: string
           member_id: string | null
+          once_on: string | null
           points: number
           recurrence: string | null
-          routine: Database["public"]["Enums"]["task_routine"]
+          routine: Database["public"]["Enums"]["task_routine"] | null
           sort_order: number
-          title: string
+          template_id: string | null
+          title: string | null
           updated_at: string
+          week_of: string | null
         }
         Insert: {
           archived_at?: string | null
+          bounty_id?: string | null
           created_at?: string
+          days?: number[] | null
           due_date?: string | null
+          due_day?: number | null
+          every_weeks?: number | null
+          frequency?: Database["public"]["Enums"]["task_frequency"] | null
           household_id?: string
           icon?: string | null
           id?: string
           member_id?: string | null
+          once_on?: string | null
           points?: number
           recurrence?: string | null
-          routine: Database["public"]["Enums"]["task_routine"]
+          routine?: Database["public"]["Enums"]["task_routine"] | null
           sort_order?: number
-          title: string
+          template_id?: string | null
+          title?: string | null
           updated_at?: string
+          week_of?: string | null
         }
         Update: {
           archived_at?: string | null
+          bounty_id?: string | null
           created_at?: string
+          days?: number[] | null
           due_date?: string | null
+          due_day?: number | null
+          every_weeks?: number | null
+          frequency?: Database["public"]["Enums"]["task_frequency"] | null
           household_id?: string
           icon?: string | null
           id?: string
           member_id?: string | null
+          once_on?: string | null
           points?: number
           recurrence?: string | null
-          routine?: Database["public"]["Enums"]["task_routine"]
+          routine?: Database["public"]["Enums"]["task_routine"] | null
           sort_order?: number
-          title?: string
+          template_id?: string | null
+          title?: string | null
           updated_at?: string
+          week_of?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_bounty_id_fkey"
+            columns: ["bounty_id"]
+            isOneToOne: false
+            referencedRelation: "bounties"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_household_id_fkey"
             columns: ["household_id"]
@@ -1232,6 +1462,59 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "task_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wishlist: {
+        Row: {
+          created_at: string
+          household_id: string
+          member_id: string
+          reward_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          household_id?: string
+          member_id: string
+          reward_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          member_id?: string
+          reward_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlist_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: true
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlist_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "rewards"
             referencedColumns: ["id"]
           },
         ]
@@ -1289,11 +1572,12 @@ export type Database = {
         | "repeat"
       jukebox_media_kind: "track" | "album" | "playlist"
       meal_slot: "breakfast" | "lunch" | "dinner" | "snack"
-      member_color: "moss" | "clay" | "honey" | "fjord" | "plum"
+      member_color: "moss" | "clay" | "honey" | "fjord" | "plum" | "pine" | "berry" | "sand" | "ocean" | "rose" | "slate"
       member_role: "parent" | "child"
       profile_kind: "person" | "kiosk"
       redemption_status: "requested" | "approved" | "denied"
       speaker_provider: "spotify_connect" | "cast" | "alexa"
+      task_frequency: "daily" | "weekly"
       task_routine: "morning" | "afternoon" | "evening" | "chores"
     }
     CompositeTypes: {
@@ -1439,11 +1723,12 @@ export const Constants = {
       ],
       jukebox_media_kind: ["track", "album", "playlist"],
       meal_slot: ["breakfast", "lunch", "dinner", "snack"],
-      member_color: ["moss", "clay", "honey", "fjord", "plum"],
+      member_color: ["moss", "clay", "honey", "fjord", "plum", "pine", "berry", "sand", "ocean", "rose", "slate"],
       member_role: ["parent", "child"],
       profile_kind: ["person", "kiosk"],
       redemption_status: ["requested", "approved", "denied"],
       speaker_provider: ["spotify_connect", "cast", "alexa"],
+      task_frequency: ["daily", "weekly"],
       task_routine: ["morning", "afternoon", "evening", "chores"],
     },
   },

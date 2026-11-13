@@ -84,17 +84,29 @@ where (member_id, title) in (
   )
   or (member_id is null and title = 'Vacuum');
 
--- Rewards
-insert into public.rewards (id, household_id, title, icon, cost, color, sort_order) values
-  ('44444444-4444-4444-4444-444444444401', '11111111-1111-1111-1111-111111111111', 'Sleep in Saturday', 'moon', 100, 'fjord', 1),
-  ('44444444-4444-4444-4444-444444444402', '11111111-1111-1111-1111-111111111111', 'Uninterrupted nap', 'bed', 120, 'clay', 2),
-  ('44444444-4444-4444-4444-444444444403', '11111111-1111-1111-1111-111111111111', 'Pick the takeout', 'utensils', 60, 'honey', 3),
-  ('44444444-4444-4444-4444-444444444404', '11111111-1111-1111-1111-111111111111', 'Coffee shop run', 'mug', 50, 'clay', 4),
-  ('44444444-4444-4444-4444-444444444405', '11111111-1111-1111-1111-111111111111', 'Skip one chore', 'broom', 40, 'moss', 5),
-  ('44444444-4444-4444-4444-444444444406', '11111111-1111-1111-1111-111111111111', 'Pick movie night', 'sofa', 30, 'fjord', 6);
+-- Rewards (Star Shop catalog)
+insert into public.rewards (id, household_id, title, icon, cost, color, sort_order, aisle, blurb) values
+  ('44444444-4444-4444-4444-444444444406', '11111111-1111-1111-1111-111111111111', 'Pick movie night', 'sofa', 30, 'fjord', 1, 'Family fun', 'Your pick, no vetoes. Popcorn is on the house.'),
+  ('44444444-4444-4444-4444-444444444407', '11111111-1111-1111-1111-111111111111', 'Choose game night', 'sparkle', 25, 'plum', 2, 'Family fun', 'Pick the game and who has to be on your team.'),
+  ('44444444-4444-4444-4444-444444444405', '11111111-1111-1111-1111-111111111111', 'Skip one chore', 'broom', 40, 'moss', 3, 'Time off', 'Hand one task to someone else, no questions asked.'),
+  ('44444444-4444-4444-4444-444444444404', '11111111-1111-1111-1111-111111111111', 'Coffee shop run', 'mug', 50, 'clay', 4, 'Treats', 'A latte somewhere quiet, on the family budget.'),
+  ('44444444-4444-4444-4444-444444444403', '11111111-1111-1111-1111-111111111111', 'Pick the takeout', 'utensils', 60, 'honey', 5, 'Treats', 'Friday night, your restaurant, your order.'),
+  ('44444444-4444-4444-4444-444444444408', '11111111-1111-1111-1111-111111111111', 'Breakfast in bed', 'dish', 80, 'honey', 6, 'Treats', 'Pancakes, coffee and the paper, delivered.'),
+  ('44444444-4444-4444-4444-444444444409', '11111111-1111-1111-1111-111111111111', 'Solo Target run', 'bag', 90, 'plum', 7, 'Time off', 'An hour to wander the aisles alone. Bliss.'),
+  ('44444444-4444-4444-4444-444444444401', '11111111-1111-1111-1111-111111111111', 'Sleep in Saturday', 'moon', 100, 'fjord', 8, 'Time off', 'Someone else has the early shift with Noah.'),
+  ('44444444-4444-4444-4444-444444444402', '11111111-1111-1111-1111-111111111111', 'Uninterrupted nap', 'bed', 120, 'clay', 9, 'Time off', 'Ninety minutes, door closed, phone on silent.');
 
-insert into public.reward_redemptions (household_id, reward_id, member_id, status) values
-  ('11111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444402', '22222222-2222-2222-2222-222222222202', 'requested');
+insert into public.reward_deals (household_id, reward_id, cost, starts_on, ends_on) values
+  ('11111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444403', 45,
+    date_trunc('week', timezone('utc', now()))::date,
+    (date_trunc('week', timezone('utc', now())) + interval '6 days')::date);
+
+insert into public.wishlist (member_id, household_id, reward_id) values
+  ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444401'),
+  ('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444402');
+
+insert into public.reward_redemptions (household_id, reward_id, member_id, status, cost) values
+  ('11111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444402', '22222222-2222-2222-2222-222222222202', 'requested', 120);
 
 -- Lists
 insert into public.lists (id, household_id, name, icon, color, sort_order) values

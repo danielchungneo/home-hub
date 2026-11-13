@@ -1,5 +1,5 @@
-export const TASK_ROUTINES = ['morning', 'afternoon', 'evening', 'chores'] as const;
-export type TaskRoutine = (typeof TASK_ROUTINES)[number];
+export const TASK_FREQUENCIES = ['daily', 'weekly'] as const;
+export type TaskFrequency = (typeof TASK_FREQUENCIES)[number];
 
 export const MEMBER_ROLES = ['parent', 'child'] as const;
 export type MemberRole = (typeof MEMBER_ROLES)[number];
