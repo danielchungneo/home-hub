@@ -39,36 +39,53 @@ sudo install -m 644 "$SCRIPT_DIR/caddy/Caddyfile" /etc/caddy/Caddyfile
 sudo systemctl enable caddy
 sudo systemctl restart caddy
 
-echo "==> Kiosk launcher in ~/.bash_profile"
+echo "==> Kiosk readiness helper + launcher in ~/.bash_profile"
+TOOLS="$HOME/hub-kiosk-tools"
+mkdir -p "$TOOLS"
+install -m 755 "$SCRIPT_DIR/ensure-hub-ready.sh" "$TOOLS/ensure-hub-ready.sh"
+if [ -f "$SCRIPT_DIR/kiosk-watchdog.py" ]; then
+  install -m 644 "$SCRIPT_DIR/kiosk-watchdog.py" "$TOOLS/kiosk-watchdog.py"
+fi
+
 PROFILE="$HOME/.bash_profile"
 if [ ! -f "$PROFILE" ]; then
   # bash skips ~/.profile once ~/.bash_profile exists, so keep loading it.
   echo '[ -f "$HOME/.profile" ] && . "$HOME/.profile"' >"$PROFILE"
 fi
-if grep -q 'exec cage' "$PROFILE"; then
-  echo "Already there, leaving it alone."
-else
-  cat >>"$PROFILE" <<EOF
 
-# Chung Family Hub kiosk: autologin on tty1 starts the browser (restart: sudo systemctl restart getty@tty1).
-if [ "\$(tty)" = "/dev/tty1" ]; then
-  # Wait for Caddy — Chromium will stick on a white tab if the first load fails.
-  for i in \$(seq 1 30); do
-    curl -fsS -o /dev/null http://127.0.0.1/ && break
-    sleep 1
-  done
-  # Optional: ~/hub-kiosk-tools/kiosk-watchdog.py reloads via CDP if the first paint is blank.
-  if [ -x "\$HOME/hub-kiosk-tools/venv/bin/python" ] && [ -f "\$HOME/hub-kiosk-tools/kiosk-watchdog.py" ]; then
-    nohup "\$HOME/hub-kiosk-tools/venv/bin/python" "\$HOME/hub-kiosk-tools/kiosk-watchdog.py" \\
+# Always refresh the kiosk block so readiness/chmod fixes stay in sync with this script.
+python3 - "$PROFILE" "$CHROMIUM" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+chromium = sys.argv[2]
+text = path.read_text() if path.exists() else ""
+markers = ("# Chung Family Hub kiosk", 'if [ "$(tty)" = "/dev/tty1" ]')
+start = -1
+for marker in markers:
+    start = text.find(marker)
+    if start >= 0:
+        break
+prefix = (text[:start].rstrip() + "\n\n") if start >= 0 else (text.rstrip() + "\n\n" if text.strip() else "")
+block = f'''# Chung Family Hub kiosk: autologin on tty1 starts the browser (restart: sudo systemctl restart getty@tty1).
+if [ "$(tty)" = "/dev/tty1" ]; then
+  # chmod hub (Windows scp leaves 700) and wait until Caddy serves real JS, not HTML fallback.
+  [ -x "$HOME/hub-kiosk-tools/ensure-hub-ready.sh" ] && "$HOME/hub-kiosk-tools/ensure-hub-ready.sh"
+  # Optional: reload via CDP if Chromium still paints a blank #root.
+  if [ -x "$HOME/hub-kiosk-tools/venv/bin/python" ] && [ -f "$HOME/hub-kiosk-tools/kiosk-watchdog.py" ]; then
+    nohup "$HOME/hub-kiosk-tools/venv/bin/python" "$HOME/hub-kiosk-tools/kiosk-watchdog.py" \\
       >/tmp/hub-kiosk-watchdog.log 2>&1 &
     disown || true
   fi
-  exec cage -- $CHROMIUM --kiosk --ozone-platform=wayland --password-store=basic \\
+  exec cage -- {chromium} --kiosk --ozone-platform=wayland --password-store=basic \\
     --noerrdialogs --disable-infobars --disable-session-crashed-bubble \\
     --no-first-run --remote-debugging-port=9222 --disk-cache-size=1 http://127.0.0.1/
 fi
-EOF
-fi
+'''
+path.write_text(prefix + block)
+print("Updated", path)
+PY
 
 echo "==> Music agent (optional; needs Node 20+)"
 if command -v node >/dev/null 2>&1; then

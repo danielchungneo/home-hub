@@ -18,7 +18,8 @@ ssh "$TARGET" 'rm -rf /tmp/hub-dist'
 scp -r apps/kiosk/dist "$TARGET:/tmp/hub-dist"
 
 # chmod is required: copied files can arrive as drwx------ and Caddy can't read them.
+# Owner chmod (no sudo) — sudo prompts used to leave assets as 700 → white screen.
 echo "==> Installing into /var/www/hub and restarting the kiosk browser"
-ssh -t "$TARGET" 'rm -rf /var/www/hub/* && cp -r /tmp/hub-dist/* /var/www/hub/ && rm -rf /tmp/hub-dist && sudo chmod -R a+rX /var/www/hub && sudo systemctl restart getty@tty1'
+ssh -t "$TARGET" 'rm -rf /var/www/hub/* && cp -r /tmp/hub-dist/* /var/www/hub/ && rm -rf /tmp/hub-dist && chmod -R a+rX /var/www/hub && sudo systemctl restart getty@tty1'
 
 echo "Deployed to $PI_HOST. The kiosk is restarting."

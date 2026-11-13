@@ -1,4 +1,4 @@
-# Build the kiosk on this machine and copy it to the Pi (never build on the Pi 3 B+).
+﻿# Build the kiosk on this machine and copy it to the Pi (never build on the Pi 3 B+).
 # Usage: pnpm deploy:pi    or    powershell -File pi/deploy.ps1 -PiHost home-hub.local -PiUser danielchung
 param(
   [string]$PiHost = 'home-hub.local',
@@ -22,8 +22,9 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Copy to the Pi failed.' }
 
   # chmod is required: files copied from Windows arrive as drwx------ and Caddy can't read them.
+  # Use owner chmod (no sudo) — sudo often prompts and used to leave assets as 700 → white screen.
   Write-Host '==> Installing into /var/www/hub and restarting the kiosk browser'
-  ssh -t $target 'rm -rf /var/www/hub/* && cp -r /tmp/hub-dist/* /var/www/hub/ && rm -rf /tmp/hub-dist && sudo chmod -R a+rX /var/www/hub && sudo systemctl restart getty@tty1'
+  ssh -t $target 'rm -rf /var/www/hub/* && cp -r /tmp/hub-dist/* /var/www/hub/ && rm -rf /tmp/hub-dist && chmod -R a+rX /var/www/hub && sudo systemctl restart getty@tty1'
   if ($LASTEXITCODE -ne 0) { throw 'Install on the Pi failed.' }
 
   Write-Host "Deployed to $PiHost. The kiosk is restarting."
