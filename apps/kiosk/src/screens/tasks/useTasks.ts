@@ -1,13 +1,17 @@
 import { useCallback, useMemo, useState } from 'react'
 import {
+  useAddTask,
+  useBounties,
+  useClaimBounty,
   useCompleted,
   useLedger,
+  useTaskTemplates,
   useTasks as useLiveTasks,
   useToggleTask,
 } from '../../data/hooks'
 import { localDate } from '../../data/mappers'
 import { useLive } from '../../data/live'
-import type { Bounty, Frequency, Schedule, Task, TaskTemplate } from '../../types'
+import type { Frequency, Schedule, TaskTemplate } from '../../types'
 
 /** What the Add sheet hands back. */
 export interface NewTask {
@@ -20,22 +24,25 @@ export interface NewTask {
   points: number
 }
 
-/**
- * Tasks screen state over live Supabase rows where wired.
- * Template library, bounties, and add/claim still need hooks — those stay empty.
- */
+/** Tasks screen state over live Supabase rows. */
 export function useTasks() {
   const period = localDate()
   const tasksQ = useLiveTasks()
+  const templatesQ = useTaskTemplates()
+  const bountiesQ = useBounties()
   const completedQ = useCompleted(period)
   const ledgerQ = useLedger()
   const toggleMut = useToggleTask()
+  const addMut = useAddTask()
+  const claimMut = useClaimBounty()
   useLive('tasks', 'tasks')
+  useLive('task_templates', 'taskTemplates')
+  useLive('bounties', 'bounties')
   useLive('task_completions', 'completions')
   useLive('points_ledger', 'ledger')
 
-  const templates: TaskTemplate[] = []
-  const bounties: Bounty[] = []
+  const templates = templatesQ.data ?? []
+  const bounties = bountiesQ.data ?? []
   const tasks = tasksQ.data ?? []
   const done = useMemo(() => new Set(completedQ.data ?? []), [completedQ.data])
   /** Snapshot of done when first loaded so new checks don't jump to the bottom. */
@@ -62,11 +69,35 @@ export function useTasks() {
     [done, period, toggleMut],
   )
 
-  /** Bounty claim — not wired to Supabase yet. */
-  const claim = useCallback((_bountyId: string, _memberId: string): Task | null => null, [])
+  const claim = useCallback(
+    async (bountyId: string, memberId: string) => {
+      const task = await claimMut.mutateAsync({ bountyId, memberId })
+      return task
+    },
+    [claimMut],
+  )
 
-  /** Add task / template / bounty — not wired to Supabase yet. */
-  const add = useCallback((_input: NewTask): { title: string; taskId: string | null } | null => null, [])
+  const add = useCallback(
+    async (input: NewTask) => {
+      const r = await addMut.mutateAsync({
+        templateId: input.templateId,
+        newTemplate: input.newTemplate
+          ? {
+              title: input.newTemplate.title,
+              icon: input.newTemplate.icon,
+              points: input.newTemplate.points,
+              frequency: input.newTemplate.frequency,
+            }
+          : undefined,
+        assignee: input.assignee,
+        frequency: input.frequency,
+        schedule: input.schedule,
+        points: input.points,
+      })
+      return r
+    },
+    [addMut],
+  )
 
   const balances = useMemo(() => {
     const out: Record<string, number> = {}
@@ -85,7 +116,7 @@ export function useTasks() {
     claim,
     add,
     balances,
-    ready: Boolean(tasksQ.data && completedQ.data),
+    ready: Boolean(tasksQ.data && completedQ.data && templatesQ.data && bountiesQ.data),
   }
 }
 

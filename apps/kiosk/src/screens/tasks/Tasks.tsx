@@ -77,14 +77,19 @@ export default function Tasks() {
   }
 
   const onClaim = (bountyId: string) => {
-    const task = claim(bountyId, personId)
-    if (!task) {
-      setToast('Bounties aren’t wired to Supabase yet.')
-      return
-    }
-    setArrived(task.id)
-    later(ARRIVE_MS, () => setArrived(null))
-    setToast(`${template(task.templateId).title} is yours: +${task.points} points when it’s done`)
+    void claim(bountyId, personId)
+      .then((task) => {
+        if (!task) {
+          setToast('Someone else claimed that bounty first.')
+          return
+        }
+        setArrived(task.id)
+        later(ARRIVE_MS, () => setArrived(null))
+        setToast(`${template(task.templateId).title} is yours: +${task.points} points when it’s done`)
+      })
+      .catch((err: unknown) => {
+        setToast(err instanceof Error ? err.message : 'Couldn’t claim that bounty.')
+      })
   }
 
   const left = (id: string) => tasks.filter((t) => t.memberId === id && isActive(t, now) && !done.has(t.id)).length
@@ -148,21 +153,24 @@ export default function Tasks() {
           now={now}
           onClose={() => setSheet(null)}
           onSave={(input, isNew) => {
-            const r = add(input)
             setSheet(null)
-            if (!r) {
-              setToast('Adding tasks isn’t wired to Supabase yet.')
-              return
-            }
-            if (input.assignee !== 'bounty') {
-              setPersonId(input.assignee)
-              setArrived(r.taskId)
-              later(ARRIVE_MS, () => setArrived(null))
-            }
-            const whoName = members.find((m) => m.id === input.assignee)?.name ?? 'someone'
-            const where = input.assignee === 'bounty' ? ' to the bounty board'
-              : ` to ${whoName}’s ${input.frequency === 'weekly' ? 'week' : 'day'}`
-            setToast(isNew ? `Saved “${r.title}” to the library and added it${where}` : `Added ${r.title}${where}`)
+            void add(input)
+              .then((r) => {
+                if (input.assignee !== 'bounty') {
+                  setPersonId(input.assignee)
+                  if (r.taskId) {
+                    setArrived(r.taskId)
+                    later(ARRIVE_MS, () => setArrived(null))
+                  }
+                }
+                const whoName = members.find((m) => m.id === input.assignee)?.name ?? 'someone'
+                const where = input.assignee === 'bounty' ? ' to the bounty board'
+                  : ` to ${whoName}’s ${input.frequency === 'weekly' ? 'week' : 'day'}`
+                setToast(isNew ? `Saved “${r.title}” to the library and added it${where}` : `Added ${r.title}${where}`)
+              })
+              .catch((err: unknown) => {
+                setToast(err instanceof Error ? err.message : 'Couldn’t add that task.')
+              })
           }}
         />
       )}

@@ -27,6 +27,8 @@ export function useRewards() {
   const wishlistQ = useWishlist()
   useLive('points_ledger', 'ledger')
   useLive('reward_redemptions', 'redemptions', 'ledger')
+  useLive('reward_deals', 'rewardDeal')
+  useLive('rewards', 'rewards')
 
   const redeem = useRedeem()
   const decide = useDecideRedemption()
