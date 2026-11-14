@@ -184,7 +184,8 @@ All animations are CSS keyframes on `transform` and `opacity` (see `Jukebox.modu
 | Record | One turn every 4s; slides behind the cover when paused |
 | Equalizer bars | 2.2s / 1.8s / 2.6s, out of phase |
 | Mini-player ring | Every 3.2s, opacity .4 → 0 |
-| **Pick (tap a cover)** | 2.35s total: 0–0.35s dim and sleeve lifts · 0.45s record slides out · 0.8s spins · 1.35s record rolls off the right edge and the sleeve fades · 1.75s screen washes to the cover color · 2.35s switch to Now playing, then the wash fades away over 0.8s |
+| **Pick (tap a cover)** | 2.35s total: 0–0.35s dim and sleeve lifts · 0.45s record slides out · 0.8s spins · 1.35s record rolls off the right edge and the sleeve fades · 1.75s screen washes to the cover color · 2.35s switch to Now playing, then the wash fades away over 0.8s. The play command starts at tap so Cast wake overlaps the celebration. |
+| **Starting (after pick)** | Until `jukebox_state` confirms a new track is playing (or ~20s): Now playing shows the chosen cover with glow + breathe + half-peek vinyl spin, status “Waking the {speaker}…”, no rings or transport. Cleared when Realtime reports the new URI playing. |
 
 ---
 

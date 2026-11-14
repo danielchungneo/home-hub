@@ -5,7 +5,7 @@ import { Label } from '../../components/primitives'
 import { totalLengthMs, trackTime } from '../../lib/jukeboxMedia'
 import type { Track } from '@hub/shared'
 import { Cover, Equalizer, artVars } from './parts'
-import type { Jukebox } from './useJukebox'
+import type { Jukebox, StartingPlayback } from './useJukebox'
 import s from './Jukebox.module.css'
 
 function Elapsed({ jb }: { jb: Jukebox }) {
@@ -39,9 +39,113 @@ export function statusLine(jb: Jukebox) {
   return `${playing ? 'Playing in' : 'Paused in'} ${name}${from ? ` · from ${from}` : ''}`
 }
 
-export function NowPlaying({ jb }: { jb: Jukebox }) {
+function startingStatus(jb: Jukebox) {
+  const name = jb.speakers.find((sp) => sp.id === jb.player.speakerId)?.name ?? 'speaker'
+  return `Waking the ${name}…`
+}
+
+function SpeakerRow({ jb }: { jb: Jukebox }) {
+  return (
+    <div className={s.speakers}>
+      <Label>Play on</Label>
+      {jb.speakers.map((sp) => {
+        const on = sp.id === jb.player.speakerId
+        return (
+          <button key={sp.id} type="button" aria-pressed={on} onClick={() => jb.setSpeaker(sp.id)}
+            className={[s.speaker, on && s.speakerOn, !sp.available && s.speakerAsleep].filter(Boolean).join(' ')}>
+            <Icon name="speaker" size={20} />
+            {sp.available ? sp.name : `${sp.name} · asleep`}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function QueueAside({ jb }: { jb: Jukebox }) {
   const { player } = jb
+  return (
+    <aside aria-label="Up next" className={`${s.panel} ${s.queuePanel}`}>
+      <div className={s.queueHead}>
+        <div>
+          <h2 className={s.queueTitle}>Up next</h2>
+          <span className={s.queueMeta}>
+            {jb.queueTracks.length
+              ? `${jb.queueTracks.length} ${jb.queueTracks.length === 1 ? 'song' : 'songs'} · ${totalLengthMs(jb.queueTracks)}`
+              : 'Queue is empty'}
+          </span>
+        </div>
+        {jb.queueTracks.length > 0 && <button type="button" className={s.clear} onClick={jb.clearQueue}>Clear</button>}
+      </div>
+      <ol className={`${s.queueList} scroll-y`}>
+        {jb.queueTracks.map((t, i) => (
+          <li key={`${t.uri}-${i}`} className={s.queueRow}>
+            <span className={s.grip} aria-hidden="true"><Icon name="grip" size={18} /></span>
+            <button type="button" className={s.rowMain} aria-label={`Play ${t.title} now`} onClick={() => jb.playFromQueue(i)}>
+              <span className={s.rowArt}><Cover item={t} size={52} /></span>
+              <span className={s.rowText}>
+                <span className={s.rowTitle}>{t.title}</span>
+                <span className={s.rowSub}>{t.artist} · {trackTime(t.durationMs)}</span>
+              </span>
+            </button>
+            <IconButton icon="arrow-up" label={`Move ${t.title} up`} round={false} disabled={i === 0} onClick={() => jb.moveUp(i)} />
+            <IconButton icon="close" label={`Remove ${t.title} from queue`} round={false} onClick={() => jb.remove(i)} />
+          </li>
+        ))}
+      </ol>
+      {!jb.queueTracks.length && (
+        <div className={s.empty}>
+          <span className={s.emptyTitle}>Nothing queued</span>
+          <span>Add songs from Songs, Playlists or Albums, or tap Play next to slot one in right after this song.</span>
+        </div>
+      )}
+      <span className={s.queueFoot}>{player.from ? `Playing from ${player.from} · stops when the queue runs out` : 'Stops when the queue runs out'}</span>
+    </aside>
+  )
+}
+
+/** Cover on the platter while the speaker wakes and the agent confirms Spotify. */
+function StartingStage({ jb, starting }: { jb: Jukebox; starting: StartingPlayback }) {
+  return (
+    <section
+      aria-label="Starting playback"
+      aria-live="polite"
+      className={`${s.stage} ${s.stageStarting}`}
+      style={artVars(starting.art)}
+    >
+      <span className={s.glow} aria-hidden="true" />
+      <div className={s.stageMain}>
+        <div className={s.artWrap}>
+          <span className={s.vinyl} aria-hidden="true"><span className={s.vinylDisc}><span className={s.vinylLabel} /></span></span>
+          <div className={s.bigArt}><div className={s.bigArtInner}><Cover item={starting} size={400} /></div></div>
+        </div>
+        <div className={s.nowInfo}>
+          <div className={s.nowText}>
+            <span className={s.nowStatus}>{startingStatus(jb)}</span>
+            <span className={s.nowTitle}>{starting.title}</span>
+            <span className={s.nowArtist}>{starting.subtitle}</span>
+          </div>
+          <p className={s.startingHint}>Putting the record on — this can take a moment if the speaker was asleep.</p>
+        </div>
+      </div>
+      <SpeakerRow jb={jb} />
+    </section>
+  )
+}
+
+export function NowPlaying({ jb }: { jb: Jukebox }) {
+  const { player, starting } = jb
   const track = player.track
+
+  if (starting) {
+    return (
+      <div className={s.nowLayout}>
+        <StartingStage jb={jb} starting={starting} />
+        <QueueAside jb={jb} />
+      </div>
+    )
+  }
+
   if (!track) {
     return (
       <section className={`${s.panel} ${s.nothing}`}>
@@ -95,64 +199,46 @@ export function NowPlaying({ jb }: { jb: Jukebox }) {
             </div>
           </div>
         </div>
-        <div className={s.speakers}>
-          <Label>Play on</Label>
-          {jb.speakers.map((sp) => {
-            const on = sp.id === player.speakerId
-            return (
-              <button key={sp.id} type="button" aria-pressed={on} onClick={() => jb.setSpeaker(sp.id)}
-                className={[s.speaker, on && s.speakerOn, !sp.available && s.speakerAsleep].filter(Boolean).join(' ')}>
-                <Icon name="speaker" size={20} />
-                {sp.available ? sp.name : `${sp.name} · asleep`}
-              </button>
-            )
-          })}
-        </div>
+        <SpeakerRow jb={jb} />
       </section>
 
-      <aside aria-label="Up next" className={`${s.panel} ${s.queuePanel}`}>
-        <div className={s.queueHead}>
-          <div>
-            <h2 className={s.queueTitle}>Up next</h2>
-            <span className={s.queueMeta}>
-              {jb.queueTracks.length
-                ? `${jb.queueTracks.length} ${jb.queueTracks.length === 1 ? 'song' : 'songs'} · ${totalLengthMs(jb.queueTracks)}`
-                : 'Queue is empty'}
-            </span>
-          </div>
-          {jb.queueTracks.length > 0 && <button type="button" className={s.clear} onClick={jb.clearQueue}>Clear</button>}
-        </div>
-        <ol className={`${s.queueList} scroll-y`}>
-          {jb.queueTracks.map((t, i) => (
-            <li key={`${t.uri}-${i}`} className={s.queueRow}>
-              <span className={s.grip} aria-hidden="true"><Icon name="grip" size={18} /></span>
-              <button type="button" className={s.rowMain} aria-label={`Play ${t.title} now`} onClick={() => jb.playFromQueue(i)}>
-                <span className={s.rowArt}><Cover item={t} size={52} /></span>
-                <span className={s.rowText}>
-                  <span className={s.rowTitle}>{t.title}</span>
-                  <span className={s.rowSub}>{t.artist} · {trackTime(t.durationMs)}</span>
-                </span>
-              </button>
-              <IconButton icon="arrow-up" label={`Move ${t.title} up`} round={false} disabled={i === 0} onClick={() => jb.moveUp(i)} />
-              <IconButton icon="close" label={`Remove ${t.title} from queue`} round={false} onClick={() => jb.remove(i)} />
-            </li>
-          ))}
-        </ol>
-        {!jb.queueTracks.length && (
-          <div className={s.empty}>
-            <span className={s.emptyTitle}>Nothing queued</span>
-            <span>Add songs from Songs, Playlists or Albums, or tap Play next to slot one in right after this song.</span>
-          </div>
-        )}
-        <span className={s.queueFoot}>{player.from ? `Playing from ${player.from} · stops when the queue runs out` : 'Stops when the queue runs out'}</span>
-      </aside>
+      <QueueAside jb={jb} />
     </div>
   )
 }
 
 export function MiniPlayer({ jb, onOpen }: { jb: Jukebox; onOpen: () => void }) {
-  const { player } = jb
+  const { player, starting } = jb
   const track = player.track
+
+  if (starting) {
+    return (
+      <section aria-label="Player" className={`${s.mini} ${s.stageStarting}`} style={artVars(starting.art)}>
+        <button type="button" className={s.miniTrack} aria-label={`Open now playing: ${starting.title}`} onClick={onOpen}>
+          <span className={s.miniArtWrap}>
+            <span className={s.miniPulse} aria-hidden="true" />
+            <span className={s.miniArt}><Cover item={starting} size={76} /></span>
+          </span>
+          <span className={s.miniText}>
+            <span className={s.miniStatus}>{startingStatus(jb)}</span>
+            <span className={s.miniTitle}>{starting.title}</span>
+            <span className={s.miniArtist}>{starting.subtitle}</span>
+          </span>
+          <Icon name="chevron-up" size={24} />
+        </button>
+        <div className={s.miniCenter}>
+          <p className={s.startingHint}>Putting it on…</p>
+        </div>
+        <div className={s.miniRight}>
+          <button type="button" className={s.upNext} onClick={onOpen}>
+            <Icon name="queue" size={22} />
+            {jb.queueTracks.length ? `Up next · ${jb.queueTracks.length}` : 'Queue empty'}
+          </button>
+        </div>
+      </section>
+    )
+  }
+
   if (!track) return null
   const duration = track.durationMs || player.durationMs
   return (

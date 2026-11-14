@@ -287,6 +287,25 @@
 .stagePaused .ring { visibility: hidden; }
 .stagePaused .vinyl { transform: none; }
 
+/*
+ * Starting: speaker may still be waking. Same calm glow/breathe/spin as playing,
+ * but no rings (those mean music is flowing) and the record only half-peeks —
+ * settling onto the platter until Realtime confirms playback.
+ */
+.stageStarting .vinyl { transform: translateX(48px); }
+.stageStarting .nowStatus,
+.stageStarting .miniStatus {
+  animation: startingStatus var(--pulse) ease-in-out infinite;
+}
+.startingHint {
+  margin: 0;
+  max-width: 28ch;
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink-2);
+  line-height: 1.4;
+}
+
 .nowInfo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 22px; }
 .nowText { display: flex; flex-direction: column; gap: 8px; }
 .nowStatus { font-size: var(--text-sm); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-eyebrow); color: var(--color-ink-2); }
@@ -411,6 +430,10 @@
 @keyframes breathe {
   0%, 100% { transform: scale(1); }
   40% { transform: scale(1.02); }
+}
+@keyframes startingStatus {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
 }
 @keyframes ring {
   0% { transform: scale(1); opacity: 0.3; }

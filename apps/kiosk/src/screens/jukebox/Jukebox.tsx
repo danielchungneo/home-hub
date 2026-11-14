@@ -65,16 +65,21 @@ export default function Jukebox() {
 
   const pick = (c: Collection) => {
     timers.current.forEach((t) => window.clearTimeout(t))
-    const start = () => { jb.playCollection(c); setTab('now'); setDetail(null); clearSearch() }
-    if (reducedMotion()) { start(); return }
+    // Start the command during the pick so Cast wake overlaps the celebration.
+    jb.playCollection(c, { quiet: true })
+    const finish = () => { setTab('now'); setDetail(null); clearSearch() }
+    if (reducedMotion()) { finish(); return }
     setPicking(c)
     timers.current = [
-      window.setTimeout(() => { start(); setPicking(null); setReveal(c) }, PICK_MS),
+      window.setTimeout(() => { finish(); setPicking(null); setReveal(c) }, PICK_MS),
       window.setTimeout(() => setReveal(null), PICK_MS + REVEAL_MS),
     ]
   }
 
   const current = jb.player.track
+  const nowCover = jb.starting
+    ? { title: jb.starting.title, art: jb.starting.art }
+    : current
   const tabs: { id: Exclude<Tab, 'now'>; label: string; count: number }[] = [
     { id: 'songs', label: 'Songs', count: jb.songs.length },
     { id: 'playlists', label: 'Playlists', count: jb.playlists.length },
@@ -100,7 +105,7 @@ export default function Jukebox() {
               <span className={s.kidPillText}>Kid-friendly</span>
               <Switch checked={kidFriendly} label="Kid-friendly music" onChange={setKidFriendly} />
             </span>
-            <span className={s.speakerPill}><Icon name="speaker" size={22} />{jb.player.playing ? `Playing in ${speaker}` : `Speaker: ${speaker}`}</span>
+            <span className={s.speakerPill}><Icon name="speaker" size={22} />{jb.starting ? `Waking ${speaker}…` : jb.player.playing ? `Playing in ${speaker}` : `Speaker: ${speaker}`}</span>
             <StatusPill tone={jb.speakers.some((sp) => sp.available) ? 'ok' : 'off'}>
               {jb.speakers.some((sp) => sp.available) ? 'Spotify connected' : 'No speakers yet'}
             </StatusPill>
@@ -133,18 +138,18 @@ export default function Jukebox() {
             />
             {query && <button type="button" className={s.searchClear} aria-label="Clear search" onClick={clearSearch}><Icon name="close" size={20} /></button>}
           </label>
-          {current && (
+          {nowCover && (
             <button type="button" aria-pressed={activeTab === 'now' && !query} className={activeTab === 'now' && !query ? `${s.nowBtn} ${s.nowBtnOn}` : s.nowBtn} onClick={() => { setTab('now'); clearSearch() }}>
-              <span className={s.nowBtnArt}><Cover item={current} size={48} /></span>
-              <Equalizer playing={jb.player.playing} />
-              Now playing
+              <span className={s.nowBtnArt}><Cover item={nowCover} size={48} /></span>
+              <Equalizer playing={jb.player.playing && !jb.starting} label={jb.starting ? 'Starting' : 'Now playing'} />
+              {jb.starting ? 'Starting' : 'Now playing'}
             </button>
           )}
         </div>
 
         <div className={keyboard ? `${s.body} ${s.bodyWithKeyboard}` : s.body}>{body}</div>
 
-        {activeTab !== 'now' && !query && current && !keyboard && <MiniPlayer jb={jb} onOpen={() => setTab('now')} />}
+        {activeTab !== 'now' && !query && (current || jb.starting) && !keyboard && <MiniPlayer jb={jb} onOpen={() => setTab('now')} />}
 
         {jb.toast && (
           <div role="status" className={`${s.toast} anim-toast`}><Icon name="tick" size={20} stroke={3} />{jb.toast}</div>

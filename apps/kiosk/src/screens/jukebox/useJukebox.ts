@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Collection, Json, MediaKind, SearchHit, Track } from '@hub/shared'
+import type { Artwork, Collection, Json, MediaKind, SearchHit, Track } from '@hub/shared'
 import {
   useFavorites,
   useJukeboxCommand,
@@ -13,6 +13,7 @@ import {
 import { useLive } from '../../data/live'
 import { fetchCollection } from '../../lib/musicAgent'
 import {
+  artwork,
   collectionTrackToTrack,
   favoriteToCollection,
   favoriteToTrack,
@@ -21,6 +22,19 @@ import {
   recentToCollection,
   trackMeta,
 } from '../../lib/jukeboxMedia'
+
+/** Optimistic cover shown on Now playing until Realtime confirms the speaker started. */
+export interface StartingPlayback {
+  title: string
+  subtitle: string
+  art: Artwork
+  /** Snapshot when the command was sent; clear once a different track or context is playing. */
+  baselineUri: string | null
+  baselineContextUri: string | null
+}
+
+/** Match Cast wake budget in the music-agent (~15s) with a little headroom. */
+const STARTING_TIMEOUT_MS = 20_000
 
 /*
  * Live jukebox state:
@@ -81,10 +95,15 @@ export function useJukebox() {
   const [speakerId, setSpeakerId] = useState<string | null>(null)
   const [from, setFrom] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [starting, setStarting] = useState<StartingPlayback | null>(null)
   const toastTimer = useRef<number>()
   const advanceSent = useRef<string | null>(null)
   /** Block end-of-song advance briefly after play — queue Realtime can arrive before now-playing. */
   const playGraceUntil = useRef(0)
+  const nowPlayingSnap = useRef<{ uri: string | null; contextUri: string | null }>({
+    uri: null,
+    contextUri: null,
+  })
 
   const flash = useCallback((msg: string) => {
     setToast(msg)
@@ -92,6 +111,14 @@ export function useJukebox() {
     toastTimer.current = window.setTimeout(() => setToast(null), 2400)
   }, [])
   useEffect(() => () => window.clearTimeout(toastTimer.current), [])
+
+  const beginStarting = useCallback((next: Omit<StartingPlayback, 'baselineUri' | 'baselineContextUri'>) => {
+    setStarting({
+      ...next,
+      baselineUri: nowPlayingSnap.current.uri,
+      baselineContextUri: nowPlayingSnap.current.contextUri,
+    })
+  }, [])
 
   useEffect(() => {
     void command.mutateAsync({ type: 'refresh_speakers' }).catch(() => {})
@@ -105,6 +132,10 @@ export function useJukebox() {
     [queueQuery.data],
   )
   const live = state.data
+  nowPlayingSnap.current = {
+    uri: live?.nowPlaying?.uri ?? null,
+    contextUri: live?.nowPlaying?.contextUri ?? null,
+  }
 
   useEffect(() => {
     if (speakerId) return
@@ -116,11 +147,28 @@ export function useJukebox() {
     (type: Parameters<typeof command.mutate>[0]['type'], payload?: Json, sid = speakerId) => {
       void command.mutateAsync({ type, speakerId: sid, payload: payload ?? {} }).catch((err) => {
         console.error('[hub] jukebox', err)
+        setStarting(null)
         flash(err instanceof Error ? err.message : 'Playback failed')
       })
     },
     [command, speakerId, flash],
   )
+
+  // Drop the settling stage once a new track/context is confirmed playing, or after the wake budget.
+  useEffect(() => {
+    if (!starting) return
+    const uri = live?.nowPlaying?.uri ?? null
+    const contextUri = live?.nowPlaying?.contextUri ?? null
+    const advanced =
+      (uri != null && uri !== starting.baselineUri) ||
+      (contextUri != null && contextUri !== starting.baselineContextUri)
+    if (live?.isPlaying && advanced) {
+      setStarting(null)
+      return
+    }
+    const id = window.setTimeout(() => setStarting(null), STARTING_TIMEOUT_MS)
+    return () => window.clearTimeout(id)
+  }, [starting, live?.isPlaying, live?.nowPlaying?.uri, live?.nowPlaying?.contextUri])
 
   const npTrack = useMemo(() => {
     const fromState = nowPlayingToTrack(live?.nowPlaying)
@@ -232,18 +280,21 @@ export function useJukebox() {
       setFrom(null)
       playGraceUntil.current = Date.now() + 10_000
       advanceSent.current = null
+      beginStarting({ title: t.title, subtitle: t.artist, art: t.art })
       send('play', { uri: t.uri })
     },
-    playCollection: (c: Collection, opts: { startUri?: string; shuffle?: boolean } = {}) => {
+    playCollection: (c: Collection, opts: { startUri?: string; shuffle?: boolean; quiet?: boolean } = {}) => {
       setFrom(c.title)
       playGraceUntil.current = Date.now() + 10_000
       advanceSent.current = null
+      beginStarting({ title: c.title, subtitle: c.subtitle, art: c.art })
       send('play', collectionPayload(c, opts))
-      flash(opts.shuffle ? `Shuffling “${c.title}”` : `Playing “${c.title}”`)
+      if (!opts.quiet) flash(opts.shuffle ? `Shuffling “${c.title}”` : `Playing “${c.title}”`)
     },
     playSearchHit: (hit: SearchHit) => {
       playGraceUntil.current = Date.now() + 10_000
       advanceSent.current = null
+      beginStarting({ title: hit.title, subtitle: hit.subtitle, art: artwork(hit.uri, hit.imageUrl) })
       if (hit.kind === 'track') {
         setFrom(null)
         send('play', { uri: hit.uri })
@@ -297,6 +348,11 @@ export function useJukebox() {
       void queueMut.replaceAll.mutateAsync(rest)
       playGraceUntil.current = Date.now() + 10_000
       advanceSent.current = null
+      beginStarting({
+        title: row.title,
+        subtitle: row.subtitle || '',
+        art: artwork(row.spotifyUri, row.imageUrl),
+      })
       send('play', { uri: row.spotifyUri })
     },
     moveUp: (i: number) => {
@@ -354,7 +410,7 @@ export function useJukebox() {
     },
   }), [
     resolveTrack, send, queueMut, flash, queueRows, player.current, player.playing, player.shuffle, player.repeat,
-    speakerList, live?.volume, favorites, toggleFav,
+    speakerList, live?.volume, favorites, toggleFav, beginStarting,
   ])
 
   const favoriteUris = useMemo(() => new Set(favorites.map((f) => f.spotifyUri)), [favorites])
@@ -382,6 +438,7 @@ export function useJukebox() {
   return {
     ready,
     player,
+    starting,
     elapsedMs,
     favorites,
     songs,

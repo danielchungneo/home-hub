@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { IconButton } from '../../components/Button'
 import { trackTime } from '../../lib/jukeboxMedia'
-import type { ArtSwatch, Artwork, Collection, Track } from '@hub/shared'
+import type { ArtSwatch, Artwork, Track } from '@hub/shared'
 import s from './Jukebox.module.css'
 
 /** Expose an artwork's colors as CSS variables (--art-bg / --art-fg) for tinted surfaces. */
@@ -21,7 +21,7 @@ function Swatch({ sw, size }: { sw: ArtSwatch; size: number | string }) {
 /**
  * Cover art. Uses the Spotify image URL when present; otherwise draws a placeholder swatch.
  */
-export function Cover({ item, size = '100%' }: { item: Track | Collection; size?: number | string }) {
+export function Cover({ item, size = '100%' }: { item: { art: Artwork }; size?: number | string }) {
   if (item.art.url) {
     return <img src={item.art.url} alt="" width={size} height={size} loading="lazy" decoding="async" className={s.coverImg} />
   }
