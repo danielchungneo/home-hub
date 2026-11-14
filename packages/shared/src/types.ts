@@ -6,8 +6,90 @@
 import type { MemberColor } from './colors'
 
 export type ScreenId =
-  | 'calendar' | 'tasks' | 'rewards' | 'meals' | 'recipes'
+  | 'calendar' | 'tasks' | 'rewards' | 'workout' | 'meals' | 'recipes'
   | 'lists' | 'jukebox' | 'profiles' | 'settings'
+
+// ---------- Workout coach (see docs/WORKOUT_COACH.md) ----------
+
+export type CardioKind = 'run' | 'walk' | 'bike' | 'swim'
+export type ActivityKind = CardioKind | 'strength' | 'mobility'
+export type Feel = 'easy' | 'right' | 'hard'
+
+/** activities: anything someone did, from the hub, the phone, or an import. */
+export interface Activity {
+  id: string
+  memberId: string
+  /** yyyy-mm-dd, local */
+  date: string
+  kind: ActivityKind
+  title: string
+  minutes: number
+  distanceMi?: number
+  source: 'hub' | 'phone' | 'strava' | 'apple_health'
+  /** How it felt, from the 3-button check-in after a session. Feeds the coach. */
+  feel?: Feel
+  /** Set when it came from today's coach plan. */
+  planPart?: 'cardio' | 'strength'
+}
+
+export interface Exercise {
+  name: string
+  sets: number
+  reps?: number
+  seconds?: number
+  restSec: number
+  cue: string
+}
+
+export interface CardioPlan {
+  kind: CardioKind
+  title: string
+  minutes: number
+  distanceMi?: number
+  effort: string
+  target?: string
+  why: string
+  points: number
+}
+
+export interface StrengthPlan {
+  title: string
+  focus: string
+  minutes: number
+  rounds: number
+  exercises: Exercise[]
+  why: string
+  points: number
+}
+
+/** How hard today is allowed to be. Decided by plain maths on the server, not the model. */
+export type CoachDirection = 'build' | 'hold' | 'ease' | 'return' | 'deload' | 'rest'
+
+export interface CoachPlan {
+  memberId: string
+  date: string
+  note: string
+  readiness: 'fresh' | 'steady' | 'tired'
+  direction?: CoachDirection
+  basedOn: string
+  cardio: CardioPlan
+  strength: StrengthPlan
+  restDay?: boolean
+}
+
+export type SwapReason = 'shorter' | 'easier' | 'no-run' | 'indoors'
+
+export interface AthleteProfile {
+  memberId: string
+  coachEnabled: boolean
+  goals?: string
+  daysPerWeek: number
+  preferredCardio: CardioKind[]
+  equipment: string[]
+  /** Free text the person wrote: anything the coach should avoid. */
+  limitations?: string
+  easyPace?: string
+}
 
 /**
  * Blob character id stored on `members.avatar`. Validated in the kiosk against

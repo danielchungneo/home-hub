@@ -47,6 +47,8 @@ set
   timezone = 'America/Chicago'
 where id = '11111111-1111-1111-1111-111111111111';
 
+-- Seed defaults only when the Chung household already exists (remote / prior seed).
+-- Fresh local `supabase start` creates that household in seed.sql after migrations.
 insert into public.household_settings (
   household_id,
   parent_pin_hash,
@@ -57,8 +59,8 @@ insert into public.household_settings (
   idle_minutes,
   slide_seconds
 )
-values (
-  '11111111-1111-1111-1111-111111111111',
+select
+  h.id,
   crypt('2717', gen_salt('bf')),
   'White House, TN',
   '37188',
@@ -66,7 +68,8 @@ values (
   '06:00',
   5,
   20
-)
+from public.households h
+where h.id = '11111111-1111-1111-1111-111111111111'
 on conflict (household_id) do update set
   parent_pin_hash = excluded.parent_pin_hash,
   location_label = excluded.location_label,

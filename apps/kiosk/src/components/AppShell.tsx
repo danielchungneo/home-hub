@@ -11,11 +11,12 @@ const TABS: { id: ScreenId; label: string; icon: IconName }[] = [
   { id: 'calendar', label: 'Calendar', icon: 'calendar' },
   { id: 'tasks', label: 'Tasks', icon: 'check' },
   { id: 'rewards', label: 'Rewards', icon: 'star' },
+  { id: 'workout', label: 'Workout', icon: 'dumbbell' },
   { id: 'meals', label: 'Meals', icon: 'utensils' },
   { id: 'recipes', label: 'Recipes', icon: 'book' },
   { id: 'lists', label: 'Lists', icon: 'list' },
   { id: 'jukebox', label: 'Jukebox', icon: 'music' },
-  { id: 'profiles', label: 'Profiles', icon: 'sofa' },
+  { id: 'profiles', label: 'Profiles', icon: 'people' },
 ]
 
 /** Left icon rail. Sleep and Settings are pinned to the bottom. */
@@ -43,7 +44,6 @@ export function Sidebar() {
 
   return (
     <nav aria-label="Main" className={s.sidebar}>
-      <div className={s.brand}>Chung</div>
       {TABS.map((t) => (
         <NavItem key={t.id} label={t.label} icon={t.icon} active={screen === t.id} onClick={() => go(t.id)} />
       ))}

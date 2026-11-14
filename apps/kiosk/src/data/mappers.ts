@@ -4,11 +4,11 @@ import {
   isMemberColorPreset,
   normalizePersonColor,
   normalizeRecipeTags,
-  type CalendarEvent, type CalendarSource, type Course, type Database, type FoodPhoto, type Ingredient, type JukeboxFavorite, type JukeboxState, type LedgerEntry, type ListItem, type Member, type MemberColor, type NowPlaying, type QueueItem, type RecipeStep, type Redemption, type RewardAisle, type RewardDeal, type Speaker,
+  type Activity, type ActivityKind, type AthleteProfile, type CalendarEvent, type CalendarSource, type CardioKind, type CoachDirection, type CoachPlan, type Course, type Database, type Feel, type FoodPhoto, type Ingredient, type JukeboxFavorite, type JukeboxState, type Json, type LedgerEntry, type ListItem, type Member, type MemberColor, type NowPlaying, type QueueItem, type RecipeStep, type Redemption, type RewardAisle, type RewardDeal, type Speaker,
 } from '@hub/shared'
 import type { IconName } from '../components/Icon'
 import { weekday } from '../lib/format'
-import type { Recipe as KioskRecipe, Reward, ShoppingList, Task } from '../lib/types'
+import type { Bounty, Recipe as KioskRecipe, Reward, ShoppingList, Task, TaskTemplate } from '../lib/types'
 
 type Tables = Database['public']['Tables']
 type Row<T extends keyof Tables> = Tables[T]['Row']
@@ -54,6 +54,23 @@ export const toTask = (r: Row<'tasks'>): Task => {
     bountyId: r.bounty_id ?? undefined,
   }
 }
+
+export const toTaskTemplate = (r: Row<'task_templates'>): TaskTemplate => ({
+  id: r.id,
+  title: r.title,
+  icon: icon(r.icon),
+  points: r.points,
+  frequency: r.frequency,
+  uses: r.uses,
+})
+
+export const toBounty = (r: Row<'bounties'>): Bounty => ({
+  id: r.id,
+  templateId: r.template_id,
+  points: r.points,
+  dueDay: r.due_day,
+  claimedBy: r.claimed_by,
+})
 
 export const toReward = (r: Row<'rewards'>): Reward => ({
   id: r.id,
@@ -415,3 +432,75 @@ export const toMealPlanRow = (r: Row<'meal_plan'>): MealPlanRow => ({
   recipeId: r.recipe_id,
   title: r.title,
 })
+
+const asCardioKind = (v: unknown): CardioKind =>
+  v === 'run' || v === 'walk' || v === 'bike' || v === 'swim' ? v : 'walk'
+
+export const toAthleteProfile = (r: Row<'athlete_profiles'>): AthleteProfile => ({
+  memberId: r.member_id,
+  coachEnabled: r.coach_enabled,
+  goals: r.goals ?? undefined,
+  daysPerWeek: r.days_per_week ?? 4,
+  preferredCardio: (r.preferred_cardio ?? ['run', 'walk']).map(asCardioKind),
+  equipment: r.equipment ?? [],
+  limitations: r.limitations ?? undefined,
+  easyPace: r.easy_pace ?? undefined,
+})
+
+export const toActivity = (r: Row<'activities'>): Activity => ({
+  id: r.id,
+  memberId: r.member_id,
+  date: r.date,
+  kind: r.kind as ActivityKind,
+  title: r.title,
+  minutes: r.minutes,
+  distanceMi: r.distance_mi == null ? undefined : Number(r.distance_mi),
+  source: r.source as Activity['source'],
+  feel: (r.feel as Feel | null) ?? undefined,
+  planPart: (r.plan_part as Activity['planPart'] | null) ?? undefined,
+})
+
+export const toCoachPlan = (memberId: string, date: string, plan: Json, direction?: string | null): CoachPlan => {
+  const p = (plan && typeof plan === 'object' && !Array.isArray(plan) ? plan : {}) as Record<string, unknown>
+  const cardio = (p.cardio ?? {}) as Record<string, unknown>
+  const strength = (p.strength ?? {}) as Record<string, unknown>
+  const exercises = Array.isArray(strength.exercises) ? strength.exercises : []
+  return {
+    memberId,
+    date,
+    note: String(p.note ?? ''),
+    readiness: p.readiness === 'fresh' || p.readiness === 'tired' ? p.readiness : 'steady',
+    direction: (direction ?? p.direction) as CoachDirection | undefined,
+    basedOn: String(p.basedOn ?? ''),
+    restDay: Boolean(p.restDay),
+    cardio: {
+      kind: asCardioKind(cardio.kind),
+      title: String(cardio.title ?? 'Cardio'),
+      minutes: Number(cardio.minutes) || 20,
+      distanceMi: cardio.distanceMi == null ? undefined : Number(cardio.distanceMi),
+      effort: String(cardio.effort ?? 'Easy'),
+      target: cardio.target == null ? undefined : String(cardio.target),
+      why: String(cardio.why ?? ''),
+      points: Number(cardio.points) || 15,
+    },
+    strength: {
+      title: String(strength.title ?? 'Strength'),
+      focus: String(strength.focus ?? 'Full body'),
+      minutes: Number(strength.minutes) || 20,
+      rounds: Number(strength.rounds) || 2,
+      why: String(strength.why ?? ''),
+      points: Number(strength.points) || 20,
+      exercises: exercises.map((e) => {
+        const ex = (e ?? {}) as Record<string, unknown>
+        return {
+          name: String(ex.name ?? 'Move'),
+          sets: Number(ex.sets) || 1,
+          reps: ex.reps == null ? undefined : Number(ex.reps),
+          seconds: ex.seconds == null ? undefined : Number(ex.seconds),
+          restSec: Number(ex.restSec) || 45,
+          cue: String(ex.cue ?? ''),
+        }
+      }),
+    },
+  }
+}

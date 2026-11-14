@@ -12,6 +12,7 @@ const screenLoaders = {
   calendar: () => import('../screens/calendar/Calendar'),
   tasks: () => import('../screens/tasks/Tasks'),
   rewards: () => import('../screens/rewards/Rewards'),
+  workout: () => import('../screens/workout/Workout'),
   meals: () => import('../screens/meals/Meals'),
   recipes: () => import('../screens/recipes/Recipes'),
   lists: () => import('../screens/lists/Lists'),
@@ -55,7 +56,7 @@ function whenIdle(fn: () => void) {
 function fromHash() {
   const h = window.location.hash.replace('#', '')
   return {
-    screen: (h in screens ? h : h.startsWith('jukebox') ? 'jukebox' : 'tasks') as ScreenId, // #tasks-add opens the Add sheet
+    screen: (h in screens ? h : h.startsWith('jukebox') ? 'jukebox' : h.startsWith('workout') ? 'workout' : 'tasks') as ScreenId, // #tasks-add / #workout-session
     idle: h === 'idle',
     sleep: h === 'sleep',
     cooking: h === 'cooking' ? 'sheetpan' : null,

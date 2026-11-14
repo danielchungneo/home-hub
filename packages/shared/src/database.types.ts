@@ -14,6 +14,103 @@ export type Database = {
   }
   public: {
     Tables: {
+      activities: {
+        Row: {
+          created_at: string
+          date: string
+          distance_mi: number | null
+          external_id: string | null
+          feel: string | null
+          id: string
+          kind: string
+          member_id: string
+          minutes: number
+          plan_part: string | null
+          source: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          distance_mi?: number | null
+          external_id?: string | null
+          feel?: string | null
+          id?: string
+          kind: string
+          member_id: string
+          minutes: number
+          plan_part?: string | null
+          source?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          distance_mi?: number | null
+          external_id?: string | null
+          feel?: string | null
+          id?: string
+          kind?: string
+          member_id?: string
+          minutes?: number
+          plan_part?: string | null
+          source?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activities_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      athlete_profiles: {
+        Row: {
+          coach_enabled: boolean
+          days_per_week: number | null
+          easy_pace: string | null
+          equipment: string[] | null
+          goals: string | null
+          limitations: string | null
+          member_id: string
+          preferred_cardio: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          coach_enabled?: boolean
+          days_per_week?: number | null
+          easy_pace?: string | null
+          equipment?: string[] | null
+          goals?: string | null
+          limitations?: string | null
+          member_id: string
+          preferred_cardio?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          coach_enabled?: boolean
+          days_per_week?: number | null
+          easy_pace?: string | null
+          equipment?: string[] | null
+          goals?: string | null
+          limitations?: string | null
+          member_id?: string
+          preferred_cardio?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athlete_profiles_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: true
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_sources: {
         Row: {
           account_email: string | null
@@ -785,6 +882,47 @@ export type Database = {
           },
         ]
       }
+      coach_plans: {
+        Row: {
+          created_at: string
+          date: string
+          direction: string | null
+          member_id: string
+          model: string
+          plan: Json
+          signals: Json | null
+          swap_reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          direction?: string | null
+          member_id: string
+          model: string
+          plan: Json
+          signals?: Json | null
+          swap_reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          direction?: string | null
+          member_id?: string
+          model?: string
+          plan?: Json
+          signals?: Json | null
+          swap_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_plans_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       points_ledger: {
         Row: {
           completion_id: string | null
@@ -1546,12 +1684,17 @@ export type Database = {
       }
     }
     Functions: {
+      complete_plan_part: {
+        Args: { p_feel?: string; p_member: string; p_part: string }
+        Returns: Database["public"]["Tables"]["activities"]["Row"]
+      }
       current_household_id: { Args: never; Returns: string }
       current_profile_kind: {
         Args: never
         Returns: Database["public"]["Enums"]["profile_kind"]
       }
       invoke_calendar_sync: { Args: never; Returns: number }
+      invoke_coach_daily: { Args: never; Returns: number }
       set_parent_pin: { Args: { pin: string }; Returns: undefined }
       verify_parent_pin: { Args: { pin: string }; Returns: boolean }
     }

@@ -20,6 +20,7 @@ Before writing or changing UI, read @docs/DESIGN_SYSTEM.md and follow it. For th
 - Tasks UI: person-focused page with daily + weekly lists and the bounty board; new tasks come from the task library via the Add sheet. Follow docs/TASKS.md and the Tasks patterns in DESIGN_SYSTEM.md §7.
 - Calendar and Lists: follow the Up next / timeline / week grid / event details and live list / cart patterns and their motion sections in DESIGN_SYSTEM.md. Aisles and their colors come from `src/lib/lists.ts`.
 - Rewards is "the Star Shop": points are "stars" in all copy and always use the `<Star>` glyph. Follow the Star Shop patterns and motion in DESIGN_SYSTEM.md.
+- Workout: the coach's plans come from `coach_plans` (written by the `coach` edge function, never the client); stars only through `rpc('complete_plan_part')`. Follow docs/WORKOUT_COACH.md and the Workout patterns in DESIGN_SYSTEM.md.
 - Each screen is lazy-loaded in `src/app/App.tsx`. Pages don't scroll; panels scroll inside with `.scroll-y` / `.scroll-x`.
 - Copy is sentence case, short and warm, and uses people's names.
 - Parent-only actions go through `useNav().requirePin(...)` and show a lock icon.

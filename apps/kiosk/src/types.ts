@@ -9,10 +9,19 @@ import type {
 import type { IconName } from './components/Icon'
 
 export type {
+  Activity,
+  ActivityKind,
+  AthleteProfile,
   Bounty,
   CalendarEvent,
+  CardioKind,
+  CardioPlan,
+  CoachDirection,
+  CoachPlan,
   Countdown,
   DayWeather,
+  Exercise,
+  Feel,
   Frequency,
   Ingredient,
   LedgerEntry,
@@ -27,6 +36,8 @@ export type {
   Schedule,
   ScreenId,
   Speaker,
+  StrengthPlan,
+  SwapReason,
   Task,
   WeatherKind,
 } from '@hub/shared'

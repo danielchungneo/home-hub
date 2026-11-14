@@ -36,6 +36,8 @@ const ILLUSTRATION = {
   bath: <><path d="M6 24h36v4a10 10 0 0 1-10 10H16A10 10 0 0 1 6 28zM12 24V12a4 4 0 0 1 8 0M14 38l-2 4M34 38l2 4" /><circle cx="27" cy="16" r="2.5" /><circle cx="34" cy="11" r="3" /><circle cx="35" cy="19" r="2" /></>,
   book: <path d="M24 12c-4-3-10-4-18-3v26c8-1 14 0 18 3 4-3 10-4 18-3V9c-8-1-14 0-18 3zM24 12v26" />,
   sofa: <><path d="M8 22v-6a4 4 0 0 1 4-4h24a4 4 0 0 1 4 4v6" /><path d="M4 26a4 4 0 0 1 8 0v4h24v-4a4 4 0 0 1 8 0v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM10 36v4M38 36v4" /></>,
+  /** Two people — Profiles / family switchers. */
+  people: <><circle cx="17" cy="14" r="6" /><path d="M5 38c0-7 5-12 12-12s12 5 12 12" /><circle cx="34" cy="15" r="5" /><path d="M27 38c1.2-5.5 5-10 11-10 3.5 0 6.5 1.5 8.5 4" /></>,
   broom: <><path d="M36 5L23 25" /><path d="M17 23l11 7-4 12c-7 0-13-4-16-9z" /><path d="M14 35l6 3M19 41l3-6" /></>,
   calendar: <><rect x="6" y="9" width="36" height="33" rx="5" /><path d="M6 19h36M15 5v8M33 5v8" /><path d="M16 28h.01M24 28h.01M32 28h.01M16 35h.01M24 35h.01" strokeWidth="3.4" /></>,
   check: <><rect x="6" y="6" width="36" height="36" rx="10" /><path d="M15 24l6 6 12-13" /></>,
@@ -44,6 +46,10 @@ const ILLUSTRATION = {
   photo: <><rect x="5" y="9" width="38" height="30" rx="5" /><circle cx="16" cy="19" r="4" /><path d="M5 34l11-10 9 8 6-5 12 10" /></>,
   list: <><path d="M18 12h24M18 24h24M18 36h24" /><circle cx="8" cy="12" r="2.5" /><circle cx="8" cy="24" r="2.5" /><circle cx="8" cy="36" r="2.5" /></>,
   music: <><path d="M18 36V10l24-5v26" /><circle cx="12" cy="36" r="6" /><circle cx="36" cy="31" r="6" /><path d="M18 17l24-5" /></>,
+  // Workout coach
+  shoe: <><path d="M5 34V22a3 3 0 0 1 3-3h6l4 5h5l3-4h4c4 0 6 3 7 6l2 4h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z" /><path d="M5 30h38M20 24l2 3M25 23l2 3" /></>,
+  bike: <><circle cx="11" cy="31" r="7" /><circle cx="37" cy="31" r="7" /><path d="M11 31l8-14h11l7 14M19 17l6 14h-3M27 11h5l-2 6M16 13h6" /></>,
+  stopwatch: <><circle cx="24" cy="27" r="15" /><path d="M24 27v-8M20 6h8M24 6v6M37 13l3-3" /></>,
   gear: <><circle cx="24" cy="24" r="6" /><path d="M24 4v6M24 38v6M4 24h6M38 24h6M9.9 9.9l4.2 4.2M33.9 33.9l4.2 4.2M38.1 9.9l-4.2 4.2M14.1 33.9l-4.2 4.2" /><circle cx="24" cy="24" r="13" /></>,
 } satisfies Record<string, ReactNode>
 

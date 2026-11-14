@@ -341,6 +341,10 @@ The `Suspense` fallback for tab screens in `App.tsx`: the real sidebar plus an e
 - **Pick drawer:** a 400px sheet from the bottom for filling one slot: heading ("Thu · Lunch / Pick a recipe") · search · filter chips · Clear slot · close, then one horizontal strip: quick notes (Leftovers, Eat out) · the write-in sticky · divider · recipe cards (230px, photo + title + course · time). Picking flies a copy onto the slot and the board card lands with a small bounce.
 - **Write-in:** a sticky note that turns into a 40-character text field with Cancel / Add, so a slot can hold anything ("Pizza night", "Grandma’s"). Saves as `{ text }` in the meal plan. Needs the on-screen keyboard on the Pi (see §11).
 - **Overlays over photos:** solid `--color-scrim` panels or 88–94% white panels. Never blur.
+- **Workout coach hero:** member-tint panel with the sparkle coach mark, a 1–2 sentence note that cites real data ("three runs last week"), a direction pill colored by readiness (Building · Holding steady · Easing back in · Welcome back · Lighter week · Recovery day) and "Ask for something else", which opens swap chips (Shorter · Easier today · No running · Indoors). While the coach works the note becomes "Thinking…" with three dots.
+- **Plan cards (Workout):** cardio in fjord, calisthenics in honey. Big stats row (minutes · distance or moves · effort), a target pill, one "why" line, then "I did it" (and "Start workout" for calisthenics). Done turns the card into a single-row panel: "Done · +N ★" stamp and Easy / Just right / Hard; the why line hides.
+- **Month heat map:** 35 squares (5 weeks), colored by the day's main kind (run fjord, walk moss, strength honey, mobility plum, rest track), today ringed; legend, totals and streak underneath. No chart library.
+- **Workout session:** full screen like cooking mode, Wake Lock on. Move name at 96px, dose, italic form cue, a 360px countdown ring for timed holds and rests (rests in fjord), set dots across the top, Up next chips, Pause and "Done, next" / "Skip rest". Finish: star burst, +points, "How did that feel?".
 
 ---
 
@@ -401,6 +405,13 @@ One-shot only; nothing here loops except the steam.
 - **Drawer → board:** a copy of the picked card moves with `translate` + `scale` to the slot in 600ms, then the real card lands with a 1.08 → 1 bounce. Never animate width/height.
 - **Add ingredients:** the cart wiggles once and a "+14 to Groceries" chip floats up and fades.
 - **Steam** over tonight's dinner: three wisps, 3.4s each, 1.1s apart. It's the only loop on these screens; keep it that slow.
+
+### Workout motion
+
+- Plan cards rise in with a 60ms stagger; done = stamp pops (`--dur-slow`), +points float up and fade.
+- Swap: chips slide down; the new plan cross-fades in. The coach's three "Thinking…" dots are the one non-music loop allowed, only while a request is in flight (max ~10s), opacity and a small lift, 900ms cycle.
+- Session: steps slide in from the right (400ms); set dots pop; the ring's `stroke-dashoffset` updates once a second (documented exception: one small SVG stroke). Finish: 8 stars burst out once and fade.
+- Heat map squares fade in once, left to right. No looping anything on the overview.
 
 ### Music motion (Jukebox only)
 

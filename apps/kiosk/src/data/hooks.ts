@@ -10,15 +10,22 @@ import {
   normalizeIngredientName,
   normalizeRecipeTags,
   parseGroceryQty,
-  type CalendarEvent, type CalendarSource, type Database, type GroceryQty, type HouseholdSettings, type Ingredient, type Json, type JukeboxFavorite, type ListItem, type MediaKind, type Member, type MemberColor, type QueueItem, type RecipeStep, type Redemption, type RewardAisle, type RewardDeal,
+  type Activity, type AthleteProfile, type CalendarEvent, type CalendarSource, type CardioKind, type CoachPlan, type Database, type Feel, type GroceryQty, type HouseholdSettings, type Ingredient, type Json, type JukeboxFavorite, type ListItem, type MediaKind, type Member, type MemberColor, type QueueItem, type RecipeStep, type Redemption, type RewardAisle, type RewardDeal, type SwapReason,
 } from '@hub/shared'
 import { ensureSession, supabase } from '../lib/supabase'
 import { fetchOpenMeteo, type Weather } from '../lib/weather'
 import type { Recipe, Reward, ShoppingList } from '../lib/types'
+import type { Frequency, Schedule } from '../types'
+import { isoDate } from '../lib/tasks'
+import { startOfWeek } from '../lib/format'
 import {
   localDate,
+  toActivity,
+  toAthleteProfile,
+  toBounty,
   toCalendarEvent,
   toCalendarSource,
+  toCoachPlan,
   toFavorite,
   toJukeboxState,
   toLedgerEntry,
@@ -32,6 +39,7 @@ import {
   toRewardDeal,
   toSpeaker,
   toTask,
+  toTaskTemplate,
   type MealPlanRow,
 } from './mappers'
 
@@ -79,6 +87,69 @@ const tasksQuery = () =>
         )
       ).map(toTask),
   })
+
+const taskTemplatesQuery = () =>
+  queryOptions({
+    queryKey: ['taskTemplates'],
+    queryFn: async () =>
+      (await run(() => supabase.from('task_templates').select('*').order('uses', { ascending: false }))).map(
+        toTaskTemplate,
+      ),
+  })
+
+const bountiesQuery = () =>
+  queryOptions({
+    queryKey: ['bounties'],
+    queryFn: async () =>
+      (
+        await run(() =>
+          supabase
+            .from('bounties')
+            .select('*')
+            .is('claimed_by', null)
+            .order('created_at', { ascending: false }),
+        )
+      ).map(toBounty),
+  })
+
+function scheduleColumns(frequency: Frequency, schedule: Schedule) {
+  if (frequency === 'daily') {
+    if (schedule.kind === 'once') {
+      return {
+        days: null as number[] | null,
+        once_on: schedule.date,
+        every_weeks: null as number | null,
+        week_of: null as string | null,
+        due_day: null as number | null,
+      }
+    }
+    return {
+      days: schedule.kind === 'days' ? schedule.days : [0, 1, 2, 3, 4, 5, 6],
+      once_on: null,
+      every_weeks: null,
+      week_of: null,
+      due_day: null,
+    }
+  }
+  if (schedule.kind === 'thisWeek') {
+    return {
+      days: null,
+      once_on: null,
+      every_weeks: null,
+      week_of: isoDate(startOfWeek(new Date())),
+      due_day: schedule.dueDay,
+    }
+  }
+  const every = schedule.kind === 'weekly' ? schedule.every : 1
+  const dueDay = schedule.kind === 'weekly' ? schedule.dueDay : 6
+  return {
+    days: null,
+    once_on: null,
+    every_weeks: every,
+    week_of: null,
+    due_day: dueDay,
+  }
+}
 
 /** Completions for a period day (daily) or the week's Sunday (weekly) — see docs/TASKS.md. */
 const completedQuery = (period: string) =>
@@ -232,6 +303,8 @@ export const prefetchLiveScreens = (queryClient: QueryClient) => {
   return Promise.all([
     queryClient.prefetchQuery(membersQuery()),
     queryClient.prefetchQuery(tasksQuery()),
+    queryClient.prefetchQuery(taskTemplatesQuery()),
+    queryClient.prefetchQuery(bountiesQuery()),
     queryClient.prefetchQuery(completedQuery(localDate())),
     queryClient.prefetchQuery(rewardsQuery()),
     queryClient.prefetchQuery(ledgerQuery()),
@@ -620,6 +693,8 @@ export function useSyncCalendars() {
 // Tasks
 
 export const useTasks = () => useQuery(tasksQuery())
+export const useTaskTemplates = () => useQuery(taskTemplatesQuery())
+export const useBounties = () => useQuery(bountiesQuery())
 
 /** Ids of the tasks completed on `date` (one task_completions row per task per day). */
 export const useCompleted = (date: string = localDate()) => useQuery(completedQuery(date))
@@ -637,6 +712,141 @@ export function useToggleTask() {
       ),
     onError: (_err, _vars, rollback) => rollback?.(),
     onSettled: () => refetch(queryClient, 'completions', 'ledger'),
+  })
+}
+
+export type AddTaskInput = {
+  templateId?: string
+  newTemplate?: { title: string; icon: string; points: number; frequency: Frequency }
+  /** A member id, or 'bounty' for the bounty board. */
+  assignee: string
+  frequency: Frequency
+  schedule: Schedule
+  points: number
+}
+
+/** Create a library template (optional), then a task or an open bounty. */
+export function useAddTask() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: AddTaskInput) => {
+      await ensureSession()
+      let templateId = input.templateId
+      let title = input.newTemplate?.title ?? ''
+
+      if (input.newTemplate) {
+        const created = (await run(() =>
+          supabase
+            .from('task_templates')
+            .insert({
+              title: input.newTemplate!.title.slice(0, 32),
+              icon: input.newTemplate!.icon,
+              points: input.newTemplate!.points,
+              frequency: input.newTemplate!.frequency,
+              uses: 1,
+            })
+            .select('id, title')
+            .single(),
+        )) as { id: string; title: string } | null
+        if (!created) throw new Error('Couldn’t save task to the library')
+        templateId = created.id
+        title = created.title
+      } else if (templateId) {
+        const { data: existing, error } = await supabase
+          .from('task_templates')
+          .select('title, uses')
+          .eq('id', templateId)
+          .maybeSingle()
+        if (error) throw new Error(error.message)
+        if (!existing) throw new Error('Task library entry not found')
+        title = existing.title
+        await run(() =>
+          supabase.from('task_templates').update({ uses: (existing.uses ?? 0) + 1 }).eq('id', templateId!),
+        )
+      } else {
+        throw new Error('Pick a task from the library or create one')
+      }
+
+      if (input.assignee === 'bounty') {
+        const dueDay =
+          input.schedule.kind === 'weekly' || input.schedule.kind === 'thisWeek'
+            ? input.schedule.dueDay
+            : 6
+        await run(() =>
+          supabase.from('bounties').insert({
+            template_id: templateId!,
+            points: Math.max(5, input.points),
+            due_day: dueDay,
+            week_of: isoDate(startOfWeek(new Date())),
+          }),
+        )
+        return { title, taskId: null as string | null }
+      }
+
+      const cols = scheduleColumns(input.frequency, input.schedule)
+      const task = (await run(() =>
+        supabase
+          .from('tasks')
+          .insert({
+            template_id: templateId!,
+            member_id: input.assignee,
+            frequency: input.frequency,
+            points: input.points,
+            days: cols.days,
+            once_on: cols.once_on,
+            every_weeks: cols.every_weeks,
+            week_of: cols.week_of,
+            due_day: cols.due_day,
+          })
+          .select('id')
+          .single(),
+      )) as { id: string } | null
+      if (!task) throw new Error('Couldn’t add that task')
+      return { title, taskId: task.id }
+    },
+    onSettled: () => {
+      void refetch(queryClient, 'tasks', 'taskTemplates', 'bounties')
+    },
+  })
+}
+
+/** Race-safe bounty claim → inserts a this-week task for the claimer. */
+export function useClaimBounty() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ bountyId, memberId }: { bountyId: string; memberId: string }) => {
+      await ensureSession()
+      const claimedAt = new Date().toISOString()
+      const { data, error } = await supabase
+        .from('bounties')
+        .update({ claimed_by: memberId, claimed_at: claimedAt })
+        .eq('id', bountyId)
+        .is('claimed_by', null)
+        .select('*')
+        .maybeSingle()
+      if (error) throw new Error(error.message)
+      if (!data) return null
+      const task = (await run(() =>
+        supabase
+          .from('tasks')
+          .insert({
+            template_id: data.template_id,
+            member_id: memberId,
+            frequency: 'weekly',
+            points: data.points,
+            week_of: data.week_of,
+            due_day: data.due_day ?? 6,
+            bounty_id: data.id,
+          })
+          .select('*')
+          .single(),
+      )) as Parameters<typeof toTask>[0] | null
+      if (!task) throw new Error('Couldn’t claim that bounty')
+      return toTask(task)
+    },
+    onSettled: () => {
+      void refetch(queryClient, 'tasks', 'bounties')
+    },
   })
 }
 
@@ -1051,6 +1261,9 @@ export function useDeleteRecipe() {
         .eq('id', id)
         .maybeSingle()
       if (fetchError) throw new Error(fetchError.message)
+      // Clear meal-plan slots first: FK is ON DELETE SET NULL, but rows with
+      // recipe_id only (title null) would violate meal_plan_entry_check.
+      await run(() => supabase.from('meal_plan').delete().eq('recipe_id', id))
       await run(() => supabase.from('recipes').delete().eq('id', id))
       if (row?.image_path) {
         await supabase.storage.from('recipe-images').remove([row.image_path])
@@ -1058,9 +1271,26 @@ export function useDeleteRecipe() {
     },
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ['recipes'] })
-      const previous = queryClient.getQueryData<Recipe[]>(['recipes'])
-      if (previous) queryClient.setQueryData<Recipe[]>(['recipes'], previous.filter((r) => r.id !== id))
-      return () => queryClient.setQueryData(['recipes'], previous)
+      await queryClient.cancelQueries({ queryKey: ['mealPlan'] })
+      const previousRecipes = queryClient.getQueryData<Recipe[]>(['recipes'])
+      const previousPlans = queryClient.getQueriesData<MealPlanRow[]>({ queryKey: ['mealPlan'] })
+      if (previousRecipes) {
+        queryClient.setQueryData<Recipe[]>(
+          ['recipes'],
+          previousRecipes.filter((r) => r.id !== id),
+        )
+      }
+      for (const [key, rows] of previousPlans) {
+        if (!rows) continue
+        queryClient.setQueryData<MealPlanRow[]>(
+          key,
+          rows.filter((row) => row.recipeId !== id),
+        )
+      }
+      return () => {
+        queryClient.setQueryData(['recipes'], previousRecipes)
+        for (const [key, rows] of previousPlans) queryClient.setQueryData(key, rows)
+      }
     },
     onError: (_err, _id, rollback) => rollback?.(),
     onSettled: () => {
@@ -1388,4 +1618,197 @@ export function useQueueMutations() {
       onSettled: invalidate,
     }),
   }
+}
+
+// ---------- Workout coach ----------
+
+const athleteProfilesQuery = () =>
+  queryOptions({
+    queryKey: ['athleteProfiles'],
+    queryFn: async () =>
+      (await run(() => supabase.from('athlete_profiles').select('*'))).map(toAthleteProfile),
+  })
+
+const coachPlansQuery = (date: string) =>
+  queryOptions({
+    queryKey: ['coachPlans', date],
+    queryFn: async () => {
+      const rows = await run(() =>
+        supabase.from('coach_plans').select('member_id, date, plan, direction').eq('date', date),
+      )
+      return rows.map((r) => toCoachPlan(r.member_id, r.date, r.plan, r.direction))
+    },
+  })
+
+const activitiesQuery = (since: string) =>
+  queryOptions({
+    queryKey: ['activities', since],
+    queryFn: async () =>
+      (
+        await run(() =>
+          supabase.from('activities').select('*').gte('date', since).order('date', { ascending: false }),
+        )
+      ).map(toActivity),
+  })
+
+export function useAthleteProfiles() {
+  return useQuery(athleteProfilesQuery())
+}
+
+export function useCoachPlans(date = localDate()) {
+  return useQuery(coachPlansQuery(date))
+}
+
+export function useRecentActivities(days = 35) {
+  const sinceDate = new Date()
+  sinceDate.setDate(sinceDate.getDate() - days)
+  const since = localDate(sinceDate)
+  return useQuery(activitiesQuery(since))
+}
+
+export function useCompletePlanPart() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { memberId: string; part: 'cardio' | 'strength'; feel?: Feel }) => {
+      const args: { p_member: string; p_part: string; p_feel?: string } = {
+        p_member: input.memberId,
+        p_part: input.part,
+      }
+      if (input.feel) args.p_feel = input.feel
+      const row = await run(() => supabase.rpc('complete_plan_part', args))
+      return toActivity(row)
+    },
+    onSettled: () => refetch(queryClient, 'activities', 'ledger', 'coachPlans'),
+  })
+}
+
+export function useRateActivity() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { memberId: string; part: 'cardio' | 'strength'; feel: Feel; date: string }) => {
+      await run(() =>
+        supabase
+          .from('activities')
+          .update({ feel: input.feel })
+          .eq('member_id', input.memberId)
+          .eq('date', input.date)
+          .eq('plan_part', input.part),
+      )
+    },
+    onMutate: async (input) => {
+      const sinceDate = new Date()
+      sinceDate.setDate(sinceDate.getDate() - 35)
+      return optimistic<Activity[]>(queryClient, ['activities', localDate(sinceDate)], (list) =>
+        list.map((a) =>
+          a.memberId === input.memberId && a.date === input.date && a.planPart === input.part
+            ? { ...a, feel: input.feel }
+            : a,
+        ),
+      )
+    },
+    onSettled: () => refetch(queryClient, 'activities'),
+  })
+}
+
+export function useLogActivity() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (act: Omit<Activity, 'id' | 'date' | 'source'>) => {
+      const row = await run(() =>
+        supabase
+          .from('activities')
+          .insert({
+            member_id: act.memberId,
+            date: localDate(),
+            kind: act.kind,
+            title: act.title,
+            minutes: act.minutes,
+            distance_mi: act.distanceMi ?? null,
+            source: 'hub',
+            plan_part: null,
+            feel: act.feel ?? null,
+          })
+          .select('*')
+          .single(),
+      )
+      if (!row) throw new Error('Activity insert returned no row')
+      return toActivity(row)
+    },
+    onSettled: () => refetch(queryClient, 'activities'),
+  })
+}
+
+export function useInvokeCoach() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (body: { mode: 'daily' | 'swap'; memberId?: string; reason?: SwapReason }) => {
+      await ensureSession()
+      const { data, error } = await supabase.functions.invoke('coach', { body })
+      if (error) throw new Error(error.message)
+      return data as { plan?: CoachPlan; results?: unknown; error?: string }
+    },
+    onSettled: () => refetch(queryClient, 'coachPlans', 'activities'),
+  })
+}
+
+export type AthleteProfileInput = {
+  memberId: string
+  coachEnabled: boolean
+  daysPerWeek: number
+  preferredCardio: CardioKind[]
+  equipment: string[]
+  limitations?: string
+  goals?: string
+  easyPace?: string
+}
+
+export function useUpsertAthleteProfile() {
+  const queryClient = useQueryClient()
+  const coach = useInvokeCoach()
+  return useMutation({
+    mutationFn: async (input: AthleteProfileInput) => {
+      const row = await run(() =>
+        supabase
+          .from('athlete_profiles')
+          .upsert({
+            member_id: input.memberId,
+            coach_enabled: input.coachEnabled,
+            days_per_week: input.daysPerWeek,
+            preferred_cardio: input.preferredCardio,
+            equipment: input.equipment,
+            limitations: input.limitations?.trim() || null,
+            goals: input.goals?.trim() || null,
+            easy_pace: input.easyPace?.trim() || null,
+            updated_at: new Date().toISOString(),
+          })
+          .select('*')
+          .single(),
+      )
+      if (!row) throw new Error('Athlete profile upsert returned no row')
+      const profile = toAthleteProfile(row)
+      if (input.coachEnabled) {
+        await coach.mutateAsync({ mode: 'daily', memberId: input.memberId })
+      }
+      return profile
+    },
+    onMutate: async (input) =>
+      optimistic<AthleteProfile[]>(queryClient, ['athleteProfiles'], (list) => {
+        const next: AthleteProfile = {
+          memberId: input.memberId,
+          coachEnabled: input.coachEnabled,
+          daysPerWeek: input.daysPerWeek,
+          preferredCardio: input.preferredCardio,
+          equipment: input.equipment,
+          limitations: input.limitations,
+          goals: input.goals,
+          easyPace: input.easyPace,
+        }
+        const i = list.findIndex((p) => p.memberId === input.memberId)
+        if (i < 0) return [...list, next]
+        const copy = [...list]
+        copy[i] = next
+        return copy
+      }),
+    onSettled: () => refetch(queryClient, 'athleteProfiles', 'coachPlans'),
+  })
 }

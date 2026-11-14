@@ -10,6 +10,7 @@ import { IconTile, Label, Panel, Segmented, Switch } from '../components/primiti
 import {
   useAllMembers,
   useAssignCalendarSource,
+  useAthleteProfiles,
   useCalendarSources,
   useCreateMember,
   useDeleteMember,
@@ -22,6 +23,7 @@ import {
   useToggleCalendarSource,
   useUpdateHouseholdSettings,
   useUpdateMember,
+  useUpsertAthleteProfile,
   type MemberInput,
 } from '../data/hooks'
 import { useLive } from '../data/live'
@@ -29,10 +31,18 @@ import { useClock } from '../hooks/useClock'
 import { memberColorProps } from '../lib/colors'
 import { formatTimeOfDay } from '../lib/format'
 import { who } from '../lib/members'
-import type { HouseholdSettings, Member, MemberColor } from '@hub/shared'
+import type { AthleteProfile, CardioKind, HouseholdSettings, Member, MemberColor } from '@hub/shared'
 import s from './Settings.module.css'
 
-type SectionId = 'family' | 'calendars' | 'music' | 'sleep' | 'weather' | 'pin'
+type SectionId = 'family' | 'workout' | 'calendars' | 'music' | 'sleep' | 'weather' | 'pin'
+
+const CARDIO_OPTIONS: { id: CardioKind; label: string }[] = [
+  { id: 'run', label: 'Run' },
+  { id: 'walk', label: 'Walk' },
+  { id: 'bike', label: 'Bike' },
+  { id: 'swim', label: 'Swim' },
+]
+const EQUIPMENT_OPTIONS = ['Pull-up bar', 'Bands', 'Dumbbells', 'Kettlebell', 'Yoga mat']
 
 const IDLE_OPTIONS = [3, 5, 10, 15, 30]
 const SLIDE_OPTIONS = [10, 15, 20, 30, 45]
@@ -694,6 +704,210 @@ function FamilySettings({ members }: { members: Member[] }) {
   )
 }
 
+function blankAthlete(memberId: string): AthleteProfile {
+  return {
+    memberId,
+    coachEnabled: false,
+    daysPerWeek: 4,
+    preferredCardio: ['run', 'walk'],
+    equipment: [],
+  }
+}
+
+function WorkoutCoachSettings({ members }: { members: Member[] }) {
+  const { requirePin } = useNav()
+  const profilesQ = useAthleteProfiles()
+  const upsert = useUpsertAthleteProfile()
+  useLive('athlete_profiles', 'athleteProfiles')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [avoid, setAvoid] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const adults = members.filter((m) => m.active && m.role === 'parent')
+  const profiles = profilesQ.data ?? []
+  const profileFor = (id: string) => profiles.find((p) => p.memberId === id) ?? blankAthlete(id)
+  const editing = editingId ? adults.find((m) => m.id === editingId) : undefined
+  const draft = editingId ? profileFor(editingId) : null
+
+  const save = async (next: AthleteProfile, opts?: { pin?: boolean }) => {
+    const run = async () => {
+      setBusy(true)
+      setError(null)
+      try {
+        await upsert.mutateAsync({
+          memberId: next.memberId,
+          coachEnabled: next.coachEnabled,
+          daysPerWeek: next.daysPerWeek,
+          preferredCardio: next.preferredCardio,
+          equipment: next.equipment,
+          limitations: next.limitations,
+          goals: next.goals,
+          easyPace: next.easyPace,
+        })
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Couldn’t save coach settings.')
+      } finally {
+        setBusy(false)
+      }
+    }
+    if (opts?.pin) {
+      requirePin({
+        title: next.coachEnabled ? `Turn on Workout coach for ${who(next.memberId).name}` : `Turn off Workout coach for ${who(next.memberId).name}`,
+        detail: 'Parent mode',
+        onSuccess: () => void run(),
+      })
+      return
+    }
+    await run()
+  }
+
+  return (
+    <>
+      <p className={s.confirmDetail}>
+        Each adult can opt in. The coach plans their day from the last month; stars only come from finishing a plan part.
+      </p>
+      <div className={s.members}>
+        {adults.map((m) => {
+          const p = profileFor(m.id)
+          return (
+            <div key={m.id} {...memberColorProps(m.color)} className={s.member}>
+              <div className={s.memberHead}>
+                <MemberBlobAvatar memberId={m.id} size={72} decorative />
+                <span className={s.memberName}>
+                  <strong>{m.name}</strong>
+                  <span>{p.coachEnabled ? `${p.daysPerWeek} days / week` : 'Coach off'}</span>
+                </span>
+                <button type="button" className={s.edit} aria-label={`Edit coach for ${m.name}`} onClick={() => { setEditingId(m.id); setAvoid(p.limitations ?? ''); setError(null) }}>
+                  <Icon name="pencil" size={22} />
+                </button>
+              </div>
+              <div className={s.pointsRow}>
+                <span>Workout coach</span>
+                <Switch
+                  checked={p.coachEnabled}
+                  label={`${m.name} workout coach`}
+                  onChange={(v) => void save({ ...p, coachEnabled: v }, { pin: true })}
+                />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {editing && draft && (
+        <div className={s.confirmScrim} onClick={() => !busy && setEditingId(null)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="coach-editor-title"
+            className={s.memberDialog}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={s.confirmText}>
+              <h2 id="coach-editor-title" className={s.confirmTitle}>{editing.name}’s coach</h2>
+              <p className={s.confirmDetail}>Days, preferred cardio, gear, and anything to avoid.</p>
+            </div>
+
+            <div className={s.pointsRow}>
+              <span>Workout coach</span>
+              <Switch
+                checked={draft.coachEnabled}
+                label="Workout coach"
+                onChange={(v) => void save({ ...draft, coachEnabled: v }, { pin: true })}
+              />
+            </div>
+
+            <div className={s.field}>
+              <Label>Days per week</Label>
+              <Segmented
+                label="Days per week"
+                block
+                value={String(draft.daysPerWeek)}
+                onChange={(v) => void save({ ...draft, daysPerWeek: Number(v) })}
+                options={[3, 4, 5, 6].map((n) => ({ value: String(n), label: String(n) }))}
+              />
+            </div>
+
+            <div className={s.field}>
+              <Label>Preferred cardio</Label>
+              <div className={s.chipRow}>
+                {CARDIO_OPTIONS.map((c) => {
+                  const on = draft.preferredCardio.includes(c.id)
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      aria-pressed={on}
+                      className={on ? `${s.chip} ${s.chipOn}` : s.chip}
+                      onClick={() => {
+                        const preferredCardio = on
+                          ? draft.preferredCardio.filter((x) => x !== c.id)
+                          : [...draft.preferredCardio, c.id]
+                        void save({ ...draft, preferredCardio: preferredCardio.length ? preferredCardio : ['walk'] })
+                      }}
+                    >
+                      {c.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className={s.field}>
+              <Label>Equipment</Label>
+              <div className={s.chipRow}>
+                {EQUIPMENT_OPTIONS.map((eq) => {
+                  const on = draft.equipment.includes(eq)
+                  return (
+                    <button
+                      key={eq}
+                      type="button"
+                      aria-pressed={on}
+                      className={on ? `${s.chip} ${s.chipOn}` : s.chip}
+                      onClick={() => {
+                        const equipment = on
+                          ? draft.equipment.filter((x) => x !== eq)
+                          : [...draft.equipment, eq]
+                        void save({ ...draft, equipment })
+                      }}
+                    >
+                      {eq}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <label className={s.addField}>
+              <Icon name="leaf" size={24} stroke={2.6} />
+              <span className="sr-only">Anything the coach should avoid</span>
+              <input
+                value={avoid}
+                onChange={(e) => setAvoid(e.target.value.slice(0, 160))}
+                onBlur={() => {
+                  if ((draft.limitations ?? '') !== avoid.trim()) {
+                    void save({ ...draft, limitations: avoid.trim() || undefined })
+                  }
+                }}
+                placeholder="Anything the coach should avoid"
+                autoComplete="off"
+              />
+            </label>
+
+            {error && <p className={s.formError}>{error}</p>}
+            <div className={s.confirmActions}>
+              <Button variant="secondary" size="lg" block disabled={busy} onClick={() => setEditingId(null)}>
+                Done
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function Settings() {
   const now = useClock()
   const { settingsUnlockedUntil } = useNav()
@@ -711,6 +925,7 @@ export default function Settings() {
 
   const sections: { id: SectionId; label: string; sub: string; icon: IconName; color: MemberColor }[] = [
     { id: 'family', label: 'Family', sub: 'Add, hide, remove members', icon: 'sofa', color: 'moss' },
+    { id: 'workout', label: 'Workout coach', sub: 'Opt in, days, gear, limits', icon: 'dumbbell', color: 'honey' },
     { id: 'calendars', label: 'Calendars', sub: calendarCount ? `${calendarCount} Google calendar${calendarCount === 1 ? '' : 's'}` : 'Link Google accounts', icon: 'calendar', color: 'fjord' },
     { id: 'music', label: 'Music & speakers', sub: speakerCount ? `Spotify · ${speakerCount} speakers` : 'Spotify · speakers', icon: 'music', color: 'clay' },
     {
@@ -765,6 +980,8 @@ export default function Settings() {
           <h2 className={s.h2}>{current.label}</h2>
           {section === 'family' ? (
             members.data ? <FamilySettings members={members.data} /> : null
+          ) : section === 'workout' ? (
+            members.data ? <WorkoutCoachSettings members={members.data} /> : null
           ) : section === 'calendars' ? (
             <CalendarSettings />
           ) : section === 'music' ? (

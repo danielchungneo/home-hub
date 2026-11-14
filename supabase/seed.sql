@@ -1,8 +1,23 @@
 -- Chung household, matching the kiosk's original mock data.
 -- Run on a fresh database (local `pnpm db:reset`, or once against the hosted project).
 
-insert into public.households (id, name, timezone)
-values ('11111111-1111-1111-1111-111111111111', 'Chung Family', 'America/New_York');
+insert into public.households (id, name, timezone, location_lat, location_lon)
+values ('11111111-1111-1111-1111-111111111111', 'Chung Family', 'America/New_York', 36.47032, -86.65138);
+
+insert into public.household_settings (
+  household_id, parent_pin_hash, location_label, location_zip, sleep_start, sleep_end, idle_minutes, slide_seconds
+)
+values (
+  '11111111-1111-1111-1111-111111111111',
+  crypt('2717', gen_salt('bf')),
+  'White House, TN',
+  '37188',
+  '22:00',
+  '06:00',
+  5,
+  20
+)
+on conflict (household_id) do nothing;
 
 insert into public.members (id, household_id, name, color, role, role_label, earns_points, sort_order) values
   ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111111', 'Daniel', 'moss', 'parent', 'Dad', true, 1),
@@ -84,29 +99,15 @@ where (member_id, title) in (
   )
   or (member_id is null and title = 'Vacuum');
 
--- Rewards (Star Shop catalog)
+-- Rewards (Star Shop catalog) — weekly deal is created by ensure_weekly_reward_deals().
 insert into public.rewards (id, household_id, title, icon, cost, color, sort_order, aisle, blurb) values
-  ('44444444-4444-4444-4444-444444444406', '11111111-1111-1111-1111-111111111111', 'Pick movie night', 'sofa', 30, 'fjord', 1, 'Family fun', 'Your pick, no vetoes. Popcorn is on the house.'),
-  ('44444444-4444-4444-4444-444444444407', '11111111-1111-1111-1111-111111111111', 'Choose game night', 'sparkle', 25, 'plum', 2, 'Family fun', 'Pick the game and who has to be on your team.'),
-  ('44444444-4444-4444-4444-444444444405', '11111111-1111-1111-1111-111111111111', 'Skip one chore', 'broom', 40, 'moss', 3, 'Time off', 'Hand one task to someone else, no questions asked.'),
-  ('44444444-4444-4444-4444-444444444404', '11111111-1111-1111-1111-111111111111', 'Coffee shop run', 'mug', 50, 'clay', 4, 'Treats', 'A latte somewhere quiet, on the family budget.'),
-  ('44444444-4444-4444-4444-444444444403', '11111111-1111-1111-1111-111111111111', 'Pick the takeout', 'utensils', 60, 'honey', 5, 'Treats', 'Friday night, your restaurant, your order.'),
-  ('44444444-4444-4444-4444-444444444408', '11111111-1111-1111-1111-111111111111', 'Breakfast in bed', 'dish', 80, 'honey', 6, 'Treats', 'Pancakes, coffee and the paper, delivered.'),
-  ('44444444-4444-4444-4444-444444444409', '11111111-1111-1111-1111-111111111111', 'Solo Target run', 'bag', 90, 'plum', 7, 'Time off', 'An hour to wander the aisles alone. Bliss.'),
-  ('44444444-4444-4444-4444-444444444401', '11111111-1111-1111-1111-111111111111', 'Sleep in Saturday', 'moon', 100, 'fjord', 8, 'Time off', 'Someone else has the early shift with Noah.'),
-  ('44444444-4444-4444-4444-444444444402', '11111111-1111-1111-1111-111111111111', 'Uninterrupted nap', 'bed', 120, 'clay', 9, 'Time off', 'Ninety minutes, door closed, phone on silent.');
+  ('44444444-4444-4444-4444-444444444401', '11111111-1111-1111-1111-111111111111', 'Movie Night', 'sofa', 30, 'fjord', 1, 'Family fun', 'Your pick, no vetoes. Popcorn is on the house.'),
+  ('44444444-4444-4444-4444-444444444402', '11111111-1111-1111-1111-111111111111', 'Game Night', 'sparkle', 25, 'plum', 2, 'Family fun', 'Pick the game and who has to be on your team.'),
+  ('44444444-4444-4444-4444-444444444403', '11111111-1111-1111-1111-111111111111', 'Take Out', 'utensils', 60, 'honey', 3, 'Treats', 'Your restaurant, your order.'),
+  ('44444444-4444-4444-4444-444444444404', '11111111-1111-1111-1111-111111111111', 'Breakfast in Bed', 'dish', 80, 'honey', 4, 'Treats', 'Pancakes, coffee, and the paper — delivered.'),
+  ('44444444-4444-4444-4444-444444444405', '11111111-1111-1111-1111-111111111111', 'Pick a Homemade Meal this Week', 'mug', 50, 'moss', 5, 'Family fun', 'You choose dinner one night; someone else cooks.');
 
-insert into public.reward_deals (household_id, reward_id, cost, starts_on, ends_on) values
-  ('11111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444403', 45,
-    date_trunc('week', timezone('utc', now()))::date,
-    (date_trunc('week', timezone('utc', now())) + interval '6 days')::date);
-
-insert into public.wishlist (member_id, household_id, reward_id) values
-  ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444401'),
-  ('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444402');
-
-insert into public.reward_redemptions (household_id, reward_id, member_id, status, cost) values
-  ('11111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444402', '22222222-2222-2222-2222-222222222202', 'requested', 120);
+select public.ensure_weekly_reward_deals();
 
 -- Lists
 insert into public.lists (id, household_id, name, icon, color, sort_order) values
@@ -193,3 +194,9 @@ values
 insert into public.jukebox_state (household_id, is_playing, volume, now_playing)
 values ('11111111-1111-1111-1111-111111111111', false, 40, '{}'::jsonb)
 on conflict (household_id) do nothing;
+
+-- Workout coach: Daniel and Shelby opted in
+insert into public.athlete_profiles (member_id, coach_enabled, days_per_week, preferred_cardio, equipment, limitations)
+values
+  ('22222222-2222-2222-2222-222222222201', true, 5, '{run,bike}', '{Pull-up bar,Bands}', 'sore left knee � no jumping'),
+  ('22222222-2222-2222-2222-222222222202', true, 4, '{walk,bike}', '{Yoga mat}', 'stroller walks are fine; avoid floor work that needs both hands free');

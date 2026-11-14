@@ -5,9 +5,13 @@ import { ensureSession, supabase } from '../lib/supabase'
 type RealtimeChannel = ReturnType<typeof supabase.channel>
 type LiveTable =
   | 'tasks'
+  | 'task_templates'
+  | 'bounties'
   | 'task_completions'
   | 'points_ledger'
   | 'reward_redemptions'
+  | 'reward_deals'
+  | 'rewards'
   | 'list_items'
   | 'speakers'
   | 'jukebox_state'
@@ -20,6 +24,9 @@ type LiveTable =
   | 'meal_plan'
   | 'members'
   | 'household_settings'
+  | 'athlete_profiles'
+  | 'activities'
+  | 'coach_plans'
 
 let channelCount = 0
 
