@@ -27,7 +27,7 @@
 
 .top { display: flex; align-items: center; gap: var(--space-3); }
 .heading { width: 220px; flex: none; display: flex; flex-direction: column; gap: 2px; }
-.kicker { font-size: 14px; font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--color-ink-3); }
+.kicker { font-size: 14px; font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); color: var(--color-ink-3); }
 .title { font-family: var(--font-display); font-size: 32px; line-height: 1; }
 .search {
   flex: 1; min-width: 0; height: 56px;
@@ -36,7 +36,7 @@
   border-radius: 18px;
   background: var(--color-surface-sunken);
 }
-.search input { flex: 1; min-width: 0; border: none; background: transparent; outline: none; font: inherit; font-size: var(--text-md); font-weight: 600; color: var(--color-ink); }
+.search input { flex: 1; min-width: 0; border: none; background: transparent; outline: none; font: inherit; font-size: var(--text-md); font-weight: var(--weight-bold); color: var(--color-ink); }
 .search input::placeholder { color: var(--color-ink-3); }
 .filters { display: flex; gap: var(--space-1); padding: var(--space-1); border-radius: var(--radius-pill); background: var(--color-rail); }
 .filter { height: 56px; padding: 0 18px; border-radius: var(--radius-pill); font-size: 16px; font-weight: var(--weight-heavy); white-space: nowrap; }
@@ -81,7 +81,7 @@
 .writeLabel { font-family: var(--font-display); font-style: italic; font-size: 22px; line-height: 1.15; }
 .writeHint { font-size: var(--text-xs); font-weight: var(--weight-bold); color: var(--color-ink-3); }
 .writeForm { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 14px; animation: fade var(--dur-fast); }
-.writeKicker { font-size: var(--text-xs); font-weight: var(--weight-heavy); letter-spacing: 1px; text-transform: uppercase; color: var(--color-ink-3); }
+.writeKicker { font-size: var(--text-xs); font-weight: var(--weight-heavy); letter-spacing: 1px; color: var(--color-ink-3); }
 .writeForm textarea {
   flex: 1; min-height: 0; resize: none;
   border: none; border-bottom: 2px solid rgba(46, 42, 38, 0.25);

@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { isThemeColorToken, normalizeHexColor, resolveThemeColor } from '@hub/shared'
 
 /**
- * Apply a person/system color the Scandi Calm way:
+ * Apply a person/system color the Plaster & Paper way:
  * - named tokens → `data-color` (CSS variables from tokens.css)
  * - custom `#RRGGBB` → inline `--member` / `--member-tint`
  */

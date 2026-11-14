@@ -1,4 +1,4 @@
-# Chung Family Hub — Design System ("Scandi Calm")
+# Chung Family Hub — Design System ("Plaster & Paper")
 
 The reference for every screen on the kiosk. When you build or change UI, follow this file, use the tokens in `src/styles/tokens.css`, and reuse the components in `src/components/`. If something you need isn't here, add it here first, then build it.
 
@@ -8,8 +8,8 @@ The reference for every screen on the kiosk. When you build or change UI, follow
 
 ## 1. Principles
 
-1. **Calm, warm, readable across the room.** Oat and white surfaces, muted colors, big serif headings. Nothing glows, pulses or shouts.
-2. **Each person owns a color.** Daniel = moss, Shelby = clay, Noah = honey by default; Family/Home/Up for grabs = **slate** (system-only, not in pickers). People pick from presets or a custom `#RRGGBB`. That color marks their columns, events, avatars and checkmarks everywhere.
+1. **Calm, cool plaster, readable across the room.** Stone-plaster walls and quiet paper panels, muted colors, big serif headings. Warmth lives in the *objects* (recipe paper, wood ledges, sticky notes) and in each person's color — not in an oat-cream chrome. Nothing glows, pulses or shouts.
+2. **Each person owns a color.** Daniel = moss, Shelby = clay, Noah = honey by default; Family/Home/Up for grabs = **slate** (system-only, not in pickers). People pick from presets or a custom `#RRGGBB`. That color marks their columns, events, avatars and checkmarks everywhere. Clay is Shelby's color, not a system accent.
 3. **Big, forgiving touch targets.** Kids, sticky hands, a screen on the wall. Nothing tappable under 56 px.
 4. **One idea per surface.** A page has one title, one main panel, and at most one primary (ink) button per panel.
 5. **Fast on a Pi 3 B+.** Static CSS, no runtime styling, animate only `transform` and `opacity`.
@@ -24,12 +24,12 @@ All colors live in `src/styles/tokens.css`. **Never write a hex value in a compo
 
 | Token | Hex | Use |
 |---|---|---|
-| `--color-bg` | `#F0EBE3` | App background (oat) |
-| `--color-rail` | `#E6DED2` | Sidebar, segmented-control tracks, header pills |
-| `--color-surface` | `#FFFDFA` | Cards, panels, active nav item, selected item in a rail |
-| `--color-surface-sunken` | `#F3EEE7` | Inputs, secondary buttons, quantity chips |
-| `--color-surface-muted` | `#F7F3ED` | Quiet fills (text-only meal slots, idle speakers) |
-| `--color-highlight` | `#FBF7F1` | "Today" column wash on the calendar |
+| `--color-bg` | `#E5E3DE` | App background (plaster) |
+| `--color-rail` | `#D8D5CE` | Sidebar, segmented-control tracks, header pills |
+| `--color-surface` | `#F7F6F3` | Cards, panels, active nav item, selected item in a rail |
+| `--color-surface-sunken` | `#ECEAE5` | Inputs, secondary buttons, quantity chips |
+| `--color-surface-muted` | `#F0EEEA` | Quiet fills (text-only meal slots, idle speakers) |
+| `--color-highlight` | `#F2F0EC` | "Today" column wash on the calendar |
 
 Surfaces are layered: **bg → surface (panel) → sunken (inside the panel)**. Don't put a sunken element directly on the bg.
 
@@ -37,20 +37,20 @@ Surfaces are layered: **bg → surface (panel) → sunken (inside the panel)**. 
 
 | Token | Hex | Use |
 |---|---|---|
-| `--color-border` | `#ECE4D9` | Card and row outlines (1px) |
-| `--color-border-strong` | `#CFC5B8` | Empty checkboxes, dashed "add" tiles |
-| `--color-divider` | `#F1EBE2` | List separators, calendar grid lines |
-| `--color-track` | `#D9CFC2` | Switch-off track, upcoming progress segments, empty meal slots |
+| `--color-border` | `#E0DDD7` | Card and row outlines (1px) |
+| `--color-border-strong` | `#C4C0B8` | Empty checkboxes, dashed "add" tiles |
+| `--color-divider` | `#E8E5DF` | List separators, calendar grid lines |
+| `--color-track` | `#CDC9C1` | Switch-off track, upcoming progress segments, empty meal slots |
 
 ### Ink (text and icons)
 
-| Token | Hex | Contrast (surface / bg) | Use |
-|---|---|---|---|
-| `--color-ink` | `#2E2A26` | 14.0 / 12.0 | Primary text, primary buttons, FAB |
-| `--color-ink-2` | `#4F4740` | 9.0 / 7.7 | Secondary text |
-| `--color-ink-3` | `#615950` | 6.8 / 5.8 (5.2 on rail) | Labels, captions, eyebrows |
-| `--color-ink-soft` | `#8A7F73` | 3.9 / 3.3 | **Large display text only** (≥ 34px), e.g. the header clock |
-| `--color-on-ink` | `#FFFDFA` | — | Text on ink or member-colored fills |
+| Token | Hex | Use |
+|---|---|---|
+| `--color-ink` | `#25231F` | Primary text, primary buttons, FAB |
+| `--color-ink-2` | `#48443E` | Secondary text |
+| `--color-ink-3` | `#5C5750` | Labels, captions, eyebrows (≥ 4.5:1 on bg and surface) |
+| `--color-ink-soft` | `#847E75` | **Large display text only** (≥ 34px), e.g. the header clock |
+| `--color-on-ink` | `#F7F6F3` | Text on ink or member-colored fills |
 
 ### Member palette
 
@@ -172,8 +172,10 @@ Nav labels are 14px; **nothing on the kiosk is smaller than 13px**.
 
 ### Eyebrows and labels
 
-- **Page eyebrow** (above the title): 18px, weight 800, uppercase, `--tracking-eyebrow` (2px), `--color-ink-3`. Default content: `Saturday · 9:42 AM · 52° partly sunny`.
-- **Section label** (`<Label>`): 14px, weight 800, uppercase, `--tracking-label` (1.5px), `--color-ink-3`. Use it for "INGREDIENTS", "COLOR", "TODAY" and similar.
+Labels are **sentence case** — never force ALL-CAPS with CSS.
+
+- **Page eyebrow** (above the title): 18px, weight 800, `--tracking-eyebrow` (0.02em), `--color-ink-3`. Default content: `Saturday · 9:42 AM · 52° partly sunny`.
+- **Section label** (`<Label>`): 14px, weight 800, `--tracking-label` (0.01em), `--color-ink-3`. Use it for "Ingredients", "Color", "Today" and similar — not "INGREDIENTS".
 
 ---
 
@@ -185,16 +187,21 @@ Nav labels are 14px; **nothing on the kiosk is smaller than 13px**.
 - Gap between the header and content, and between panels: 24.
 - Inside panels: 28 padding (`<Panel pad="md">`), 16–20 between groups, 8–14 between rows.
 
-**Radii** go up as things get bigger:
+**Radii** split by material:
+
+- **UI chrome** (panels, rows, pills, nav): `--radius-lg` → `--radius-3xl` / `--radius-pill` / `--radius-nav`.
+- **Paper objects** (bounty tickets, stickies, stamps): `--radius-paper` (6px) — stay sharp so they read as paper, not SaaS cards.
 
 | Token | px | Use |
 |---|---|---|
+| `--radius-paper` | 6 | Tickets, stickies, stamps |
 | `--radius-sm` | 12 | Calendar events, small chips |
 | `--radius-md` | 16 | Checkboxes, icon buttons, small inputs |
 | `--radius-lg` | 20 | List rows, task rows, search inputs |
 | `--radius-xl` | 24 | Cards inside panels |
-| `--radius-2xl` | 28 | Top-level panels and task columns |
+| `--radius-2xl` | 28 | Top-level panels, task columns, HeroBand |
 | `--radius-3xl` | 36 | Dialogs |
+| `--radius-nav` | 18 | Sidebar nav items |
 | `--radius-pill` | 999 | Header actions, chips, segmented controls, status pills |
 
 **Sizes**
@@ -206,6 +213,9 @@ Nav labels are 14px; **nothing on the kiosk is smaller than 13px**.
 | `--touch-big` | 88 | FAB, the main actions on full-screen modes |
 | `--sidebar-width` | 120 | |
 | `--column-width` | 412 | Horizontal board columns (4 fit at 1920px) |
+| `--hero-height` | 150 | Default HeroBand |
+| `--hero-height-tall` | 176 | Wallet |
+| `--hero-height-xl` | 200 | Up next / Tonight |
 
 ---
 
@@ -213,7 +223,7 @@ Nav labels are 14px; **nothing on the kiosk is smaller than 13px**.
 
 - **Target:** 1920×1080 landscape, 100% zoom. Everything is sized in px for this screen. If the display changes, change the tokens, not the components.
 - **Shell:** `<AppShell>` = sidebar (120px, `--color-rail`) + `<main>` (flex column, page padding, 24 gap). Every tab screen uses it. Full-screen modes (Cooking, Idle, Sleep, PIN) render outside it as fixed overlays.
-- **Sidebar:** 8 tabs (Calendar, Tasks, Rewards, Meals, Recipes, Photos, Lists, Jukebox), then a spacer, then Sleep and Settings pinned to the bottom. Item 96×80, radius 18. Active item: surface fill, ink, weight 800.
+- **Sidebar:** ink rail with a colored chip per tab (see `TAB_COLOR` in `src/lib/tabs.ts`). Tabs: Calendar fjord · Tasks moss · Rewards honey · Workout pine · Meals clay · Recipes plum · Lists ocean · Jukebox berry · Profiles rose; Sleep/Settings are quieter slate. Idle: tint icon well + deep glyph. Active: deep fill, on-ink label, surface icon well. The open tab also washes `<AppShell>` with that tab’s `--member-tint` (page background).
 - **Page header** (`<PageHeader>`): eyebrow + 64px serif title on the left; actions bottom-aligned on the right. One header per page.
 - **Body patterns:**
   - *Focus + side board:* one person's content on the left, a fixed 476px side board on the right (Tasks: daily/weekly lists + bounty board).
@@ -259,7 +269,13 @@ A pill-shaped `--color-rail` track grouping header controls: `[‹] [Today] [›
 `<Panel as pad>`: white surface, radius 28. `pad`: none / sm (16) / md (28) / lg (32).
 
 ### Label
-Uppercase section label (see Typography).
+Sentence-case section label (see Typography). Never ALL-CAPS.
+
+### PersonRail
+`<PersonRail label>` — pill `--color-rail` track for switching people. Children are 64px person pills (avatar slot + name + optional sub). Selected pill fills with `--member`. Use on Tasks, Rewards, Workout, and Calendar person filters.
+
+### HeroBand
+`<HeroBand tall? xl? surface? className …>` — band with `leading` | `main` | `trailing` slots. Default height `--hero-height` (150) in `--member-tint`; `tall` = 176 (wallet); `xl` = 200 (Up next / Tonight); `surface` uses `--color-surface` instead of tint. Screens keep their own content inside the slots.
 
 ### Avatar
 `<Avatar initial color size="xs|sm|md|lg" muted>`: a circle in the member's deep color with a serif initial. Sizes 26 / 36 / 58 / 72. `muted` = rail fill (a filtered-out person).
@@ -292,14 +308,14 @@ The floating 88px ink "+" bottom-right for quick-add. One per screen, only on sc
 The `Suspense` fallback for tab screens in `App.tsx`: the real sidebar plus an empty panel that fades in. It shows instantly on tap, so the tab highlight moves before the screen's code has loaded.
 
 ### ErrorScreen / ErrorBoundary
-`<ErrorScreen title message detail actionLabel onAction>`: a full-screen oat page with a serif title, a short sentence, an optional monospace detail line and one 88px primary button. `ErrorBoundary` wraps the app (in `main.tsx`) and the screen area (in `App.tsx`) and shows it with a **Reload** button. Sign-in failures use it with **Retry**.
+`<ErrorScreen title message detail actionLabel onAction>`: a full-screen plaster page with a serif title, a short sentence, an optional monospace detail line and one 88px primary button. `ErrorBoundary` wraps the app (in `main.tsx`) and the screen area (in `App.tsx`) and shows it with a **Reload** button. Sign-in failures use it with **Retry**.
 
 ---
 
 ## 7. Patterns
 
-- **Person switcher (Tasks):** rail of 64px pills (avatar 48 + name + "N left"). The selected pill fills with `--member`, and switching re-keys the page body so it slides in.
-- **Person hero (Tasks):** 150px band in `--member-tint`: 96px avatar · greeting + one progress segment per task + "x of y today · x of y this week" · points today (56px serif) and balance with progress to the next reward. People who don't earn points get a note pill instead of the numbers.
+- **Person switcher:** `<PersonRail>` of 64px pills (avatar 48 + name + "N left"). The selected pill fills with `--member`, and switching re-keys the page body so it slides in.
+- **Person hero (Tasks):** `<HeroBand>` in `--member-tint`: 96px avatar · greeting + one progress segment per task + "x of y today · x of y this week" · points today (56px serif) and balance with progress to the next reward. People who don't earn points get a note pill instead of the numbers.
 - **Daily / weekly lists:** two equal surface panels side by side ("Today" and "This week"), each with an icon tile, kicker, title, count, a + that opens Add with that frequency already chosen, a thin progress bar, and an "all wrapped up" banner when everything's done.
 - **Task card:** 84px, 1px border, radius 20: 58px tile · title (20px heavy) with "+N pts" in `--member` and the schedule ("Weekdays", "Every other week") · due pill on weekly tasks (later / *today* in member tint / *late* in alert on clay tint) · 52px check. Done = member-tint fill, checked. A claimed bounty gets a 2px `--color-bounty-edge` border, a bounty-tint tile and a *Bounty* tag. The whole card toggles.
 - **Bounty board:** 476px `--color-wall` panel with pinned paper tickets (`--color-paper`, ±1° tilt, a pin dot in the claimer's color or slate): icon tile · title + due line · star points (30px serif) and *Claim for {name}* in the current person's color. Claimed tickets go to the bottom at 75% opacity with a rotated "{Name} claimed" stamp.
@@ -326,10 +342,10 @@ The `Suspense` fallback for tab screens in `App.tsx`: the real sidebar plus an e
 - **Stock the shop:** PIN-gated sheet to add, edit, or retire rewards. Catalog list on the left style of Add sheet; form has title + blurb (soft keyboard), aisle chips, star-price stepper, color swatches and an icon grid. Retiring sets `active = false` so past redemptions stay intact.
 - **List row:** 72px, `CheckMark` (52) · text · qty chip · assignee avatar (sm). Checked items move to an "In the cart" strip of moss-tint chips with a "Clear completed" button.
 - **Settings row:** min 84px, label + optional hint on the left; a `Switch` or a `secondary` value button with a chevron on the right; divider between rows.
-- **Approval banner:** surface card at the top of the page, with `IconTile` · uppercase eyebrow in the requester's color ("WAITING FOR A PARENT") · sentence · `Not now` (secondary) · `Approve with PIN` (primary, lock icon).
+- **Approval banner:** surface card at the top of the page, with `IconTile` · sentence-case eyebrow in the requester's color ("Waiting for a parent") · sentence · `Not now` (secondary) · `Approve with PIN` (primary, lock icon).
 - **Parent-only actions** always go through the PIN dialog (`useNav().requirePin({ title, detail, onSuccess })`). Show a lock icon on any button that will ask for the PIN.
 - **Empty slot:** 2px dashed `--color-track` border, "+ Add" in ink-3.
-- **Unavailable thing** (asleep speaker): 2px dashed border, transparent fill, clay uppercase state, and a short fix ("Asleep · wake it").
+- **Unavailable thing** (asleep speaker): 2px dashed border, transparent fill, clay sentence-case state, and a short fix ("Asleep · wake it").
 - **Confirmation:** swap the button for a moss-tint pill with a tick and a past-tense message ("Added to Groceries"), using `anim-pop`. When the button has to stay (Add to queue can be tapped again and again), show a short ink **toast** above the bottom bar for 2.4s instead. No alerts or modals for confirmations.
 - **Record wall (Jukebox Albums and Playlists):** 230px covers on two wooden ledges, a slight hand-hung tilt (±2.5°), horizontal scroll with snap. Tapping the cover plays it; tapping the caption under the ledge opens its songs.
 - **Media row:** 76px row, `#` or equalizer · 56px art + title/artist · album · time · 56px icon buttons. The playing row gets a fjord-tint fill and fjord title.
@@ -469,7 +485,7 @@ These are rules, not suggestions.
 
 ## 12. Writing style
 
-- Sentence case everywhere ("Add to meal plan", not "Add To Meal Plan"). Uppercase only through the eyebrow and label styles.
+- Sentence case everywhere ("Add to meal plan", not "Add To Meal Plan"). Do not force ALL-CAPS on eyebrows or labels.
 - Short, warm, plain: "Morning all wrapped up", "Noah's points turn on in Settings once he's ready for chores", "Asleep · wake it".
 - Say what happened or what to do next: "Added to Groceries", "Kitchen speaker isn't available — wake it or pick another".
 - Numbers: "3/10 done today", "+10 points", "1 hr 15 min", "1½ cups".
@@ -496,5 +512,5 @@ These are rules, not suggestions.
 - [ ] Person-colored UI uses `memberColorProps()` and `var(--member)` / `var(--member-tint)`
 - [ ] Only `transform`/`opacity` animated; no blur, no heavy shadows
 - [ ] Long content scrolls inside a panel, and the page doesn't scroll
-- [ ] Copy is sentence case, short, and names people
+- [ ] Copy is sentence case, short, and names people — no `text-transform: uppercase` on labels
 - [ ] Looks right at 1920×1080 (`npm run dev`, open `#yourscreen`)

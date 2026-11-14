@@ -5,7 +5,7 @@ import { AppShell, PageHeader } from '../../components/AppShell'
 import { Button, IconButton } from '../../components/Button'
 import { FoodPhoto } from '../../components/FoodPhoto'
 import { Icon } from '../../components/Icon'
-import { Rail } from '../../components/primitives'
+import { HeroBand, Label, Rail } from '../../components/primitives'
 import { useAddWeekIngredients, useMealPlan, useRecipes, useUpsertMealPlan } from '../../data/hooks'
 import { useLive } from '../../data/live'
 import { localDate } from '../../data/mappers'
@@ -181,29 +181,42 @@ export default function Meals() {
       />
 
       {/* ---------- Tonight ---------- */}
-      <section aria-label="Tonight" className={s.tonight} data-course="Dinner">
-        <span className={s.pot} aria-hidden="true">
-          <span className={s.steam}><i /><i /><i /></span>
-          <Icon name={tonight?.icon ?? 'dish'} size={92} stroke={2.2} />
-        </span>
-        <div className={s.tonightText}>
-          <span className={s.kicker}>Tonight · {weekday(now)}</span>
-          <span className={s.tonightTitle}>{tonight?.title ?? entryText(tonightEntry) ?? 'Nothing planned yet'}</span>
-          {tonight && startBy && (
-            <span className={s.tonightChips}>
-              <span className={s.chip}>{timeLabel(totalMin(tonight))}</span>
-              <span className={`${s.chip} ${s.chipTint}`}>Start by {time(startBy)} to eat at 6:00</span>
-            </span>
-          )}
-        </div>
-        <Button variant="secondary" size="lg" pill onClick={() => setPicking({ slot: 'dinner', day: today })}>
-          {tonightEntry ? 'Swap' : 'Plan dinner'}
-        </Button>
-        {tonight && <>
-          <Button variant="secondary" size="lg" pill onClick={() => go('recipes')}>Recipe card</Button>
-          <Button size="lg" pill icon="play" onClick={() => cook(tonight.id)}>Start cooking</Button>
-        </>}
-      </section>
+      <HeroBand
+        xl
+        surface
+        aria-label="Tonight"
+        className={s.tonight}
+        data-course="Dinner"
+        leading={
+          <span className={s.pot} aria-hidden="true">
+            <span className={s.steam}><i /><i /><i /></span>
+            <Icon name={tonight?.icon ?? 'dish'} size={92} stroke={2.2} />
+          </span>
+        }
+        main={
+          <>
+            <Label member>Tonight · {weekday(now)}</Label>
+            <span className={s.tonightTitle}>{tonight?.title ?? entryText(tonightEntry) ?? 'Nothing planned yet'}</span>
+            {tonight && startBy && (
+              <span className={s.tonightChips}>
+                <span className={s.chip}>{timeLabel(totalMin(tonight))}</span>
+                <span className={`${s.chip} ${s.chipTint}`}>Start by {time(startBy)} to eat at 6:00</span>
+              </span>
+            )}
+          </>
+        }
+        trailing={
+          <>
+            <Button variant="secondary" size="lg" pill onClick={() => setPicking({ slot: 'dinner', day: today })}>
+              {tonightEntry ? 'Swap' : 'Plan dinner'}
+            </Button>
+            {tonight && <>
+              <Button variant="secondary" size="lg" pill onClick={() => go('recipes')}>Recipe card</Button>
+              <Button size="lg" pill icon="play" onClick={() => cook(tonight.id)}>Start cooking</Button>
+            </>}
+          </>
+        }
+      />
 
       {/* ---------- Fridge board ---------- */}
       <section aria-label="Meal plan" className={s.board}>

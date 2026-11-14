@@ -5,7 +5,7 @@ import { Button } from '../../components/Button'
 import { Icon } from '../../components/Icon'
 import { MemberBlobAvatar } from '../../components/MemberBlobAvatar'
 import type { BlobAnimation } from '../../components/BlobAvatar'
-import { Label } from '../../components/primitives'
+import { HeroBand, Label, PersonPill, PersonRail } from '../../components/primitives'
 import { useCountUp } from '../../hooks/useCountUp'
 import { memberColorProps } from '../../lib/colors'
 import type { Reward, RewardAisle } from '../../types'
@@ -97,10 +97,14 @@ export default function Rewards() {
         title="The Star Shop"
         actions={<>
           <Label>Shopping as</Label>
-          <div role="group" aria-label="Shopping as" className={s.shoppers}>
+          <PersonRail label="Shopping as">
             {shoppers.map((m) => (
-              <button key={m.id} type="button" {...memberColorProps(m.color)} aria-pressed={m.id === me.id} className={s.shopper} onClick={() => setWhoId(m.id)}>
-                <span className={s.shopperAvatar}>
+              <PersonPill
+                key={m.id}
+                colorProps={memberColorProps(m.color)}
+                pressed={m.id === me.id}
+                onClick={() => setWhoId(m.id)}
+                avatar={
                   <MemberBlobAvatar
                     memberId={m.id}
                     size={40}
@@ -109,14 +113,12 @@ export default function Rewards() {
                     animation={m.id === me.id ? shopperMotion : m.id === celebrateId ? 'celebrate' : 'idle'}
                     animationKey={m.id === me.id ? shopperMotionKey : m.id === celebrateId ? celebrateKey : 0}
                   />
-                </span>
-                <span className={s.shopperText}>
-                  <span className={s.shopperName}>{m.name}</span>
-                  <span className={s.shopperStars}><Star size={13} />{balance(m.id)} stars</span>
-                </span>
-              </button>
+                }
+                name={m.name}
+                sub={`${balance(m.id)} stars`}
+              />
             ))}
-          </div>
+          </PersonRail>
           <Button
             variant="rail"
             size="lg"
@@ -132,44 +134,57 @@ export default function Rewards() {
       <div className={s.body}>
         <div className={s.main}>
           {/* ---------- Wallet (re-keyed per shopper so it fills up again) ---------- */}
-          <section key={me.id} {...memberColorProps(me.color)} className={s.wallet} aria-label={`${me.name}’s stars`}>
-            <span className={s.jar} aria-hidden="true">
-              <svg width="132" height="148" viewBox="0 0 132 148" className={s.jarSvg}>
-                <rect x="34" y="6" width="64" height="16" rx="5" className={s.jarLid} />
-                <path d="M30 26h72a10 10 0 0 1 10 10v94a14 14 0 0 1-14 14H34a14 14 0 0 1-14-14V36a10 10 0 0 1 10-10z" className={s.jarGlass} />
-              </svg>
-              <span className={s.jarStars}>
-                {JAR.slice(0, Math.min(JAR.length, Math.round(bal / STARS_PER_JAR_STAR))).map(([x, b, r], i) => (
-                  <span key={i} className={s.jarStar} style={{ left: x, bottom: b, ['--r' as string]: `${r}deg`, ['--n' as string]: i }}><Star size={30} /></span>
-                ))}
+          <HeroBand
+            key={me.id}
+            tall
+            className={s.wallet}
+            {...memberColorProps(me.color)}
+            aria-label={`${me.name}’s stars`}
+            leading={
+              <span className={s.jar} aria-hidden="true">
+                <svg width="132" height="148" viewBox="0 0 132 148" className={s.jarSvg}>
+                  <rect x="34" y="6" width="64" height="16" rx="5" className={s.jarLid} />
+                  <path d="M30 26h72a10 10 0 0 1 10 10v94a14 14 0 0 1-14 14H34a14 14 0 0 1-14-14V36a10 10 0 0 1 10-10z" className={s.jarGlass} />
+                </svg>
+                <span className={s.jarStars}>
+                  {JAR.slice(0, Math.min(JAR.length, Math.round(bal / STARS_PER_JAR_STAR))).map(([x, b, r], i) => (
+                    <span key={i} className={s.jarStar} style={{ left: x, bottom: b, ['--r' as string]: `${r}deg`, ['--n' as string]: i }}><Star size={30} /></span>
+                  ))}
+                </span>
               </span>
-            </span>
-            <div className={s.balance}>
-              <span className={s.walletKicker}>{me.name}’s stars</span>
-              <span className={s.balanceRow}>
-                <WalletNumber value={bal} refEl={walletRef} />
-                <span className={s.balanceStar}><Star size={40} /></span>
-              </span>
-              <span className={s.week}>+{shop.earnedThisWeek(me.id)} earned this week</span>
-            </div>
-            <span className={s.walletRule} />
-            <div className={s.goal}>
-              <span className={s.goalArt}>
-                <Icon name={wish?.icon ?? 'star'} size={54} stroke={2.2} />
-                {wish && <span className={s.goalHeart}><Icon name="heart-solid" size={16} /></span>}
-              </span>
-              <span className={s.goalText}>
-                <Label>Saving for</Label>
-                <span className={s.goalTitle}>{wish?.title ?? 'Tap ♥ on a reward to save for it'}</span>
-                {wish && <>
-                  <span className={s.goalTrack}><span className={s.goalFill} style={{ transform: `scaleX(${ready ? Math.min(1, bal / price(wish)) : 0})` }} /></span>
-                  <span className={bal >= price(wish) ? `${s.goalLine} ${s.goalReady}` : s.goalLine}>
-                    {bal >= price(wish) ? 'You have enough. Treat yourself!' : weeksLine(price(wish) - bal, shop.earnedThisWeek(me.id))}
+            }
+            main={
+              <div className={s.balance}>
+                <Label member>{me.name}’s stars</Label>
+                <span className={s.balanceRow}>
+                  <WalletNumber value={bal} refEl={walletRef} />
+                  <span className={s.balanceStar}><Star size={40} /></span>
+                </span>
+                <span className={s.week}>+{shop.earnedThisWeek(me.id)} earned this week</span>
+              </div>
+            }
+            trailing={
+              <>
+                <span className={s.walletRule} />
+                <div className={s.goal}>
+                  <span className={s.goalArt}>
+                    <Icon name={wish?.icon ?? 'star'} size={54} stroke={2.2} />
+                    {wish && <span className={s.goalHeart}><Icon name="heart-solid" size={16} /></span>}
                   </span>
-                </>}
-              </span>
-            </div>
-          </section>
+                  <span className={s.goalText}>
+                    <Label>Saving for</Label>
+                    <span className={s.goalTitle}>{wish?.title ?? 'Tap ♥ on a reward to save for it'}</span>
+                    {wish && <>
+                      <span className={s.goalTrack}><span className={s.goalFill} style={{ transform: `scaleX(${ready ? Math.min(1, bal / price(wish)) : 0})` }} /></span>
+                      <span className={bal >= price(wish) ? `${s.goalLine} ${s.goalReady}` : s.goalLine}>
+                        {bal >= price(wish) ? 'You have enough. Treat yourself!' : weeksLine(price(wish) - bal, shop.earnedThisWeek(me.id))}
+                      </span>
+                    </>}
+                  </span>
+                </div>
+              </>
+            }
+          />
 
           {/* ---------- Aisles ---------- */}
           <div className={s.aisleRow}>

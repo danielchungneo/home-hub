@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from 'react'
+import type { CSSProperties, HTMLAttributes, ReactNode } from 'react'
 import type { MemberColor } from '@hub/shared'
 import { Icon } from './Icon'
 import s from './primitives.module.css'
@@ -14,9 +14,11 @@ export function Panel({ as: Tag = 'section', pad = 'md', className, ...rest }: P
   return <Tag className={cx(s.panel, s[`pad-${pad}`], className)} {...rest} />
 }
 
-/* ---------- Eyebrow / section label: small caps, tracked ---------- */
-export function Label({ children, className, as: Tag = 'span' }: { children: ReactNode; className?: string; as?: 'span' | 'h2' | 'h3' }) {
-  return <Tag className={cx(s.label, className)}>{children}</Tag>
+/* ---------- Section label: sentence case, heavy Manrope ---------- */
+export function Label({
+  children, className, as: Tag = 'span', member,
+}: { children: ReactNode; className?: string; as?: 'span' | 'h2' | 'h3'; member?: boolean }) {
+  return <Tag className={cx(s.label, member && s.labelMember, className)}>{children}</Tag>
 }
 
 /* ---------- Avatar: colored circle with a serif initial ---------- */
@@ -105,4 +107,65 @@ export function StatusPill({ children, tone = 'ok' }: { children: ReactNode; ton
 /* ---------- Rail: pill track that groups header buttons (prev · Today · next) ---------- */
 export function Rail({ children, label }: { children: ReactNode; label?: string }) {
   return <div role="group" aria-label={label} className={s.seg}>{children}</div>
+}
+
+/* ---------- PersonRail: switch whose view we're looking at ---------- */
+export function PersonRail({ children, label, className }: { children: ReactNode; label: string; className?: string }) {
+  return (
+    <div role="group" aria-label={label} className={cx(s.personRail, className)}>
+      {children}
+    </div>
+  )
+}
+
+export function PersonPill({
+  pressed, onClick, avatar, name, sub, colorProps, className,
+}: {
+  pressed: boolean
+  onClick: () => void
+  avatar: ReactNode
+  name: string
+  sub?: string
+  /** Spread `memberColorProps(color)` so selected fill uses --member */
+  colorProps?: { 'data-color'?: string; style?: CSSProperties }
+  className?: string
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={cx(s.personPill, className)}
+      {...colorProps}
+    >
+      <span className={s.personAvatar}>{avatar}</span>
+      <span className={s.personText}>
+        <span className={s.personName}>{name}</span>
+        {sub != null && <span className={s.personSub}>{sub}</span>}
+      </span>
+    </button>
+  )
+}
+
+/* ---------- HeroBand: tinted band with leading | main | trailing slots ---------- */
+export function HeroBand({
+  leading, main, trailing, tall, xl, surface, className, ...rest
+}: {
+  leading?: ReactNode
+  main?: ReactNode
+  trailing?: ReactNode
+  tall?: boolean
+  /** 200px — calendar Up next / meals Tonight */
+  xl?: boolean
+  /** Paper surface instead of member-tint (Tonight) */
+  surface?: boolean
+  className?: string
+} & HTMLAttributes<HTMLElement>) {
+  return (
+    <section className={cx(s.heroBand, tall && s.heroTall, xl && s.heroXl, surface && s.heroSurface, className)} {...rest}>
+      {leading != null && <div className={s.heroLeading}>{leading}</div>}
+      {main != null && <div className={s.heroMain}>{main}</div>}
+      {trailing != null && <div className={s.heroTrailing}>{trailing}</div>}
+    </section>
+  )
 }

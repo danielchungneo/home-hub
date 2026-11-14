@@ -3,7 +3,7 @@ import { AppShell, PageHeader } from '../../components/AppShell'
 import { Button, IconButton } from '../../components/Button'
 import { Icon, type IconName } from '../../components/Icon'
 import { MemberBlobAvatar } from '../../components/MemberBlobAvatar'
-import { Label } from '../../components/primitives'
+import { Label, PersonPill, PersonRail } from '../../components/primitives'
 import { useMembers } from '../../data/hooks'
 import { memberColorProps } from '../../lib/colors'
 import { useClock } from '../../hooks/useClock'
@@ -81,27 +81,22 @@ export default function Workout() {
         eyebrow={`Coach · ${weekday(now)}, ${monthDay(now)}`}
         title={<span key={me.id} className={s.title}>{me.name}’s training</span>}
         actions={<>
-          <div role="group" aria-label="Whose plan" className={s.people}>
+          <PersonRail label="Whose plan">
             {athletes.map((m) => {
               const done = (['cardio', 'strength'] as const).filter((p) => w.doneToday(m.id, p)).length
               return (
-                <button
+                <PersonPill
                   key={m.id}
-                  type="button"
-                  {...memberColorProps(m.color)}
-                  aria-pressed={m.id === me.id}
-                  className={s.person}
+                  colorProps={memberColorProps(m.color)}
+                  pressed={m.id === me.id}
                   onClick={() => { setWhoId(m.id); setAskOpen(false) }}
-                >
-                  <MemberBlobAvatar memberId={m.id} size={44} decorative className={s.personAvatar} />
-                  <span className={s.personText}>
-                    <span className={s.personName}>{m.name}</span>
-                    <span className={s.personSub}>{done} of 2 done</span>
-                  </span>
-                </button>
+                  avatar={<MemberBlobAvatar memberId={m.id} size={44} decorative />}
+                  name={m.name}
+                  sub={`${done} of 2 done`}
+                />
               )
             })}
-          </div>
+          </PersonRail>
           <QuickLog member={me} onLog={(act) => { w.log(act); setToast(`Logged ${act.title}. Your coach will see it tomorrow.`) }} />
         </>}
       />

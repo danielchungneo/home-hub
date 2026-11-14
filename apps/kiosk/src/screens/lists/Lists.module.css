@@ -73,7 +73,7 @@
   border-radius: 22px;
   background: var(--color-surface-sunken);
 }
-.addField input { flex: 1; min-width: 0; border: none; background: transparent; outline: none; font: inherit; font-size: var(--text-lg); font-weight: 600; color: var(--color-ink); }
+.addField input { flex: 1; min-width: 0; border: none; background: transparent; outline: none; font: inherit; font-size: var(--text-lg); font-weight: var(--weight-bold); color: var(--color-ink); }
 .addField input::placeholder { color: var(--color-ink-3); }
 .guess {
   flex: none;
@@ -114,7 +114,7 @@
 }
 .groupHead { display: flex; align-items: center; gap: 10px; padding: 0 6px var(--space-2); }
 .groupIcon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 13px; background: var(--member-tint, var(--color-surface-sunken)); color: var(--member, var(--color-ink-2)); }
-.groupName { flex: 1; font-size: 14px; font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--member, var(--color-ink-2)); }
+.groupName { flex: 1; font-size: 14px; font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); color: var(--member, var(--color-ink-2)); }
 .groupCount { font-size: 14px; font-weight: var(--weight-heavy); color: var(--color-ink-3); }
 
 .listTools {
@@ -154,7 +154,7 @@
 }
 .confirmText { display: flex; flex-direction: column; gap: 10px; text-align: center; }
 .confirmTitle { font-family: var(--font-display); font-weight: 400; font-size: var(--display-lg); line-height: 1.05; }
-.confirmDetail { font-size: 19px; font-weight: 600; line-height: 1.4; color: var(--color-ink-2); }
+.confirmDetail { font-size: 19px; font-weight: var(--weight-bold); line-height: 1.4; color: var(--color-ink-2); }
 .confirmActions { display: flex; flex-direction: column; gap: var(--space-3); }
 .pickerRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
 .pickerIcon,
@@ -215,7 +215,7 @@
 }
 .itemChecking .strike,
 .itemChecked .strike { transform: scaleX(1); }
-.newBadge { flex: none; padding: 3px 9px; border-radius: var(--radius-pill); background: var(--member); color: var(--color-on-ink); font-size: 12px; font-weight: var(--weight-heavy); letter-spacing: 0.5px; animation: badgeIn 400ms cubic-bezier(0.3, 1.6, 0.5, 1) 300ms backwards; }
+.newBadge { flex: none; padding: 3px 9px; border-radius: var(--radius-pill); background: var(--member); color: var(--color-on-ink); font-size: var(--text-xs); font-weight: var(--weight-heavy); letter-spacing: 0.5px; animation: badgeIn 400ms cubic-bezier(0.3, 1.6, 0.5, 1) 300ms backwards; }
 .qty { flex: none; padding: 4px 10px; border-radius: var(--radius-pill); background: var(--color-surface); font-size: 14px; font-weight: var(--weight-heavy); color: var(--color-ink-2); }
 .assignee { width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 16px; overflow: visible; }
 .remove {
@@ -240,7 +240,7 @@
 }
 .dinners { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .dinner { height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 14px 0 6px; border-radius: var(--radius-pill); background: var(--color-surface-sunken); font-size: 14px; font-weight: var(--weight-heavy); }
-.dinnerDay { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 15px; background: var(--member); color: var(--color-on-ink); font-size: 11px; font-weight: var(--weight-heavy); }
+.dinnerDay { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 15px; background: var(--member); color: var(--color-on-ink); font-size: var(--text-xs); font-weight: var(--weight-heavy); }
 .mealsBtn {
   height: 64px;
   display: flex; align-items: center; justify-content: center; gap: 10px;

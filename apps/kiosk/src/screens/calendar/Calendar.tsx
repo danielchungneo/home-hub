@@ -4,7 +4,7 @@ import { AppShell, PageHeader } from '../../components/AppShell'
 import { Button, IconButton } from '../../components/Button'
 import { Icon } from '../../components/Icon'
 import { MemberBlobAvatar } from '../../components/MemberBlobAvatar'
-import { Label, Rail, Segmented } from '../../components/primitives'
+import { HeroBand, Label, Rail, Segmented } from '../../components/primitives'
 import { useCalendarSources, useEvents, useMembers, useSyncCalendars, useWeather } from '../../data/hooks'
 import { useLive } from '../../data/live'
 import { FAMILY } from '../../lib/members'
@@ -515,31 +515,36 @@ function Today({ now, nowHour, ready, events, weatherKind, weatherTemp, weatherH
 
   return (
     <aside className={s.today} aria-label="Today">
-      <div className={s.upNext} {...memberColorProps(nw?.color ?? 'moss')}>
-        <span className={s.ring}>
-          <svg className={s.ringMeter} aria-hidden="true" width="132" height="132" viewBox="0 0 132 132">
-            <circle cx="66" cy="66" r="56" className={s.ringTrack} />
-            <circle cx="66" cy="66" r="56" className={s.ringFill} strokeDasharray={RING} strokeDashoffset={ready ? RING * (1 - ringFill) : RING} />
-          </svg>
-          <span className={s.ringText}>
-            {next
-              ? <><span className={s.ringNum}>{mins >= 60 ? Math.floor(mins / 60) : mins}</span><span className={s.ringUnit}>{mins >= 60 ? 'hr' : 'min'}</span></>
-              : <Icon name="moon" size={44} stroke={2.2} />}
+      <HeroBand
+        xl
+        className={s.upNext}
+        {...memberColorProps(nw?.color ?? 'moss')}
+        leading={
+          <span className={s.ring}>
+            <svg className={s.ringMeter} aria-hidden="true" width="132" height="132" viewBox="0 0 132 132">
+              <circle cx="66" cy="66" r="56" className={s.ringTrack} />
+              <circle cx="66" cy="66" r="56" className={s.ringFill} strokeDasharray={RING} strokeDashoffset={ready ? RING * (1 - ringFill) : RING} />
+            </svg>
+            <span className={s.ringText}>
+              {next
+                ? <><span className={s.ringNum}>{mins >= 60 ? Math.floor(mins / 60) : mins}</span><span className={s.ringUnit}>{mins >= 60 ? 'hr' : 'min'}</span></>
+                : <Icon name="moon" size={44} stroke={2.2} />}
+            </span>
           </span>
-        </span>
-        <span className={s.upText}>
-          {next ? <>
-            <span className={s.upKicker}>Up next · {nw!.name}</span>
+        }
+        main={
+          next ? <>
+            <Label member className={s.upKicker}>Up next · {nw!.name}</Label>
             <span className={s.upTitle}>{next.title}</span>
             <span className={s.upTime}>{hourLabel(next.start)} – {hourLabel(next.end)}{next.where ? ` · ${next.where}` : ''}</span>
             {next.travelMin && <span className={s.upLeave}>{leaveBy(next)}</span>}
           </> : <>
-            <span className={s.upKicker}>That’s everything</span>
+            <Label member className={s.upKicker}>That’s everything</Label>
             <span className={s.upTitle}>Nothing else today</span>
             <span className={s.upTime}>Enjoy the evening.</span>
-          </>}
-        </span>
-      </div>
+          </>
+        }
+      />
 
       <section className={s.timeline} aria-label="Today’s timeline">
         <div className={s.tlHead}>

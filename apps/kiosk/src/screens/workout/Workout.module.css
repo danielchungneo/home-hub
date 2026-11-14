@@ -2,22 +2,6 @@
 .star { flex: none; fill: var(--color-star-gold); stroke: var(--color-ledge); stroke-width: 0.6; }
 .title { display: inline-block; animation: titleIn var(--dur-base) var(--ease-out); }
 
-/* ---------- Header ---------- */
-.people { display: flex; gap: 6px; padding: 6px; border-radius: var(--radius-pill); background: var(--color-rail); }
-.person {
-  height: 64px;
-  display: flex; align-items: center; gap: var(--space-3);
-  padding: 0 22px 0 var(--space-2);
-  border-radius: var(--radius-pill);
-  transition: background-color 350ms ease, color 350ms ease;
-}
-.person[aria-pressed='true'] { background: var(--member); color: var(--color-on-ink); }
-.personAvatar { flex: none; }
-.person[aria-pressed='true'] .personAvatar { filter: brightness(1.08); }
-.personText { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
-.personName { font-size: 18px; font-weight: var(--weight-heavy); }
-.personSub { font-size: var(--text-xs); font-weight: var(--weight-bold); opacity: 0.8; }
-
 .body { flex: 1; min-height: 0; display: flex; gap: var(--space-6); }
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-4); animation: swapIn 350ms var(--ease-out); }
 
@@ -37,7 +21,7 @@
   animation: markIn 600ms cubic-bezier(0.3, 1.6, 0.5, 1) backwards;
 }
 .coachText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-.coachKicker { font-size: var(--text-xs); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--member); }
+.coachKicker { font-size: var(--text-xs); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); color: var(--member); }
 .note { font-family: var(--font-display); font-size: 30px; line-height: 1.2; animation: noteIn 600ms var(--ease-out) 150ms backwards; }
 .thinking { display: flex; align-items: baseline; gap: var(--space-2); font-family: var(--font-display); font-style: italic; font-size: 30px; color: var(--color-ink-2); }
 /* Shown for ~1.4s while the coach answers; the only repeating animation here, and it stops when the plan lands. */
@@ -78,14 +62,14 @@
 .cardIcon { width: 72px; height: 72px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 22px; background: var(--member-tint); color: var(--member); }
 .cardDone .cardIcon { background: var(--color-surface); }
 .cardTitles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
-.cardKicker { font-size: var(--text-xs); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--member); }
+.cardKicker { font-size: var(--text-xs); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); color: var(--member); }
 .cardTitle { font-family: var(--font-display); font-size: var(--display-lg); line-height: 1; }
 .points { display: flex; align-items: center; gap: 6px; padding: var(--space-2) 14px; border-radius: var(--radius-pill); background: var(--color-surface-sunken); font-family: var(--font-display); font-size: 24px; line-height: 1; }
 
 .stats { display: flex; align-items: flex-end; gap: var(--space-8); }
 .stat { display: flex; flex-direction: column; gap: 2px; }
 .statValue { font-family: var(--font-display); font-size: 56px; line-height: 0.95; }
-.statUnit { font-size: var(--text-xs); font-weight: var(--weight-heavy); letter-spacing: 1px; text-transform: uppercase; color: var(--color-ink-3); }
+.statUnit { font-size: var(--text-xs); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); color: var(--color-ink-3); }
 .target { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; padding: 10px 16px; border-radius: var(--radius-pill); background: var(--member-tint); color: var(--member); font-size: 16px; font-weight: var(--weight-heavy); }
 
 .route { width: 100%; height: 110px; flex: none; }
@@ -128,7 +112,7 @@
 .monthTitle { font-family: var(--font-display); font-size: 30px; }
 .streak { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-pill); background: var(--honey-tint); color: var(--honey); font-size: 14px; font-weight: var(--weight-heavy); animation: chipIn 450ms cubic-bezier(0.3, 1.6, 0.5, 1) 700ms backwards; }
 .weekdays, .heat { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
-.weekdays span { text-align: center; font-size: 12px; font-weight: var(--weight-heavy); color: var(--color-ink-3); }
+.weekdays span { text-align: center; font-size: var(--text-xs); font-weight: var(--weight-heavy); color: var(--color-ink-3); }
 .cell {
   aspect-ratio: 1; border-radius: 10px;
   background: var(--color-surface-sunken);

@@ -40,21 +40,20 @@
   padding: var(--space-2) 14px;
   border-radius: var(--radius-pill);
   background: var(--color-alert); color: var(--color-on-ink);
-  font-size: 14px; font-weight: var(--weight-heavy); letter-spacing: 1px; text-transform: uppercase;
-}
+  font-size: 14px; font-weight: var(--weight-heavy); letter-spacing: 1px; }
 
 /* ---------- Details ---------- */
 .side { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; padding: var(--space-10) var(--space-10) var(--space-8) 44px; }
 .close { position: absolute; right: var(--space-6); top: var(--space-6); }
 .details { flex: 1; display: flex; flex-direction: column; gap: 18px; transition: opacity 200ms ease; }
 .detailsPaying { opacity: 0.5; }
-.aisle { font-size: 14px; font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--member); }
+.aisle { font-size: 14px; font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); color: var(--member); }
 .title { padding-right: 70px; font-family: var(--font-display); font-size: 60px; line-height: 1; }
 .blurb { font-family: var(--font-display); font-style: italic; font-size: 24px; line-height: 1.35; color: var(--color-ink-2); }
 .spacer { flex: 1; }
 .maths { display: flex; align-items: center; gap: 14px; padding: 18px var(--space-5); border-radius: 22px; background: var(--color-surface-muted); }
 .term { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.termLabel { font-size: var(--text-xs); font-weight: var(--weight-heavy); letter-spacing: 1px; text-transform: uppercase; color: var(--color-ink-3); }
+.termLabel { font-size: var(--text-xs); font-weight: var(--weight-heavy); letter-spacing: 1px; color: var(--color-ink-3); }
 .termValue { font-family: var(--font-display); font-size: 40px; line-height: 1; }
 .good .termLabel, .good .termValue { color: var(--color-success); }
 .short .termLabel, .short .termValue { color: var(--color-alert); }
@@ -94,7 +93,7 @@
   animation: printOut 700ms cubic-bezier(0.3, 1.2, 0.5, 1) backwards;
 }
 .slipShop { text-align: center; font-family: var(--font-display); font-size: 26px; }
-.slipWho { text-align: center; font-size: var(--text-xs); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--color-ink-3); }
+.slipWho { text-align: center; font-size: var(--text-xs); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); color: var(--color-ink-3); }
 .slipRule { border-top: 2px dashed var(--color-rule); }
 .slipLine { display: flex; justify-content: space-between; font-size: 18px; font-weight: var(--weight-heavy); }
 .slipMuted { font-size: 16px; font-weight: var(--weight-bold); color: var(--color-ink-3); }
@@ -102,8 +101,7 @@
   align-self: center; margin-top: var(--space-1);
   padding: var(--space-2) var(--space-4);
   border: 3px solid var(--clay); border-radius: 10px;
-  font-size: var(--text-sm); font-weight: var(--weight-heavy); letter-spacing: 1px; text-transform: uppercase;
-  color: var(--clay);
+  font-size: var(--text-sm); font-weight: var(--weight-heavy); letter-spacing: 1px; color: var(--clay);
   transform: rotate(-5deg);
   animation: stampIn 400ms cubic-bezier(0.3, 1.8, 0.5, 1) 650ms backwards;
 }

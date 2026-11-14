@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
+import type { ScreenId, ThemeColorToken } from '@hub/shared'
 import { useNav } from '../app/nav'
 import { useHouseholdSettings, useWeather } from '../data/hooks'
 import { useClock } from '../hooks/useClock'
+import { memberColorProps } from '../lib/colors'
 import { formatTimeOfDay, time, weekday } from '../lib/format'
-import type { ScreenId } from '@hub/shared'
+import { TAB_COLOR } from '../lib/tabs'
 import { Icon, type IconName } from './Icon'
 import s from './AppShell.module.css'
 
@@ -45,28 +47,63 @@ export function Sidebar() {
   return (
     <nav aria-label="Main" className={s.sidebar}>
       {TABS.map((t) => (
-        <NavItem key={t.id} label={t.label} icon={t.icon} active={screen === t.id} onClick={() => go(t.id)} />
+        <NavItem
+          key={t.id}
+          label={t.label}
+          icon={t.icon}
+          color={TAB_COLOR[t.id]}
+          active={screen === t.id}
+          onClick={() => go(t.id)}
+        />
       ))}
       <div className={s.spacer} />
-      <NavItem label="Sleep" icon="moon" active={false} onClick={sleep} />
-      <NavItem label="Settings" icon="gear" active={screen === 'settings'} onClick={openSettings} />
+      <NavItem label="Sleep" icon="moon" color="slate" active={false} onClick={sleep} quiet />
+      <NavItem
+        label="Settings"
+        icon="gear"
+        color={TAB_COLOR.settings}
+        active={screen === 'settings'}
+        onClick={openSettings}
+        quiet
+      />
     </nav>
   )
 }
 
-function NavItem({ label, icon, active, onClick }: { label: string; icon: IconName; active: boolean; onClick: () => void }) {
+function NavItem({
+  label, icon, color, active, onClick, quiet,
+}: {
+  label: string
+  icon: IconName
+  color: ThemeColorToken
+  active: boolean
+  onClick: () => void
+  /** Sleep / Settings — quieter idle, no always-on tint wash */
+  quiet?: boolean
+}) {
   return (
-    <button type="button" aria-current={active ? 'page' : undefined} className={active ? `${s.item} ${s.active}` : s.item} onClick={onClick}>
-      <Icon name={icon} size={active ? 30 : 28} />
-      <span>{label}</span>
+    <button
+      type="button"
+      aria-current={active ? 'page' : undefined}
+      {...memberColorProps(color)}
+      className={[s.item, quiet && s.quiet, active && s.active].filter(Boolean).join(' ')}
+      onClick={onClick}
+    >
+      <span className={s.iconWell} aria-hidden="true">
+        <Icon name={icon} size={active ? 28 : 26} />
+      </span>
+      <span className={s.label}>{label}</span>
     </button>
   )
 }
 
 /** Sidebar + scrollable page area. Every tab screen renders inside this. */
 export function AppShell({ children, fab }: { children: ReactNode; fab?: ReactNode }) {
+  const { screen } = useNav()
+  const tabColor = TAB_COLOR[screen] ?? 'slate'
+
   return (
-    <div className={s.shell}>
+    <div className={s.shell} {...memberColorProps(tabColor)} data-tab={screen}>
       <Sidebar />
       <main className={s.main}>{children}</main>
       {fab}
@@ -74,7 +111,7 @@ export function AppShell({ children, fab }: { children: ReactNode; fab?: ReactNo
   )
 }
 
-/** Uppercase line above a page title. Defaults to "Saturday · 9:42 AM · 52° partly sunny". */
+/** Line above a page title. Defaults to "Saturday · 9:42 AM · 52° partly sunny". */
 export function HeaderMeta() {
   const now = useClock()
   const weather = useWeather()

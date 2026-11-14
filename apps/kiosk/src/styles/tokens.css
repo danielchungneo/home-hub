@@ -1,28 +1,29 @@
 /*
- * Chung Family Hub — design tokens ("Scandi Calm").
+ * Chung Family Hub — design tokens ("Plaster & Paper").
  * The single source of truth for color, type, spacing, radii and motion.
  * See DESIGN_SYSTEM.md before adding or changing anything here.
  */
 :root {
   /* ---------- Surfaces ---------- */
-  --color-bg: #F0EBE3;             /* oat: app background */
-  --color-rail: #E6DED2;           /* sidebar, segmented-control tracks, header pills */
-  --color-surface: #FFFDFA;        /* cards, panels, active nav item */
-  --color-surface-sunken: #F3EEE7; /* inputs, secondary buttons, inactive tabs */
-  --color-surface-muted: #F7F3ED;  /* quiet fills (text-only meal slots, idle speakers) */
+  --color-bg: #E5E3DE;             /* plaster: app background */
+  --color-rail: #D8D5CE;           /* sidebar, segmented-control tracks, header pills */
+  --color-surface: #F7F6F3;        /* cards, panels, active nav item */
+  --color-surface-sunken: #ECEAE5; /* inputs, secondary buttons, inactive tabs */
+  --color-surface-muted: #F0EEEA;  /* quiet fills (text-only meal slots, idle speakers) */
 
   /* ---------- Lines ---------- */
-  --color-border: #ECE4D9;         /* card + row outlines */
-  --color-border-strong: #CFC5B8;  /* empty checkboxes, dashed "add" tiles */
-  --color-divider: #F1EBE2;        /* list separators, grid lines */
-  --color-track: #D9CFC2;          /* switch-off track, upcoming progress segments, empty-slot dashes */
+  --color-border: #E0DDD7;         /* card + row outlines */
+  --color-border-strong: #C4C0B8;  /* empty checkboxes, dashed "add" tiles */
+  --color-divider: #E8E5DF;        /* list separators, grid lines */
+  --color-track: #CDC9C1;          /* switch-off track, upcoming progress segments, empty-slot dashes */
 
   /* ---------- Ink (text + icons) ---------- */
-  --color-ink: #2E2A26;            /* primary text, primary buttons, FAB */
-  --color-ink-2: #4F4740;          /* secondary text */
-  --color-ink-3: #615950;          /* labels, captions, eyebrows (≥ 4.5:1 on bg and surface) */
-  --color-on-ink: #FFFDFA;         /* text on ink / on member-deep fills */
-  --color-ink-soft: #8A7F73;       /* LARGE display text only (≥ 34px), e.g. the header clock */
+  --color-ink: #25231F;            /* primary text, primary buttons, FAB */
+  --color-ink-2: #48443E;          /* secondary text */
+  --color-ink-3: #5C5750;          /* labels, captions, eyebrows (≥ 4.5:1 on bg and surface) */
+  --color-on-ink: #F7F6F3;         /* text on ink / on member-deep fills */
+  --color-on-ink-faint: rgba(247, 246, 243, 0.18); /* quiet nav wells on the ink sidebar */
+  --color-ink-soft: #847E75;       /* LARGE display text only (≥ 34px), e.g. the header clock */
 
   /* ---------- Member palette (deep = text/fills, tint = backgrounds) ---------- */
   --moss: #55623F;   --moss-tint: #E9EDE1;
@@ -45,8 +46,8 @@
   --color-warning: var(--clay);
   --color-star: #F4D58D;
   --color-peach: #E9A27E;          /* running timer button */
-  --color-highlight: #FBF7F1;      /* today column wash */
-  --color-scrim: rgba(36, 32, 28, 0.62);
+  --color-highlight: #F2F0EC;      /* today column wash */
+  --color-scrim: rgba(37, 35, 31, 0.62);
   --color-night: #0B0A09;          /* sleep screen */
   --color-night-ink: #8A8178;
   --color-backdrop: #24201C;       /* full-screen dim behind the jukebox pick animation */
@@ -79,7 +80,7 @@
   --color-bounty-ink: var(--color-brass-ink);/* text on the bounty tag, ticket points */
   --color-star-gold: var(--color-bounty-edge); /* the star glyph everywhere stars are money */
 
-  --shadow-card: 0 4px 10px rgba(46, 42, 38, 0.14); /* paper cards in the box, drawer and board */
+  --shadow-card: 0 4px 10px rgba(37, 35, 31, 0.14); /* paper cards in the box, drawer and board */
   --shadow-lifted: 0 10px 26px rgba(0, 0, 0, 0.24); /* a card that is being held (pull-out, flying) */
 
   /* ---------- Type ---------- */
@@ -105,8 +106,9 @@
   --weight-bold: 700;
   --weight-heavy: 800;
 
-  --tracking-eyebrow: 2px;
-  --tracking-label: 1.5px;
+  /* Sentence-case labels — keep tracking quiet (not ALL-CAPS drivers) */
+  --tracking-eyebrow: 0.02em;
+  --tracking-label: 0.01em;
 
   /* ---------- Space (4px base) ---------- */
   --space-1: 4px;
@@ -121,12 +123,14 @@
   --space-12: 48px;
 
   /* ---------- Radii ---------- */
+  --radius-paper: 6px; /* tickets, stickies, stamps (paper objects) */
   --radius-sm: 12px;   /* event blocks, small chips */
   --radius-md: 16px;   /* checkboxes, icon buttons, inputs inside cards */
   --radius-lg: 20px;   /* list rows, tiles, inputs */
   --radius-xl: 24px;   /* cards inside panels */
   --radius-2xl: 28px;  /* top-level panels and columns */
   --radius-3xl: 36px;  /* dialogs */
+  --radius-nav: 18px;  /* sidebar nav items */
   --radius-pill: 999px;
 
   /* ---------- Sizes ---------- */
@@ -138,6 +142,9 @@
   --page-pad-top: 32px;
   --page-pad-bottom: 30px;
   --column-width: 412px; /* Tasks columns: 4 fit exactly at 1920 wide */
+  --hero-height: 150px;  /* default HeroBand */
+  --hero-height-tall: 176px; /* wallet */
+  --hero-height-xl: 200px; /* up-next / tonight */
 
   /* ---------- Motion (transform/opacity only) ---------- */
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -146,8 +153,12 @@
   --dur-slow: 450ms;
 
   /* ---------- Elevation (use sparingly; Pi GPU) ---------- */
-  --shadow-float: 0 4px 10px rgba(46, 42, 38, 0.25); /* FAB only */
+  --shadow-float: 0 4px 10px rgba(37, 35, 31, 0.25); /* FAB only */
   --shadow-dialog: 0 6px 18px rgba(0, 0, 0, 0.18);   /* PIN dialog only */
+
+  /* Idle / photo overlays (tokenized; no component hex) */
+  --color-frost: rgba(247, 246, 243, 0.92);
+  --color-frost-soft: rgba(247, 246, 243, 0.55);
 }
 
 /*

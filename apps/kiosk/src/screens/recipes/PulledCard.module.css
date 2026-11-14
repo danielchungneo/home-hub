@@ -46,7 +46,7 @@
 .frontBody { flex: 1; display: flex; gap: var(--space-10); padding: var(--space-8); }
 .frontPhoto { width: 560px; height: 100%; flex: none; border-radius: 18px; display: block; }
 .frontText { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 18px; }
-.kicker { font-size: var(--text-lg); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--member); }
+.kicker { font-size: var(--text-lg); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-eyebrow); color: var(--member); }
 .frontTitle { font-family: var(--font-display); font-size: var(--display-2xl); line-height: 1; }
 
 /* ---------- Back: the full recipe ---------- */
@@ -54,15 +54,14 @@
 .head { flex: none; display: flex; align-items: flex-start; gap: var(--space-5); padding: var(--space-6) var(--space-8) var(--space-4); }
 .thumb { width: 150px; height: 106px; flex: none; border-radius: 14px; display: block; }
 .headText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.kickerSm { font-size: 14px; font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--member); }
+.kickerSm { font-size: 14px; font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); color: var(--member); }
 .title { font-family: var(--font-display); font-size: var(--display-lg); line-height: 1; }
 .from { font-family: var(--font-display); font-style: italic; font-size: var(--text-lg); color: var(--color-ink-2); }
 .favOn { color: var(--clay); }
 .stamp {
   margin-top: 14px; padding: var(--space-2) 14px;
   border: 3px solid var(--clay); border-radius: 10px;
-  font-size: var(--text-sm); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); text-transform: uppercase;
-  color: var(--clay);
+  font-size: var(--text-sm); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); color: var(--clay);
   transform: rotate(-6deg);
 }
 
@@ -77,11 +76,11 @@
 .steps { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
 .ingredients > :global(.scroll-y), .steps > :global(.scroll-y) { flex: 1; min-height: 0; }
 .colHead { height: 64px; flex: none; display: flex; align-items: center; justify-content: space-between; }
-.colLabel { font-size: 14px; font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--color-ink-3); }
+.colLabel { font-size: 14px; font-weight: var(--weight-heavy); letter-spacing: var(--tracking-label); color: var(--color-ink-3); }
 .stepper { display: flex; align-items: center; gap: 6px; padding: var(--space-1); border-radius: var(--radius-pill); background: var(--color-surface-sunken); }
 .serv { min-width: 76px; text-align: center; font-size: var(--text-sm); font-weight: var(--weight-heavy); }
 /* min-height (not height) so long imported names can wrap onto the next ruled line. */
-.ing { min-height: 40px; display: flex; align-items: flex-start; gap: 14px; font-size: 18px; font-weight: 600; }
+.ing { min-height: 40px; display: flex; align-items: flex-start; gap: 14px; font-size: 18px; font-weight: var(--weight-bold); }
 .amt { width: 92px; flex: none; line-height: 40px; font-weight: var(--weight-heavy); color: var(--member); }
 .ingName {
   flex: 1; min-width: 0;

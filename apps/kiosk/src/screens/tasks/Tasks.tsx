@@ -4,7 +4,7 @@ import { Button, IconButton } from '../../components/Button'
 import { Icon } from '../../components/Icon'
 import { MemberBlobAvatar } from '../../components/MemberBlobAvatar'
 import type { BlobAnimation } from '../../components/BlobAvatar'
-import { Progress } from '../../components/primitives'
+import { HeroBand, Label, PersonPill, PersonRail, Progress } from '../../components/primitives'
 import { useMembers, useRewards } from '../../data/hooks'
 import { useClock } from '../../hooks/useClock'
 import { memberColorProps } from '../../lib/colors'
@@ -99,23 +99,22 @@ export default function Tasks() {
       <PageHeader
         title={<span key={personId} className={s.title}>{person.earnsPoints ? `${person.name}’s tasks` : `${person.name}’s care`}</span>}
         actions={<>
-          <div role="group" aria-label="Whose tasks" className={s.people}>
+          <PersonRail label="Whose tasks">
             {members.map((m) => {
               const n = left(m.id)
               return (
-                <button key={m.id} type="button" {...memberColorProps(m.color)} aria-pressed={m.id === personId} className={s.person}
-                  onClick={() => setPersonId(m.id)}>
-                  <span className={s.personAvatar}>
-                    <MemberBlobAvatar memberId={m.id} size={48} showBackground={false} decorative />
-                  </span>
-                  <span className={s.personText}>
-                    <span className={s.personName}>{m.name}</span>
-                    <span className={s.personLeft}>{n ? `${n} left` : 'All done'}</span>
-                  </span>
-                </button>
+                <PersonPill
+                  key={m.id}
+                  colorProps={memberColorProps(m.color)}
+                  pressed={m.id === personId}
+                  onClick={() => setPersonId(m.id)}
+                  avatar={<MemberBlobAvatar memberId={m.id} size={48} showBackground={false} decorative />}
+                  name={m.name}
+                  sub={n ? `${n} left` : 'All done'}
+                />
               )
             })}
-          </div>
+          </PersonRail>
           <Button size="lg" pill icon="plus" className={s.addBtn} onClick={() => setSheet({})}>Add a task</Button>
         </>}
       />
@@ -197,47 +196,53 @@ function Hero({ member, daily, weekly, done, earnedToday, balance, motion = 'idl
   const goal: Reward | undefined = next ?? readyGoal
 
   return (
-    <div className={s.hero}>
-      <span className={s.heroAvatar} aria-hidden="true">
-        <MemberBlobAvatar
-          memberId={member.id}
-          size={96}
-          showBackground={false}
-          animation={motion}
-          animationKey={motionKey}
-          decorative
-        />
-      </span>
-      <div className={s.heroMain}>
-        <span className={s.greeting}>{member.earnsPoints ? `Good ${partOfDay()}, ${member.name}` : `${member.name}’s day so far`}</span>
-        <div className={s.segs} role="progressbar" aria-label="Done" aria-valuemin={0} aria-valuemax={all.length} aria-valuenow={doneCount}>
-          {all.map((t, i) => (
-            <span key={t.id} className={s.seg}>
-              <span className={s.segFill} style={{ transform: `scaleX(${i < doneCount ? 1 : 0})`, transitionDelay: `${i * 40}ms` }} />
-            </span>
-          ))}
-        </div>
-        <span className={s.heroSub}>{dd} of {daily.length} done today · {wd} of {weekly.length} this week</span>
-      </div>
-      {member.earnsPoints ? (
-        <div className={s.heroStats}>
-          <div className={s.stat}>
-            <span className={s.statLabel}>Today</span>
-            <span key={earnedToday} className={`${s.statValue} anim-pop`}>+{earnedToday}</span>
+    <HeroBand
+      leading={
+        <span className={s.heroAvatar} aria-hidden="true">
+          <MemberBlobAvatar
+            memberId={member.id}
+            size={96}
+            showBackground={false}
+            animation={motion}
+            animationKey={motionKey}
+            decorative
+          />
+        </span>
+      }
+      main={
+        <>
+          <span className={s.greeting}>{member.earnsPoints ? `Good ${partOfDay()}, ${member.name}` : `${member.name}’s day so far`}</span>
+          <div className={s.segs} role="progressbar" aria-label="Done" aria-valuemin={0} aria-valuemax={all.length} aria-valuenow={doneCount}>
+            {all.map((t, i) => (
+              <span key={t.id} className={s.seg}>
+                <span className={s.segFill} style={{ transform: `scaleX(${i < doneCount ? 1 : 0})`, transitionDelay: `${i * 40}ms` }} />
+              </span>
+            ))}
           </div>
-          <span className={s.statRule} />
-          <div className={s.goal}>
-            <span className={s.statLabel}>{balance} points</span>
-            {goal && <>
-              <Progress value={Math.min(1, balance / goal.cost)} label={`Progress to ${goal.title}`} />
-              <span className={s.goalLine}>{goal.cost > balance ? `${goal.cost - balance} more for ${goal.title}` : `${goal.title} is ready!`}</span>
-            </>}
+          <span className={s.heroSub}>{dd} of {daily.length} done today · {wd} of {weekly.length} this week</span>
+        </>
+      }
+      trailing={
+        member.earnsPoints ? (
+          <div className={s.heroStats}>
+            <div className={s.stat}>
+              <Label member>Today</Label>
+              <span key={earnedToday} className={`${s.statValue} anim-pop`}>+{earnedToday}</span>
+            </div>
+            <span className={s.statRule} />
+            <div className={s.goal}>
+              <Label member>{balance} points</Label>
+              {goal && <>
+                <Progress value={Math.min(1, balance / goal.cost)} label={`Progress to ${goal.title}`} />
+                <span className={s.goalLine}>{goal.cost > balance ? `${goal.cost - balance} more for ${goal.title}` : `${goal.title} is ready!`}</span>
+              </>}
+            </div>
           </div>
-        </div>
-      ) : (
-        <span className={s.carePill}>Baby care · anyone can check these off</span>
-      )}
-    </div>
+        ) : (
+          <span className={s.carePill}>Baby care · anyone can check these off</span>
+        )
+      }
+    />
   )
 }
 
@@ -274,7 +279,7 @@ function TaskList({ frequency, member, tasks, today, now, done, sunk, template, 
       <div className={s.listHead}>
         <span className={s.listIcon}><Icon name={copy.icon} size={32} stroke={2.2} /></span>
         <span className={s.listTitles}>
-          <span className={s.listKicker}>{copy.kicker}</span>
+          <Label member className={s.listKicker}>{copy.kicker}</Label>
           <span className={s.listTitle}>{copy.title}</span>
         </span>
         <span className={s.listCount}>{doneCount} of {tasks.length}</span>
