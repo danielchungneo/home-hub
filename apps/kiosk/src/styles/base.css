@@ -122,11 +122,45 @@ svg {
 }
 .anim-pop { animation: pop var(--dur-slow) var(--ease-out); }
 .anim-rise { animation: rise var(--dur-base) var(--ease-out); }
-.anim-fade { animation: fade 800ms ease-out; }
+.anim-fade { animation: fade var(--dur-fade) var(--ease-out); }
+
+/* Shared overlay / feedback one-shots (use from JSX — CSS Modules can't see these keyframe names). */
+@keyframes toastIn {
+  from { transform: translate(-50%, 16px); opacity: 0; }
+  to { transform: translateX(-50%); opacity: 1; }
+}
+@keyframes scrimIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scrimOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes sheetIn {
+  from { transform: translateY(1040px); }
+  to { transform: none; }
+}
+@keyframes sheetOut {
+  from { transform: none; opacity: 1; }
+  to { transform: translateY(120px); opacity: 0; }
+}
+@keyframes wiggle {
+  0%, 100% { transform: none; }
+  25% { transform: rotate(-14deg); }
+  60% { transform: rotate(8deg); }
+}
+@keyframes confirmScrimIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes confirmRise {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.anim-toast { animation: toastIn var(--dur-base) var(--ease-out); }
+.anim-scrim-in { animation: scrimIn var(--dur-sheet-scrim) ease both; }
+.anim-scrim-out { animation: scrimOut var(--dur-base) ease both; }
+.anim-sheet-in { animation: sheetIn var(--dur-sheet) var(--ease-out) both; }
+.anim-sheet-out { animation: sheetOut var(--dur-base) ease-in both; }
+.anim-wiggle { animation: wiggle var(--dur-slow) var(--ease-out); }
+.anim-confirm-scrim { animation: confirmScrimIn var(--dur-base) ease both; }
+.anim-confirm-rise { animation: confirmRise var(--dur-base) var(--ease-out); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 1ms !important;
+    animation: none !important;
     transition-duration: 1ms !important;
   }
 }

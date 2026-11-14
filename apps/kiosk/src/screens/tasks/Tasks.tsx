@@ -174,7 +174,7 @@ export default function Tasks() {
         />
       )}
 
-      {toast && <div role="status" className={s.toast}><Icon name="tick" size={20} stroke={3} />{toast}</div>}
+      {toast && <div role="status" className={`${s.toast} anim-toast`}><Icon name="tick" size={20} stroke={3} />{toast}</div>}
     </AppShell>
   )
 }
@@ -295,7 +295,7 @@ function TaskList({ frequency, member, tasks, today, now, done, sunk, template, 
       )}
       <ul className={`${s.cards} scroll-y`}>
         {sorted.map((t, i) => (
-          <li key={t.id} style={{ ['--n' as string]: i }}>
+          <li key={t.id} style={{ ['--n' as string]: Math.min(i, 8) }} className={i >= 8 ? s.cardStatic : undefined}>
             <TaskCard task={t} tpl={template(t.templateId)} member={member} done={done.has(t.id)} today={today} now={now}
               floating={floating === t.id} arriving={arrived === t.id} onToggle={() => onToggle(t)} />
           </li>

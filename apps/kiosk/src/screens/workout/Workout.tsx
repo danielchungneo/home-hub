@@ -169,7 +169,7 @@ export default function Workout() {
         />
       )}
 
-      {toast && <div role="status" className={s.toast}><Icon name="tick" size={20} stroke={3} />{toast}</div>}
+      {toast && <div role="status" className={`${s.toast} anim-toast`}><Icon name="tick" size={20} stroke={3} />{toast}</div>}
     </AppShell>
   )
 }
@@ -288,7 +288,13 @@ function MonthCard({ member, activities }: { member: Member; activities: Activit
       <div className={s.heat}>
         {Array.from({ length: pad }, (_, i) => <span key={`p${i}`} />)}
         {days.map((d, i) => (
-          <span key={d.key} title={d.key} data-kind={d.kind} className={d.today ? `${s.cell} ${s.cellToday}` : s.cell} style={{ ['--n' as string]: i }} />
+          <span
+            key={d.key}
+            title={d.key}
+            data-kind={d.kind}
+            className={`${d.today ? `${s.cell} ${s.cellToday}` : s.cell}${i < 14 ? ` ${s.cellIn}` : ''}`}
+            style={i < 14 ? { ['--n' as string]: i } : undefined}
+          />
         ))}
       </div>
       <div className={s.legend}>

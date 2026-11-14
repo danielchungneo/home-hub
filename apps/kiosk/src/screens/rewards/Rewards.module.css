@@ -244,15 +244,14 @@
   border-radius: var(--radius-pill);
   background: var(--color-ink); color: var(--color-on-ink);
   font-size: var(--text-md); font-weight: var(--weight-heavy); white-space: nowrap;
-  animation: toastIn var(--dur-base) var(--ease-out);
 }
 
 @keyframes walletIn { from { opacity: 0.4; } to { opacity: 1; } }
-@keyframes starDrop { from { transform: translateY(-140px) rotate(var(--r)); opacity: 0; } to { transform: rotate(var(--r)); opacity: 1; } }
+@keyframes starDrop { from { transform: translateY(-64px) rotate(var(--r)); opacity: 0; } to { transform: rotate(var(--r)); opacity: 1; } }
 @keyframes land { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
 @keyframes spin { from { transform: rotate(-144deg); } to { transform: none; } }
 @keyframes itemIn { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes shine { from { transform: translateX(0) skewX(-18deg); } to { transform: translateX(420px) skewX(-18deg); } }
+@keyframes shine { from { transform: translateX(0) skewX(-18deg); } to { transform: translateX(220px) skewX(-18deg); } }
 @keyframes fillIn { from { transform: scaleX(0); } }
 @keyframes swing { from { transform: rotate(calc(var(--swing) * -4)); } to { transform: rotate(var(--swing)); } }
 @keyframes glow { from { transform: scale(0.6); } to { transform: scale(1.4); } }
@@ -260,4 +259,3 @@
 @keyframes ticketIn { from { transform: translateY(-20px) scale(0.9); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes stamp { from { transform: rotate(-8deg) scale(2.4); opacity: 0; } to { transform: rotate(-8deg); opacity: 1; } }
 @keyframes rowIn { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes toastIn { from { transform: translate(-50%, 16px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }

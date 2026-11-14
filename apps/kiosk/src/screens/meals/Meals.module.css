@@ -9,7 +9,6 @@
 .cart { padding: 0 26px 0 20px; transition: background-color var(--dur-base), color var(--dur-base), transform var(--dur-fast); }
 .cartIcon { display: flex; }
 .cartDone { background: var(--color-success-tint); color: var(--color-success); }
-.cartDone .cartIcon { animation: wiggle 360ms ease-in-out; }
 .cartChip {
   position: absolute; right: 18px; top: -6px;
   padding: 6px 12px; border-radius: var(--radius-pill);
@@ -142,7 +141,6 @@
   border-radius: var(--radius-pill);
   background: var(--color-ink); color: var(--color-on-ink);
   font-size: var(--text-md); font-weight: var(--weight-heavy); white-space: nowrap;
-  animation: toastIn var(--dur-base) var(--ease-out);
 }
 
 @keyframes stickOn { from { transform: translateY(-26px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -152,11 +150,9 @@
   45% { opacity: 0.5; }
   100% { transform: translateY(-14px) scaleY(1.1); opacity: 0; }
 }
-@keyframes wiggle { 0%, 100% { transform: none; } 25% { transform: rotate(-14deg); } 60% { transform: rotate(8deg); } }
 @keyframes chipRise {
   0% { transform: translateY(0); opacity: 0; }
   15% { opacity: 1; }
   70% { opacity: 1; }
   100% { transform: translateY(-46px); opacity: 0; }
 }
-@keyframes toastIn { from { transform: translate(-50%, 16px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }

@@ -25,9 +25,14 @@
 
 .progress { display: flex; gap: 8px; }
 .seg { position: relative; flex: 1; height: 44px; display: flex; align-items: center; }
-.bar, .barDone, .barNow { display: block; width: 100%; height: 10px; border-radius: 5px; background: var(--color-track); }
-.barDone { background: var(--color-success); }
-.barNow { background: var(--color-ink); }
+.bar, .barDone, .barNow {
+  display: block; width: 100%; height: 10px; border-radius: 5px; background: var(--color-track);
+  transform-origin: left center;
+  transition: transform var(--dur-base) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+}
+.bar { transform: scaleX(0.35); opacity: 0.55; }
+.barDone { background: var(--color-success); transform: none; }
+.barNow { background: var(--color-ink); transform: scaleX(1.02); }
 .segTimer {
   position: absolute;
   left: 50%;

@@ -121,8 +121,8 @@ export function StockShop({ rewards, onClose, onToast }: {
 
   return (
     <div className={s.layer} data-closing={closing}>
-      <div className={s.scrim} onClick={close} />
-      <section role="dialog" aria-modal="true" aria-labelledby="stock-shop-title" className={s.sheet}>
+      <div className={`${s.scrim} ${closing ? 'anim-scrim-out' : 'anim-scrim-in'}`} onClick={close} />
+      <section role="dialog" aria-modal="true" aria-labelledby="stock-shop-title" className={`${s.sheet} ${closing ? 'anim-sheet-out' : 'anim-sheet-in'}`}>
         <header className={s.head}>
           <span className={s.headText}>
             <span className={s.kicker}>

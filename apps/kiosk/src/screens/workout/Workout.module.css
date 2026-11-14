@@ -116,6 +116,8 @@
 .cell {
   aspect-ratio: 1; border-radius: 10px;
   background: var(--color-surface-sunken);
+}
+.cellIn {
   animation: cellIn 350ms cubic-bezier(0.3, 1.6, 0.5, 1) backwards;
   animation-delay: calc(var(--n) * 16ms);
 }
@@ -168,7 +170,6 @@
   border-radius: var(--radius-pill);
   background: var(--color-ink); color: var(--color-on-ink);
   font-size: var(--text-md); font-weight: var(--weight-heavy); white-space: nowrap;
-  animation: toastIn var(--dur-base) var(--ease-out);
 }
 
 @keyframes titleIn { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -183,4 +184,3 @@
 @keyframes moveIn { from { transform: translateX(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes cellIn { from { transform: scale(0.3); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes popIn { from { transform: scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes toastIn { from { transform: translate(-50%, 16px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }

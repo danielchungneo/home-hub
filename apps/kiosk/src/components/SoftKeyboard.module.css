@@ -10,7 +10,6 @@
   padding: 14px 18px 18px;
   background: var(--color-rail);
   box-shadow: var(--shadow-dialog);
-  animation: rise var(--dur-base) var(--ease-out);
 }
 
 .row {

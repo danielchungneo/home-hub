@@ -284,7 +284,12 @@ export default function Recipes() {
               <p className={s.gridEmpty}>No recipes match. Try another filter, or tap All.</p>
             )}
             {visible.map((recipe, i) => (
-              <div key={recipe.id} data-course={recipe.course} className={s.gridCard}>
+              <div
+                key={`${filter}-${recipe.id}`}
+                data-course={recipe.course}
+                className={i < 12 ? `${s.gridCard} ${s.gridCardIn}` : s.gridCard}
+                style={i < 12 ? { ['--n' as string]: i } : undefined}
+              >
                 <button
                   type="button"
                   className={s.gridOpen}
@@ -355,7 +360,7 @@ export default function Recipes() {
         </div>
       )}
 
-      {toast && <div role="status" className={s.toast}><Icon name="tick" size={20} stroke={3} />{toast}</div>}
+      {toast && <div role="status" className={`${s.toast} anim-toast`}><Icon name="tick" size={20} stroke={3} />{toast}</div>}
       {keyboard && <SoftKeyboard value={query} onChange={setQuery} onDone={() => setKeyboard(false)} />}
     </AppShell>
   )

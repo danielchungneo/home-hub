@@ -450,7 +450,7 @@ export default function Lists() {
               disabled={!dinners.length || addIngredients.isPending}
               onClick={() => void addMeals()}
             >
-              <span className={mealsAdded ? s.iconWiggle : undefined}><Icon name="bag" size={22} stroke={3} /></span>
+              <span className={mealsAdded ? 'anim-wiggle' : undefined}><Icon name="bag" size={22} stroke={3} /></span>
               {mealsAdded
                 ? `Added ${ingredients.length || ''} ingredients`.trim()
                 : addIngredients.isPending
@@ -478,12 +478,12 @@ export default function Lists() {
       )}
 
       {creating && (
-        <div className={s.confirmScrim} onClick={() => { if (!creatingBusy) { setCreating(false); setKeyboard(null) } }}>
+        <div className={`${s.confirmScrim} anim-confirm-scrim`} onClick={() => { if (!creatingBusy) { setCreating(false); setKeyboard(null) } }}>
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="new-list-title"
-            className={s.confirm}
+            className={`${s.confirm} anim-confirm-rise`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className={s.confirmText}>
@@ -543,12 +543,12 @@ export default function Lists() {
       )}
 
       {confirmClear && active && (
-        <div className={s.confirmScrim} onClick={() => setConfirmClear(false)}>
+        <div className={`${s.confirmScrim} anim-confirm-scrim`} onClick={() => setConfirmClear(false)}>
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="clear-list-title"
-            className={s.confirm}
+            className={`${s.confirm} anim-confirm-rise`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className={s.confirmText}>
@@ -566,12 +566,12 @@ export default function Lists() {
       )}
 
       {confirmDelete && active && canDeleteActive && (
-        <div className={s.confirmScrim} onClick={() => !deleting && setConfirmDelete(false)}>
+        <div className={`${s.confirmScrim} anim-confirm-scrim`} onClick={() => !deleting && setConfirmDelete(false)}>
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-list-title"
-            className={s.confirm}
+            className={`${s.confirm} anim-confirm-rise`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className={s.confirmText}>
@@ -619,7 +619,7 @@ export default function Lists() {
         </div>
       )}
 
-      {toast && <div role="status" className={s.toast}><Icon name="tick" size={20} stroke={3} />{toast}</div>}
+      {toast && <div role="status" className={`${s.toast} anim-toast`}><Icon name="tick" size={20} stroke={3} />{toast}</div>}
     </AppShell>
   )
 }

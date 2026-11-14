@@ -87,6 +87,12 @@
   font-weight: var(--weight-heavy);
 }
 .chipOn { background: var(--color-ink); color: var(--color-on-ink); }
+.selectPop { animation: selectPop var(--dur-fast) var(--ease-out); }
+@keyframes selectPop {
+  0% { transform: scale(0.94); }
+  70% { transform: scale(1.03); }
+  100% { transform: none; }
+}
 
 /* Check mark */
 .check {
@@ -163,7 +169,6 @@
   padding: 0 22px 0 var(--space-2);
   border-radius: var(--radius-pill);
   color: var(--color-ink);
-  transition: background-color 350ms ease, color 350ms ease;
 }
 .personPill[aria-pressed='true'] {
   background: var(--member);

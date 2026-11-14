@@ -166,7 +166,7 @@ export default function Meals() {
               disabled={addIngredients.isPending}
               onClick={() => void pushGroceries()}
             >
-              <span className={s.cartIcon}><Icon name="cart" size={24} /></span>
+              <span className={`${s.cartIcon}${addedCount != null ? ' anim-wiggle' : ''}`}><Icon name="cart" size={24} /></span>
               {addIngredients.isPending
                 ? 'Adding ingredients…'
                 : addedCount != null
@@ -273,7 +273,7 @@ export default function Meals() {
 
       {flight && <FlyingCard flight={flight} />}
 
-      {toast && <div role="status" className={s.toast}><Icon name="tick" size={20} stroke={3} />{toast}</div>}
+      {toast && <div role="status" className={`${s.toast} anim-toast`}><Icon name="tick" size={20} stroke={3} />{toast}</div>}
     </AppShell>
   )
 }

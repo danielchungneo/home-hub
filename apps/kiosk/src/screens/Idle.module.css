@@ -42,8 +42,16 @@
   border-radius: var(--radius-3xl);
   background: var(--color-frost);
 }
+.todayIn {
+  animation: todayIn var(--dur-slow) var(--ease-out) both;
+  animation-delay: 80ms;
+}
 .agenda { display: flex; flex-direction: column; gap: 14px; }
-.event { display: flex; align-items: center; gap: 14px; }
+.event {
+  display: flex; align-items: center; gap: 14px;
+  animation: eventIn var(--dur-base) var(--ease-out) both;
+  animation-delay: calc(140ms + var(--n, 0) * 50ms);
+}
 .dot { width: 14px; height: 14px; flex: none; border-radius: 50%; background: var(--member); }
 .eventTitle { flex: 1; font-size: 21px; font-weight: var(--weight-bold); }
 .eventTime { font-size: var(--text-md); font-weight: var(--weight-bold); color: var(--color-ink-3); }
@@ -63,3 +71,12 @@
 .dotNav { width: 12px; height: 12px; border-radius: var(--radius-paper); background: var(--color-frost-soft); }
 .dotNavOn { width: 36px; background: var(--color-surface); }
 .hint { padding: 8px 20px; border-radius: var(--radius-pill); background: var(--color-scrim); color: var(--color-on-ink); font-size: var(--text-md); font-weight: var(--weight-bold); }
+
+@keyframes todayIn {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes eventIn {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}

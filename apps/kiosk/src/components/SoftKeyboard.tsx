@@ -33,7 +33,7 @@ export function SoftKeyboard({
   const rows = mode === 'alpha' ? ALPHA : NUMERIC
 
   return (
-    <div className={s.root} role="group" aria-label="On-screen keyboard">
+    <div className={`${s.root} anim-rise`} role="group" aria-label="On-screen keyboard">
       {rows.map((row, i) => (
         <div key={i} className={s.row}>
           {i === 1 && <span className={s.spacer} aria-hidden />}

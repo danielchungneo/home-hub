@@ -302,7 +302,7 @@ export default function Rewards() {
         />
       )}
 
-      {toast && <div role="status" className={s.toast}><Icon name="tick" size={20} stroke={3} />{toast}</div>}
+      {toast && <div role="status" className={`${s.toast} anim-toast`}><Icon name="tick" size={20} stroke={3} />{toast}</div>}
     </AppShell>
   )
 }
@@ -329,7 +329,7 @@ function ShopItem({ reward: r, price, balance, isDeal, n, onOpen }: {
         aria-label={`${r.title}, ${price} stars${ready ? '' : `, ${price - balance} more to go`}`}>
         <span className={s.art}>
           <Icon name={r.icon} size={76} stroke={2.2} />
-          {ready && <span className={s.shine} aria-hidden="true" />}
+          {ready && n < 4 && <span className={s.shine} aria-hidden="true" />}
           {ready && <span className={s.ribbon}>You can get this</span>}
           {isDeal && <span className={s.dealBadge}>Deal of the week</span>}
         </span>

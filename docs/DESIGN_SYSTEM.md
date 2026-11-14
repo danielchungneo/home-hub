@@ -367,19 +367,32 @@ The `Suspense` fallback for tab screens in `App.tsx`: the real sidebar plus an e
 ## 8. Motion
 
 - Animate **only `transform` and `opacity`**. That covers press feedback, pop, rise and fade.
-- Durations: `--dur-fast` 150ms (press, switch), `--dur-base` 300ms (progress, rise), `--dur-slow` 450ms (pop).
+- Durations: `--dur-fast` 150ms (press, switch), `--dur-base` 300ms (progress, rise), `--dur-slow` 450ms (pop), `--dur-sheet` 500ms (bottom sheets), `--dur-sheet-scrim` 350ms, `--dur-fade` 800ms, `--dur-stagger` 45ms (list/grid enter spacing).
 - Easing: `--ease-out` for everything.
-- Shared keyframes in `base.css`: `.anim-pop` (completion, confirmations), `.anim-rise` (new step text, dialogs), `.anim-fade` (slideshow).
+- Shared utilities in `base.css` (use from JSX — CSS Modules cannot see global keyframe names):
+  - `.anim-pop` · `.anim-rise` · `.anim-fade`
+  - `.anim-toast` · `.anim-wiggle`
+  - `.anim-scrim-in` / `.anim-scrim-out` · `.anim-sheet-in` / `.anim-sheet-out`
+  - `.anim-confirm-scrim` · `.anim-confirm-rise`
+- Selection feedback: `.selectPop` on Chip / Segmented / PersonPill (short scale, not color fades).
 - Press feedback: `:active { transform: scale(0.97) }` on buttons, 0.99 on large rows.
 - Celebrations are one short CSS pop. No confetti libraries, no looping animation, no autoplay video.
-- `prefers-reduced-motion` turns animations off (already in `base.css`).
+- Cap mount staggers (about 8–14 items) so the Pi isn’t scheduling dozens of enters at once. Prefer response-driven motion over every-tile fly-ins.
+- `prefers-reduced-motion` sets `animation: none` and shortens transitions (in `base.css`). Jukebox also skips the pick overlay in JS.
+
+### Idle / Cooking / Settings / keyboard
+
+- **Idle:** one wake sequence — clock rises, “Today” panel rises slightly later, agenda rows stagger (~50ms), now-playing chip fades. No loops.
+- **Cooking:** step text uses `.anim-rise`; progress segments use `scaleX`; timer value pops on manual change / done (not every countdown tick).
+- **Settings:** section body swaps with a short rise/fade when the left nav changes.
+- **SoftKeyboard:** rises with `.anim-rise` on mount.
 
 ### Star Shop motion
 
 The shop is allowed to be a bit showy; everything still plays once.
 
 - **Wallet:** stars drop into the jar 70ms apart, the balance counts up in 12 eased steps (~660ms) and pops when it lands, the star spins in, and the goal bar fills (1s).
-- **Shelves:** items rise in 55ms apart; each price tag swings in on its string and settles at its tilt. One light sweep crosses each affordable item.
+- **Shelves:** items rise in 55ms apart; each price tag swings in on its string and settles at its tilt. A light sweep crosses at most the first few affordable items (Pi).
 - **Buy:** 7 stars fly from the wallet number to the buy button (600ms, 55ms apart), the wallet counts down, then the receipt prints (scaleY from the top, 700ms) and the stamp thumps on.
 - **Approvals:** a new ticket drops in. Approving stamps it, then it slides off; *Not now* slides it off right away and refunds the stars.
 - **Wishlist:** the heart pops, and the wallet's goal updates.
@@ -404,8 +417,8 @@ The shop is allowed to be a bit showy; everything still plays once.
 
 One-shot only; nothing on this screen loops.
 
-- **Switch person:** the body slides in 24px with a fade (350ms) and the title rises 8px. Pills cross-fade color (350ms).
-- **Cards:** rise in with a 45ms stagger on load and when switching person.
+- **Switch person:** the body slides in 24px with a fade (350ms) and the title rises 8px. Person pills pop on select (no color transition).
+- **Cards:** rise in with a 45ms stagger on load and when switching person (cap ~8 animated cards).
 - **Complete:** the check pops (`anim-pop`), a "+N" in the member color floats up 46px and fades (1s), today's points pop, and the progress segments fill with a slight overshoot (40ms apart). Finished cards stay where they are; they only sink to the bottom on the next visit.
 - **Claim a bounty:** the ticket lifts (32% of 820ms), then flies toward the weekly list, shrinks to 0.55 and fades. The new card slides in from the right with an overshoot (500ms).
 - **Add sheet:** slides up from the bottom (500ms) over a fading scrim; library rows fade up 30ms apart; day toggles and the points value pop when changed; closing drops the sheet 120px and fades it (300ms).
@@ -416,10 +429,11 @@ One-shot only; nothing on this screen loops.
 
 One-shot only; nothing here loops except the steam.
 
-- **Drop in:** cards and dividers slide up into the box (500ms, 45ms stagger) on load and whenever the filter changes. Board items stick on from 26px above with a slight overshoot (450ms).
+- **Drop in:** cards and dividers slide up into the box (500ms, 45ms stagger) on load and whenever the filter changes — travel stays short (~80px) for the Pi. Board items stick on from 26px above with a slight overshoot (450ms).
+- **Grid view:** cards rise in with a capped stagger when the filter changes (same spirit as the box, quieter).
 - **Pull-out:** lift 300ms → fly to centre 600ms → flip 650ms; close reverses (flip back, then 450ms back into the slot). The overlay grows out of the card's measured `getBoundingClientRect()` (FLIP), so it works wherever the box is scrolled.
 - **Drawer → board:** a copy of the picked card moves with `translate` + `scale` to the slot in 600ms, then the real card lands with a 1.08 → 1 bounce. Never animate width/height.
-- **Add ingredients:** the cart wiggles once and a "+14 to Groceries" chip floats up and fades.
+- **Add ingredients:** the cart wiggles once (`.anim-wiggle`) and a "+14 to Groceries" chip floats up and fades.
 - **Steam** over tonight's dinner: three wisps, 3.4s each, 1.1s apart. It's the only loop on these screens; keep it that slow.
 
 ### Workout motion
@@ -427,7 +441,7 @@ One-shot only; nothing here loops except the steam.
 - Plan cards rise in with a 60ms stagger; done = stamp pops (`--dur-slow`), +points float up and fade.
 - Swap: chips slide down; the new plan cross-fades in. The coach's three "Thinking…" dots are the one non-music loop allowed, only while a request is in flight (max ~10s), opacity and a small lift, 900ms cycle.
 - Session: steps slide in from the right (400ms); set dots pop; the ring's `stroke-dashoffset` updates once a second (documented exception: one small SVG stroke). Finish: 8 stars burst out once and fade.
-- Heat map squares fade in once, left to right. No looping anything on the overview.
+- Heat map: first ~14 squares stagger in; the rest appear still. No looping anything on the overview.
 
 ### Music motion (Jukebox only)
 
@@ -437,6 +451,7 @@ The only looping animations allowed in the app, and only while music is playing:
 - Small: scale changes ≤ 5% (art 2%, glow 5%), ring opacity ≤ 0.3.
 - **Pause everything with playback** (`animation-play-state: paused`); hide the rings.
 - One-shot transitions (the pick animation) can be bolder but must end in a fade, never a hard cut, and finish in under 2.5s.
+- **Record wall:** covers rise in with a capped stagger when Albums / Playlists mounts; the pick overlay stays the celebration.
 - No per-song tempo: Spotify's BPM data isn't available to new apps.
 
 ---

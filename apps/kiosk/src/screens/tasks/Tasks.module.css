@@ -75,6 +75,7 @@
 
 .cards { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 2px; list-style: none; }
 .cards > li { flex: none; animation: cardIn 400ms var(--ease-out) both; animation-delay: calc(var(--n) * 45ms); }
+.cardStatic { animation: none !important; }
 
 /* ---------- Task card ---------- */
 .card {
@@ -221,7 +222,6 @@
   border-radius: var(--radius-pill);
   background: var(--color-ink); color: var(--color-on-ink);
   font-size: var(--text-md); font-weight: var(--weight-heavy); white-space: nowrap;
-  animation: toastIn var(--dur-base) var(--ease-out);
 }
 
 @keyframes cardIn { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -235,4 +235,3 @@
   32% { transform: translateY(-10px) scale(1.05); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
   100% { transform: translate(-560px, -200px) scale(0.55) rotate(-6deg); opacity: 0; }
 }
-@keyframes toastIn { from { transform: translate(-50%, 16px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }

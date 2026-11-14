@@ -61,7 +61,7 @@ export default function Idle() {
       <div className={s.photoEmpty} aria-hidden="true" />
 
       {playing ? (
-        <div className={s.playing}>
+        <div className={`${s.playing} anim-fade`}>
           <span className={s.playingIcon}><Icon name="music" size={22} /></span>
           <span className={s.playingText}>
             <strong>{playing.title}</strong>
@@ -70,7 +70,7 @@ export default function Idle() {
         </div>
       ) : null}
 
-      <div className={s.clock}>
+      <div className={`${s.clock} anim-rise`}>
         <div className={s.time}>{clock(now)}</div>
         <div className={s.date}>{longDate(now)}</div>
         <div className={s.weather}>
@@ -85,11 +85,16 @@ export default function Idle() {
         </div>
       </div>
 
-      <aside className={s.today} aria-label="Today at a glance">
+      <aside className={`${s.today} ${s.todayIn}`} aria-label="Today at a glance">
         <Label>Today</Label>
         <div className={s.agenda}>
-          {agenda.length ? agenda.map((e) => (
-            <div key={e.id} {...memberColorProps(who(e.who).color)} className={s.event}>
+          {agenda.length ? agenda.map((e, i) => (
+            <div
+              key={e.id}
+              {...memberColorProps(who(e.who).color)}
+              className={s.event}
+              style={i < 4 ? { ['--n' as string]: i } : undefined}
+            >
               <span className={s.dot} />
               <span className={s.eventTitle}>{e.title}</span>
               <span className={s.eventTime}>{e.start <= hour ? `Now – ${hourLabel(e.end)}` : hourLabel(e.start)}</span>

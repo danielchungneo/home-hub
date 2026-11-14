@@ -151,6 +151,10 @@
   --dur-fast: 150ms;
   --dur-base: 300ms;
   --dur-slow: 450ms;
+  --dur-sheet: 500ms;
+  --dur-sheet-scrim: 350ms;
+  --dur-fade: 800ms;
+  --dur-stagger: 45ms;
 
   /* ---------- Elevation (use sparingly; Pi GPU) ---------- */
   --shadow-float: 0 4px 10px rgba(37, 35, 31, 0.25); /* FAB only */

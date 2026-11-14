@@ -181,7 +181,6 @@
   border-radius: var(--radius-pill);
   background: var(--color-ink); color: var(--color-on-ink);
   font-size: var(--text-md); font-weight: var(--weight-heavy); white-space: nowrap;
-  animation: toastIn var(--dur-base) var(--ease-out);
 }
 
 .qrScrim {
@@ -230,6 +229,14 @@
   background: var(--color-paper);
   box-shadow: var(--shadow-card);
 }
+.gridCardIn {
+  animation: gridIn var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(var(--n) * var(--dur-stagger));
+}
+@keyframes gridIn {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
 .gridOpen {
   display: flex; flex-direction: column; align-items: stretch;
   width: 100%; min-height: 320px;
@@ -255,9 +262,7 @@
   background: var(--color-paper) !important;
 }
 
-@keyframes dropIn { from { transform: translateY(300px); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes toastIn { from { transform: translate(-50%, 16px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
-
+@keyframes dropIn { from { transform: translateY(80px); opacity: 0; } to { transform: none; opacity: 1; } }
 /* Local copies: CSS Modules scope keyframe names, so the global ones in base.css can't be referenced from here. */
 @keyframes fade {
   from { opacity: 0; }

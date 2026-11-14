@@ -32,7 +32,6 @@
   text-align: left;
   animation: railIn 450ms var(--ease-out) backwards;
   animation-delay: calc(var(--n) * 60ms);
-  transition: background-color var(--dur-base) ease;
 }
 .listBtn[aria-current='true'] { background: var(--color-surface); }
 .listTile {
@@ -40,7 +39,6 @@
   display: flex; align-items: center; justify-content: center;
   border-radius: var(--radius-lg);
   background: var(--member-tint); color: var(--member);
-  transition: background-color var(--dur-base) ease, color var(--dur-base) ease;
 }
 .listBtn[aria-current='true'] .listTile { background: var(--member); color: var(--color-on-ink); }
 .listText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
@@ -139,7 +137,6 @@
   align-items: center;
   justify-content: center;
   background: var(--color-scrim);
-  animation: confirmScrimIn var(--dur-base) ease both;
 }
 .confirm {
   width: 560px;
@@ -150,7 +147,6 @@
   border-radius: var(--radius-3xl);
   background: var(--color-surface);
   box-shadow: var(--shadow-dialog);
-  animation: confirmRise var(--dur-base) var(--ease-out);
 }
 .confirmText { display: flex; flex-direction: column; gap: 10px; text-align: center; }
 .confirmTitle { font-family: var(--font-display); font-weight: 400; font-size: var(--display-lg); line-height: 1.05; }
@@ -172,12 +168,6 @@
   background: var(--member);
 }
 .pickerOn { border-color: var(--color-ink); background: var(--member-tint, var(--color-surface)); }
-@keyframes confirmScrimIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes confirmRise {
-  from { transform: translateY(16px); opacity: 0; }
-  to { transform: none; opacity: 1; }
-}
-
 .item {
   position: relative;
   width: 100%; min-height: 64px;
@@ -185,9 +175,10 @@
   margin-bottom: var(--space-1); padding: 4px 4px 4px 6px;
   border-radius: var(--radius-md);
   text-align: left;
-  transition: opacity 300ms ease, background-color 900ms ease;
+  /* background-color: documented Lists exception — aisle tint fades when .itemFresh drops */
+  transition: opacity var(--dur-base) var(--ease-out), background-color 900ms var(--ease-out);
 }
-.itemFresh { background: var(--member-tint, var(--color-highlight)); animation: itemIn 450ms cubic-bezier(0.3, 1.3, 0.5, 1); }
+.itemFresh { background: var(--member-tint, var(--color-highlight)); animation: itemIn var(--dur-slow) cubic-bezier(0.3, 1.3, 0.5, 1); }
 .checkBtn {
   flex: none;
   display: flex; align-items: center; justify-content: center;
@@ -199,7 +190,6 @@
   display: flex; align-items: center; justify-content: center;
   border: 2.5px solid var(--color-border-strong); border-radius: 22px;
   background: var(--color-surface); color: var(--color-on-ink);
-  transition: border-color 200ms ease, background-color 200ms ease;
 }
 .itemChecking .check,
 .itemChecked .check { border-color: transparent; background: var(--color-success); }
@@ -247,10 +237,8 @@
   border-radius: var(--radius-pill);
   background: var(--color-ink); color: var(--color-on-ink);
   font-size: var(--text-md); font-weight: var(--weight-heavy);
-  transition: background-color 350ms ease, color 350ms ease;
 }
 .mealsDone { background: var(--color-success-tint); color: var(--color-success); }
-.iconWiggle { display: flex; animation: wiggle 360ms ease-in-out; }
 .emptyHint { font-size: 16px; font-weight: var(--weight-bold); color: var(--color-ink-3); }
 
 .toast {
@@ -261,7 +249,6 @@
   border-radius: var(--radius-pill);
   background: var(--color-ink); color: var(--color-on-ink);
   font-size: var(--text-md); font-weight: var(--weight-heavy); white-space: nowrap;
-  animation: toastIn var(--dur-base) var(--ease-out);
 }
 
 .qrScrim {
@@ -290,5 +277,3 @@
 @keyframes itemIn { from { transform: translateX(-30px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes checkPop { 0% { transform: scale(1); } 50% { transform: scale(1.18); } 100% { transform: scale(1); } }
 @keyframes badgeIn { from { transform: scale(0.5); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes wiggle { 0%, 100% { transform: none; } 25% { transform: rotate(-14deg); } 60% { transform: rotate(8deg); } }
-@keyframes toastIn { from { transform: translate(-50%, 16px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }

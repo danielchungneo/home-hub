@@ -53,7 +53,7 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
 /* ---------- Chip: toggleable filter pill ---------- */
 export function Chip({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <button type="button" aria-pressed={selected} className={cx(s.chip, selected && s.chipOn)} onClick={onClick}>
+    <button type="button" aria-pressed={selected} className={cx(s.chip, selected && s.chipOn, selected && s.selectPop)} onClick={onClick}>
       {children}
     </button>
   )
@@ -85,7 +85,13 @@ export function Segmented<T extends string>({
   return (
     <div role="group" aria-label={label} className={cx(s.seg, variant === 'member' && s.segMember, block && s.segBlock)}>
       {options.map((o) => (
-        <button key={o.value} type="button" aria-pressed={o.value === value} className={cx(s.segBtn, o.value === value && s.segOn)} onClick={() => onChange(o.value)}>
+        <button
+          key={o.value}
+          type="button"
+          aria-pressed={o.value === value}
+          className={cx(s.segBtn, o.value === value && s.segOn, o.value === value && s.selectPop)}
+          onClick={() => onChange(o.value)}
+        >
           <span>{o.label}</span>
           {o.sub && <span className={s.segSub}>{o.sub}</span>}
         </button>
@@ -135,7 +141,7 @@ export function PersonPill({
       type="button"
       aria-pressed={pressed}
       onClick={onClick}
-      className={cx(s.personPill, className)}
+      className={cx(s.personPill, pressed && s.selectPop, className)}
       {...colorProps}
     >
       <span className={s.personAvatar}>{avatar}</span>

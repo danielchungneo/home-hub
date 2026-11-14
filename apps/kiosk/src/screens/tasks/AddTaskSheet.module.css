@@ -1,5 +1,5 @@
 .layer { position: fixed; top: 0; right: 0; bottom: 0; left: var(--sidebar-width); z-index: 40; }
-.scrim { position: absolute; inset: 0; background: rgba(36, 32, 28, 0.45); animation: scrimIn 350ms ease both; }
+.scrim { position: absolute; inset: 0; background: rgba(36, 32, 28, 0.45); }
 .sheet {
   position: absolute; left: var(--space-10); right: var(--space-10); top: 70px; height: 950px;
   display: flex; flex-direction: column;
@@ -7,10 +7,7 @@
   background: var(--color-surface);
   box-shadow: var(--shadow-dialog);
   overflow: hidden;
-  animation: sheetIn 500ms var(--ease-out) both;
 }
-.layer[data-closing='true'] .scrim { animation: scrimOut 300ms ease both; }
-.layer[data-closing='true'] .sheet { animation: sheetOut 300ms ease-in both; }
 
 .head {
   height: 104px; flex: none;
@@ -199,8 +196,4 @@
 .save { padding: 0 34px; background: var(--color-ink); color: var(--color-on-ink); transition: opacity 200ms ease; }
 .save:disabled { opacity: 0.4; }
 
-@keyframes scrimIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes scrimOut { from { opacity: 1; } to { opacity: 0; } }
-@keyframes sheetIn { from { transform: translateY(1040px); } to { transform: none; } }
-@keyframes sheetOut { from { transform: none; opacity: 1; } to { transform: translateY(120px); opacity: 0; } }
 @keyframes optionIn { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }

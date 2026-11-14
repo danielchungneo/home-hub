@@ -141,7 +141,11 @@ export default function Cooking({ recipeId, onExit }: { recipeId: string; onExit
 
             {timerOn ? (
               <>
-                <span className={done ? `${s.timerValue} ${s.timerDone}` : s.timerValue} aria-live="polite">
+                <span
+                  key={running && !done ? 'live' : display}
+                  className={`${done ? `${s.timerValue} ${s.timerDone}` : s.timerValue}${!running || done ? ' anim-pop' : ''}`}
+                  aria-live="polite"
+                >
                   {display}
                 </span>
                 <div className={s.timerEdit}>
