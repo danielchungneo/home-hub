@@ -5,7 +5,7 @@ import { FoodPhoto } from '../../components/FoodPhoto'
 import { Icon } from '../../components/Icon'
 import { SoftKeyboard } from '../../components/SoftKeyboard'
 import { Panel, Rail } from '../../components/primitives'
-import { useHousehold, useMealPlan, useRecipes, useUpdateRecipe } from '../../data/hooks'
+import { useDeleteRecipe, useHousehold, useHouseholdSettings, useMealPlan, useRecipes, useUpdateRecipe } from '../../data/hooks'
 import { useLive } from '../../data/live'
 import { localDate } from '../../data/mappers'
 import { useClock } from '../../hooks/useClock'
@@ -59,7 +59,9 @@ export default function Recipes() {
   const now = useClock()
   const { data: recipes = [], isLoading } = useRecipes()
   const { data: household } = useHousehold()
+  const { data: settings } = useHouseholdSettings()
   const updateRecipe = useUpdateRecipe()
+  const deleteRecipe = useDeleteRecipe()
   useLive('recipes', 'recipes')
 
   const weekStart = startOfWeek(now)
@@ -73,7 +75,7 @@ export default function Recipes() {
   const [filter, setFilter] = useState<FilterId>('all')
   const [query, setQuery] = useState('')
   const [keyboard, setKeyboard] = useState(false)
-  const [pull, setPull] = useState<Pull | null>(null)
+  const [pull, setPull] = useState<(Pull & { recipe: Recipe }) | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [showQr, setShowQr] = useState(false)
   const cardRefs = useRef(new Map<string, HTMLElement>())
@@ -134,11 +136,23 @@ export default function Recipes() {
     )
   }
 
+  const removeRecipe = (recipe: Recipe) => {
+    deleteRecipe.mutate(recipe.id, {
+      onSuccess: () => {
+        setPull(null)
+        flash(`Removed “${recipe.title}” from the box`)
+      },
+      onError: (err) => flash(err instanceof Error ? err.message : 'Couldn’t remove that recipe'),
+    })
+  }
+
   /** Pull a card out: remember where it sits so the overlay can grow out of it (FLIP). */
   const open = (id: string, el?: HTMLElement | null) => {
+    const recipe = recipeById(recipes, id)
+    if (!recipe) return
     const fromEl = el ?? cardRefs.current.get(id) ?? null
     const fromRect = fromEl?.getBoundingClientRect() ?? fallbackRect(boxRef.current)
-    setPull({ id, from: fromRect })
+    setPull({ id, from: fromRect, recipe })
   }
 
   const addUrl = household?.import_token ? ingestUrl(household.import_token) : null
@@ -306,15 +320,18 @@ export default function Recipes() {
         </Panel>
       )}
 
-      {pull && recipeById(recipes, pull.id) && (
+      {pull && (
         <PulledCard
           key={pull.id}
           pull={pull}
-          recipe={recipeById(recipes, pull.id)!}
+          recipe={recipeById(recipes, pull.id) ?? pull.recipe}
           planRows={planRows}
           weekDates={weekDates}
           onToggleFavorite={toggleFavorite}
           onAddToPlan={(r) => flash(`Added ${r.title} to the meal plan`)}
+          onDelete={removeRecipe}
+          deleting={deleteRecipe.isPending}
+          pinProtectsDelete={!!settings?.pinProtectDeletes}
           onClosed={() => setPull(null)}
         />
       )}

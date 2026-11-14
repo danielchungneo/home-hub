@@ -25,18 +25,33 @@ const OPEN: [Phase, number][] = [['lift', 30], ['center', 340], ['open', 900]]
 const CLOSE: [Phase | null, number][] = [['center', 0], ['return', 560], [null, 1000]]
 const W = 1040, H = 700
 
-export function PulledCard({ pull, recipe: r, planRows, weekDates, onToggleFavorite, onAddToPlan, onClosed }: {
+export function PulledCard({
+  pull,
+  recipe: r,
+  planRows,
+  weekDates,
+  onToggleFavorite,
+  onAddToPlan,
+  onDelete,
+  deleting = false,
+  pinProtectsDelete = false,
+  onClosed,
+}: {
   pull: Pull
   recipe: Recipe
   planRows: MealPlanRow[]
   weekDates: string[]
   onToggleFavorite: (r: Recipe) => void
   onAddToPlan: (r: Recipe) => void
+  onDelete: (r: Recipe) => void
+  deleting?: boolean
+  pinProtectsDelete?: boolean
   onClosed: () => void
 }) {
-  const { cook } = useNav()
+  const { cook, requirePin } = useNav()
   const [phase, setPhase] = useState<Phase>('start')
   const [serv, setServ] = useState(r.servings)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const timers = useRef<number[]>([])
   const stage = useRef<HTMLDivElement>(null)
   const [origin, setOrigin] = useState<{ dx: number; dy: number; k: number } | null>(null)
@@ -56,7 +71,11 @@ export function PulledCard({ pull, recipe: r, planRows, weekDates, onToggleFavor
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const close = () => schedule(CLOSE)
+  const close = () => {
+    if (deleting) return
+    setConfirmDelete(false)
+    schedule(CLOSE)
+  }
   const o = origin ?? { dx: 0, dy: 0, k: 0.33 }
   const wrap =
     phase === 'start' || phase === 'return' ? `translate(${o.dx}px, ${o.dy}px) scale(${o.k})`
@@ -73,6 +92,21 @@ export function PulledCard({ pull, recipe: r, planRows, weekDates, onToggleFavor
         return `${shortDay(day >= 0 ? day : 0)} ${slot.label.toLowerCase()}`
       }),
   )
+
+  const askDelete = () => {
+    const proceed = () => setConfirmDelete(true)
+    if (pinProtectsDelete) {
+      requirePin({
+        title: `To remove ${r.title}`,
+        detail: planned.length
+          ? 'This deletes the recipe and clears it from the meal plan.'
+          : 'This permanently deletes the recipe from the box.',
+        onSuccess: proceed,
+      })
+      return
+    }
+    proceed()
+  }
 
   return (
     <div className={s.layer} data-phase={phase} data-course={r.course}>
@@ -109,10 +143,20 @@ export function PulledCard({ pull, recipe: r, planRows, weekDates, onToggleFavor
                   icon={r.favorite ? 'heart-solid' : 'heart'}
                   label={r.favorite ? `Remove ${r.title} from favorites` : `Save ${r.title} to favorites`}
                   aria-pressed={!!r.favorite}
+                  disabled={deleting || confirmDelete}
                   onClick={() => onToggleFavorite(r)}
                 />
                 {r.favorite && <span className={s.stamp}>Family favorite</span>}
-                <IconButton variant="secondary" size="lg" icon="close" label="Put the card back" onClick={close} />
+                <IconButton
+                  variant="secondary"
+                  size="lg"
+                  round
+                  icon="trash"
+                  label={pinProtectsDelete ? `Remove ${r.title} (needs PIN)` : `Remove ${r.title}`}
+                  disabled={deleting}
+                  onClick={askDelete}
+                />
+                <IconButton variant="secondary" size="lg" icon="close" label="Put the card back" disabled={deleting} onClick={close} />
               </div>
 
               <div className={s.ruled}>
@@ -148,9 +192,27 @@ export function PulledCard({ pull, recipe: r, planRows, weekDates, onToggleFavor
               </div>
 
               <div className={s.foot}>
-                <span className={s.planLine}>{planned.length ? `On the meal plan: ${planned.join(', ')}` : 'Not on this week’s meal plan yet'}</span>
-                <Button variant="secondary" size="lg" pill onClick={() => onAddToPlan(r)}>Add to meal plan</Button>
-                <Button size="lg" pill icon="play" onClick={() => { onClosed(); cook(r.id) }}>Start cooking</Button>
+                {confirmDelete ? (
+                  <>
+                    <span className={s.planLine}>
+                      {planned.length
+                        ? `Remove “${r.title}” and clear it from ${planned.length === 1 ? '1 meal plan slot' : `${planned.length} meal plan slots`}?`
+                        : `Remove “${r.title}” from the recipe box forever?`}
+                    </span>
+                    <Button variant="secondary" size="lg" pill disabled={deleting} onClick={() => setConfirmDelete(false)}>
+                      Keep recipe
+                    </Button>
+                    <Button size="lg" pill icon="trash" disabled={deleting} onClick={() => onDelete(r)}>
+                      {deleting ? 'Removing…' : 'Remove forever'}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className={s.planLine}>{planned.length ? `On the meal plan: ${planned.join(', ')}` : 'Not on this week’s meal plan yet'}</span>
+                    <Button variant="secondary" size="lg" pill onClick={() => onAddToPlan(r)}>Add to meal plan</Button>
+                    <Button size="lg" pill icon="play" onClick={() => { onClosed(); cook(r.id) }}>Start cooking</Button>
+                  </>
+                )}
               </div>
             </div>
 
