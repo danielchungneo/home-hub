@@ -106,7 +106,7 @@ export function ColorPicker({ value, onChange, label = 'Color' }: Props) {
               {...memberColorProps(c.value)}
               aria-pressed={on}
               aria-label={c.label}
-              className={on ? `${s.swatch} ${s.swatchOn}` : s.swatch}
+              className={on ? `${s.swatch} ${s.preset} ${s.swatchOn}` : `${s.swatch} ${s.preset}`}
               onClick={() => pickPreset(c.value)}
             />
           )
@@ -115,8 +115,12 @@ export function ColorPicker({ value, onChange, label = 'Color' }: Props) {
           type="button"
           aria-pressed={customActive}
           aria-label="Custom color"
-          className={customActive ? `${s.swatch} ${s.custom} ${s.swatchOn}` : `${s.swatch} ${s.custom}`}
-          style={{ background: customActive ? resolved.deep : undefined }}
+          className={
+            customActive
+              ? `${s.swatch} ${s.custom} ${s.customFilled} ${s.swatchOn}`
+              : `${s.swatch} ${s.custom}`
+          }
+          style={customActive ? { background: resolved.deep } : undefined}
           onClick={() => {
             setOpen(true)
             if (!customActive) pickCustom(resolved.deep)

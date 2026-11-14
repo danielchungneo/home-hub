@@ -14,8 +14,11 @@
   width: var(--touch-min);
   height: var(--touch-min);
   border-radius: 50%;
-  background: var(--member);
   border: 3px solid transparent;
+}
+
+.preset {
+  background: var(--member);
 }
 
 .swatchOn {
@@ -23,19 +26,38 @@
   box-shadow: inset 0 0 0 3px var(--color-surface);
 }
 
+/* Wheel on ::before + circular mask: conic-gradient + border-radius alone
+   leaves a first-stop fringe (reads as a clay halo) on WebKit/Chromium. */
 .custom {
-  background:
-    conic-gradient(
-      from 0deg,
-      #c45c4a,
-      #c9a227,
-      #55623f,
-      #3e6b6a,
-      #4b6270,
-      #6e5a72,
-      #7a4555,
-      #c45c4a
-    );
+  position: relative;
+  background: transparent;
+  isolation: isolate;
+}
+
+.custom::before {
+  content: '';
+  position: absolute;
+  inset: -3px; /* match .swatch transparent border so size matches presets */
+  z-index: -1;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    var(--clay),
+    var(--honey),
+    var(--moss),
+    var(--ocean),
+    var(--fjord),
+    var(--plum),
+    var(--berry),
+    var(--clay)
+  );
+  -webkit-mask-image: radial-gradient(closest-side, #000 99%, transparent);
+  mask-image: radial-gradient(closest-side, #000 99%, transparent);
+  pointer-events: none;
+}
+
+.customFilled::before {
+  content: none;
 }
 
 .customPanel {
@@ -82,14 +104,14 @@
   appearance: none;
   background: linear-gradient(
     to right,
-    #c45c4a,
-    #c9a227,
-    #55623f,
-    #3e6b6a,
-    #4b6270,
-    #6e5a72,
-    #7a4555,
-    #c45c4a
+    var(--clay),
+    var(--honey),
+    var(--moss),
+    var(--ocean),
+    var(--fjord),
+    var(--plum),
+    var(--berry),
+    var(--clay)
   );
   border-radius: var(--radius-pill);
 }

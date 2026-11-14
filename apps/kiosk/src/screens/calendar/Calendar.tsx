@@ -278,11 +278,14 @@ export default function Calendar() {
         <Label>Showing</Label>
         {people.map((p) => {
           const on = !hidden.has(p.id)
+          const isMember = p.id !== FAMILY.id
           return (
             <button key={p.id} type="button" {...memberColorProps(p.color)} aria-pressed={on} className={s.person} onClick={() => toggle(p.id)}>
-              <span key={popped === p.id ? `${p.id}-${hidden.size}` : p.id} className={popped === p.id ? `${s.avatar} anim-pop` : s.avatar}>
-                <MemberBlobAvatar memberId={p.id} size={36} showBackground={false} decorative />
-              </span>
+              {isMember && (
+                <span key={popped === p.id ? `${p.id}-${hidden.size}` : p.id} className={popped === p.id ? `${s.avatar} anim-pop` : s.avatar}>
+                  <MemberBlobAvatar memberId={p.id} size={36} showBackground={false} decorative />
+                </span>
+              )}
               {p.name}
               <span className={s.personCount}>{allEvents.filter((e) => e.who === p.id).length}</span>
             </button>
