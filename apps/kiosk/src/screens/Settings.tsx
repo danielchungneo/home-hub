@@ -736,6 +736,7 @@ function WorkoutCoachSettings({ members }: { members: Member[] }) {
   useLive('athlete_profiles', 'athleteProfiles')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [avoid, setAvoid] = useState('')
+  const [keyboard, setKeyboard] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -777,6 +778,22 @@ function WorkoutCoachSettings({ members }: { members: Member[] }) {
     await run()
   }
 
+  const commitAvoidIfDirty = () => {
+    if (!draft) return
+    if ((draft.limitations ?? '') !== avoid.trim()) {
+      void save({ ...draft, limitations: avoid.trim() || undefined })
+    }
+  }
+  const closeEditor = () => {
+    commitAvoidIfDirty()
+    setEditingId(null)
+    setKeyboard(false)
+  }
+  const commitAvoid = () => {
+    commitAvoidIfDirty()
+    setKeyboard(false)
+  }
+
   return (
     <>
       <p className={s.confirmDetail}>
@@ -811,7 +828,7 @@ function WorkoutCoachSettings({ members }: { members: Member[] }) {
       </div>
 
       {editing && draft && (
-        <div className={`${s.confirmScrim} anim-confirm-scrim`} onClick={() => !busy && setEditingId(null)}>
+        <div className={`${s.confirmScrim} anim-confirm-scrim`} onClick={() => !busy && closeEditor()}>
           <div
             role="dialog"
             aria-modal="true"
@@ -900,22 +917,27 @@ function WorkoutCoachSettings({ members }: { members: Member[] }) {
               <input
                 value={avoid}
                 onChange={(e) => setAvoid(e.target.value.slice(0, 160))}
-                onBlur={() => {
-                  if ((draft.limitations ?? '') !== avoid.trim()) {
-                    void save({ ...draft, limitations: avoid.trim() || undefined })
-                  }
-                }}
+                onFocus={() => setKeyboard(true)}
                 placeholder="Anything the coach should avoid"
                 autoComplete="off"
+                inputMode="none"
               />
             </label>
 
             {error && <p className={s.formError}>{error}</p>}
             <div className={s.confirmActions}>
-              <Button variant="secondary" size="lg" block disabled={busy} onClick={() => setEditingId(null)}>
+              <Button variant="secondary" size="lg" block disabled={busy} onClick={closeEditor}>
                 Done
               </Button>
             </div>
+
+            {keyboard && (
+              <SoftKeyboard
+                value={avoid}
+                onChange={(next) => setAvoid(next.slice(0, 160))}
+                onDone={commitAvoid}
+              />
+            )}
           </div>
         </div>
       )}

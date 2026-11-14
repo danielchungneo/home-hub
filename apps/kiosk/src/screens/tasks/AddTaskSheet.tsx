@@ -3,6 +3,7 @@ import { SYSTEM_COLOR } from '@hub/shared'
 import { IconButton } from '../../components/Button'
 import { Icon, type IconName } from '../../components/Icon'
 import { MemberBlobAvatar } from '../../components/MemberBlobAvatar'
+import { SoftKeyboard } from '../../components/SoftKeyboard'
 import { Switch } from '../../components/primitives'
 import { memberColorProps } from '../../lib/colors'
 import { DAY_LONG, DAY_SHORT, EVERY_DAY, WEEKDAYS, WEEKENDS, daysLabel, isoDate } from '../../lib/tasks'
@@ -45,10 +46,11 @@ export function AddTaskSheet({ members, preset, templates, now, onClose, onSave 
   const [dueDay, setDueDay] = useState(6)
   const [points, setPoints] = useState<number | null>(null)
   const [popDay, setPopDay] = useState<number | null>(null)
+  const [keyboard, setKeyboard] = useState<'query' | 'newTitle' | null>(null)
   const timer = useRef<number>()
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
-  const close = () => { setClosing(true); timer.current = window.setTimeout(onClose, CLOSE_MS) }
+  const close = () => { setClosing(true); setKeyboard(null); timer.current = window.setTimeout(onClose, CLOSE_MS) }
 
   const isBounty = assignee === 'bounty'
   const member = members.find((m) => m.id === assignee)
@@ -66,15 +68,15 @@ export function AddTaskSheet({ members, preset, templates, now, onClose, onSave 
   const earns = isBounty || !!member?.earnsPoints
 
   const pick = (t: TaskTemplate) => {
-    setTemplateId(t.id); setCreating(false); setPoints(null)
+    setTemplateId(t.id); setCreating(false); setPoints(null); setKeyboard(null)
     if (!isBounty) { setFrequency(t.frequency); setRepeat(true) }
   }
   const startCreate = () => {
     setCreating(true); setTemplateId(null)
     setNewTitle(query.trim().replace(/^./, (c) => c.toUpperCase()).slice(0, TITLE_MAX))
-    setNewIcon('sparkle'); setPoints(earns ? 10 : 0)
+    setNewIcon('sparkle'); setPoints(earns ? 10 : 0); setKeyboard('newTitle')
   }
-  const back = () => { setCreating(false); setTemplateId(null) }
+  const back = () => { setCreating(false); setTemplateId(null); setKeyboard(null) }
   const chooseWho = (id: string) => {
     setAssignee(id)
     if (id === 'bounty') { setFrequency('weekly'); setRepeat(false); setPoints(Math.max(10, pts)) }
@@ -146,6 +148,7 @@ export function AddTaskSheet({ members, preset, templates, now, onClose, onSave 
                   <span className="sr-only">Find or create a task</span>
                   <input role="combobox" aria-expanded="true" aria-controls="task-options" autoComplete="off"
                     value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a task, or type a new one"
+                    onFocus={() => setKeyboard('query')} inputMode="none"
                     onKeyDown={(e) => { if (e.key === 'Enter' && canCreate) startCreate() }} />
                   {query && <IconButton variant="secondary" round={false} icon="close" label="Clear" onClick={() => setQuery('')} />}
                 </label>
@@ -194,7 +197,9 @@ export function AddTaskSheet({ members, preset, templates, now, onClose, onSave 
                 </div>
                 <label className={s.field}>
                   <span className={s.fieldLabel}>Name</span>
-                  <input className={s.nameInput} value={newTitle} maxLength={TITLE_MAX} onChange={(e) => setNewTitle(e.target.value)} />
+                  <input className={s.nameInput} value={newTitle} maxLength={TITLE_MAX}
+                    onChange={(e) => setNewTitle(e.target.value.slice(0, TITLE_MAX))}
+                    onFocus={() => setKeyboard('newTitle')} inputMode="none" />
                 </label>
                 <div className={s.field}>
                   <span className={s.fieldLabel}>Icon</span>
@@ -313,6 +318,17 @@ export function AddTaskSheet({ members, preset, templates, now, onClose, onSave 
           <button type="button" className={s.save} disabled={cantSave} onClick={save}>{creating ? 'Save and add' : 'Add task'}</button>
         </footer>
       </section>
+
+      {keyboard === 'query' && (
+        <SoftKeyboard value={query} onChange={setQuery} onDone={() => setKeyboard(null)} />
+      )}
+      {keyboard === 'newTitle' && (
+        <SoftKeyboard
+          value={newTitle}
+          onChange={(next) => setNewTitle(next.slice(0, TITLE_MAX))}
+          onDone={() => setKeyboard(null)}
+        />
+      )}
     </div>
   )
 }
