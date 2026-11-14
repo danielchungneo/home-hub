@@ -5,8 +5,6 @@ import type { BlobCharacterProps } from '../types'
  * Personality: Warm, cozy, and happiest when sharing a meal with family.
  */
 export function DumplinCharacter({
-  animation,
-  motionRun,
   faceScale,
   className,
   eyesClassName,
@@ -16,7 +14,7 @@ export function DumplinCharacter({
   const pleatW = 1.35 * faceScale
 
   return (
-    <g key={`${animation}:${motionRun}`} className={className}>
+    <g className={className}>
       {/* Squat bao body with a gathered knot at the crown. */}
       <path
         d="M50 14C54 14 57 18 59 24C68 27 82 38 82 55C82 72 68 84 50 84C32 84 18 72 18 55C18 38 32 27 41 24C43 18 46 14 50 14Z"

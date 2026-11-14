@@ -82,11 +82,38 @@ export function uploadRecipeImage(token: string, dataUrl: string, recipeId?: str
   })
 }
 
-export function fileToDataUrl(file: File) {
+/** Matches PHOTO_SHORT_SIDE in the recipe-import function: the kiosk never shows photos bigger than this. */
+const PHOTO_SHORT_SIDE = 640
+
+function readAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(String(reader.result))
     reader.onerror = () => reject(new Error('Could not read photo'))
     reader.readAsDataURL(file)
   })
+}
+
+/** Phone photos are often 12 MP; shrink to the kiosk's size as JPEG before uploading. */
+export async function fileToDataUrl(file: File) {
+  const src = URL.createObjectURL(file)
+  try {
+    const img = new Image()
+    img.src = src
+    await img.decode()
+    const scale = PHOTO_SHORT_SIDE / Math.min(img.naturalWidth, img.naturalHeight)
+    if (scale >= 1) return await readAsDataUrl(file)
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(img.naturalWidth * scale)
+    canvas.height = Math.round(img.naturalHeight * scale)
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return await readAsDataUrl(file)
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL('image/jpeg', 0.8)
+  } catch {
+    return await readAsDataUrl(file)
+  } finally {
+    URL.revokeObjectURL(src)
+  }
 }

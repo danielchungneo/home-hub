@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2"
+import { decode, Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts"
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -403,18 +404,62 @@ function extForContentType(contentType: string) {
   return "jpg"
 }
 
+/** The kiosk shows photos at most ~560×610 (pulled-out card); the shorter side is stored at this size. */
+const PHOTO_SHORT_SIDE = 640
+/** Bigger files can blow the edge CPU limit while decoding. The phone importer shrinks its uploads first. */
+const SHRINK_MAX_BYTES = 2_500_000
+
+/** Area-average downscale (imagescript only has nearest neighbour, which looks jagged on photos). */
+function boxResize(src: Image, w: number, h: number) {
+  const out = new Image(w, h)
+  const s = src.bitmap, d = out.bitmap
+  const sx = src.width / w, sy = src.height / h
+  for (let y = 0; y < h; y++) {
+    const y0 = Math.floor(y * sy), y1 = Math.max(y0 + 1, Math.floor((y + 1) * sy))
+    for (let x = 0; x < w; x++) {
+      const x0 = Math.floor(x * sx), x1 = Math.max(x0 + 1, Math.floor((x + 1) * sx))
+      let r = 0, g = 0, b = 0, n = 0
+      for (let yy = y0; yy < y1; yy++) {
+        for (let i = (yy * src.width + x0) * 4, end = (yy * src.width + x1) * 4; i < end; i += 4) {
+          r += s[i]!; g += s[i + 1]!; b += s[i + 2]!; n++
+        }
+      }
+      const o = (y * w + x) * 4
+      d[o] = r / n; d[o + 1] = g / n; d[o + 2] = b / n; d[o + 3] = 255
+    }
+  }
+  return out
+}
+
+/** JPEG with the shorter side at PHOTO_SHORT_SIDE, or null to keep the original (already small, too big, or not JPEG/PNG). */
+async function shrinkPhoto(bytes: Uint8Array): Promise<Uint8Array | null> {
+  if (bytes.byteLength > SHRINK_MAX_BYTES) return null
+  try {
+    const img = await decode(bytes, true)
+    if (!(img instanceof Image)) return null
+    const scale = PHOTO_SHORT_SIDE / Math.min(img.width, img.height)
+    if (scale >= 1) return null
+    return await boxResize(img, Math.round(img.width * scale), Math.round(img.height * scale)).encodeJPEG(75)
+  } catch {
+    return null
+  }
+}
+
 async function storeImageBytes(
   admin: SupabaseClient,
   householdId: string,
   recipeId: string,
-  bytes: Uint8Array,
-  contentType: string,
+  original: Uint8Array,
+  originalType: string,
 ) {
-  if (!contentType.startsWith("image/")) return null
-  if (bytes.byteLength > 5_000_000) return null
+  if (!originalType.startsWith("image/")) return null
+  if (original.byteLength > 5_000_000) return null
+  const shrunk = await shrinkPhoto(original)
+  const bytes = shrunk ?? original
+  const contentType = shrunk ? "image/jpeg" : originalType.split(";")[0]!
   const path = `${householdId}/${recipeId}.${extForContentType(contentType)}`
   const { error } = await admin.storage.from("recipe-images").upload(path, bytes, {
-    contentType: contentType.split(";")[0]!,
+    contentType,
     upsert: true,
   })
   if (error) return null

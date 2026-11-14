@@ -39,6 +39,9 @@ export function Drawer({ picking, hidden, filled, recipes, onPick, onClear, onCl
   const [writing, setWriting] = useState(false)
   const [text, setText] = useState('')
   const [keyboard, setKeyboard] = useState<'search' | 'write' | null>(null)
+  // The recipe cards (and their photos) wait for the first open instead of loading with the board.
+  const [opened, setOpened] = useState(false)
+  if (picking && !opened) setOpened(true)
 
   // Reset every time a new slot is opened.
   const slotKey = picking ? `${picking.slot}:${picking.day}` : null
@@ -50,7 +53,7 @@ export function Drawer({ picking, hidden, filled, recipes, onPick, onClear, onCl
 
   const slot = picking?.slot ?? 'dinner'
   const row = MEAL_SLOTS.find((m) => m.id === slot)!
-  const list = recipes.filter((r) => (filter === 'All' || (filter === 'Quick' ? isQuick(r) : r.course === filter)) && matches(r, query))
+  const list = !opened ? [] : recipes.filter((r) => (filter === 'All' || (filter === 'Quick' ? isQuick(r) : r.course === filter)) && matches(r, query))
 
   const pickNote = (label: string, el: HTMLElement) => onPick({ slot, entry: { text: label }, label }, el.getBoundingClientRect())
   const saveWriteIn = (el: HTMLElement | null) => {
@@ -141,7 +144,7 @@ export function Drawer({ picking, hidden, filled, recipes, onPick, onClear, onCl
             </span>
           </button>
         ))}
-        {!list.length && <span className={s.none}>No recipes match{query ? ` “${query}”` : ''}.</span>}
+        {opened && !list.length && <span className={s.none}>No recipes match{query ? ` “${query}”` : ''}.</span>}
       </div>
     </section>
     {!hidden && keyboard === 'search' && (

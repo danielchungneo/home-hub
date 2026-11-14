@@ -5,8 +5,6 @@ import type { BlobCharacterProps } from '../types'
  * Personality: Gentle, reassuring, and happiest when everyone is together.
  */
 export function MochiCharacter({
-  animation,
-  motionRun,
   faceScale,
   className,
   eyesClassName,
@@ -15,7 +13,7 @@ export function MochiCharacter({
   const strokeW = 1.8 * faceScale
 
   return (
-    <g key={`${animation}:${motionRun}`} className={className}>
+    <g className={className}>
       <path
         d="M18.2 56.4C15.8 44.3 23.2 34.9 34.4 32.3C44.1 30.0 52.2 22.6 63.1 24.8C75.9 27.4 83.5 39.2 82.7 51.8C81.9 64.7 71.6 76.0 58.5 78.9C46.6 81.5 30.2 78.1 23.5 69.8C20.5 66.1 19.1 61.2 18.2 56.4Z"
         fill="var(--member, var(--moss))"

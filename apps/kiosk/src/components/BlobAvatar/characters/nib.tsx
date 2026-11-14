@@ -5,8 +5,6 @@ import type { BlobCharacterProps } from '../types'
  * Personality: Thoughtful and cozy; always remembers the little things.
  */
 export function NibCharacter({
-  animation,
-  motionRun,
   faceScale,
   className,
   eyesClassName,
@@ -15,7 +13,7 @@ export function NibCharacter({
   const strokeW = 1.8 * faceScale
 
   return (
-    <g key={`${animation}:${motionRun}`} className={className}>
+    <g className={className}>
       <path
         d="M33.0 31.9C36.0 25.3 48.1 22.5 58.3 25.1C69.3 27.8 72.4 40.4 73.0 51.8L74.9 72.0C75.5 80.2 68.8 83.1 63.5 78.2L57.7 72.9C54.7 70.1 52.5 72.9 49.4 78.0C45.3 84.8 40.4 83.0 37.5 76.4C34.9 70.2 32.7 72.7 28.2 77.5C22.4 83.8 16.4 78.1 19.2 70.7L28.0 43.9C29.3 39.6 30.7 35.4 33.0 31.9Z"
         fill="var(--member, var(--moss))"

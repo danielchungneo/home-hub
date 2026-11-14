@@ -54,7 +54,10 @@ export default function Meals() {
   const { go, cook } = useNav()
   const today = now.getDay()
   const [weekOffset, setWeekOffset] = useState(0)
-  const weekStart = useMemo(() => addDays(startOfWeek(now), weekOffset * 7), [now, weekOffset])
+  // Keyed on the date, not the minute clock, so the board isn't rebuilt every minute.
+  const todayKey = localDate(now)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const weekStart = useMemo(() => addDays(startOfWeek(now), weekOffset * 7), [todayKey, weekOffset])
   const weekDates = useMemo(() => Array.from({ length: 7 }, (_, i) => localDate(addDays(weekStart, i))), [weekStart])
   const from = weekDates[0]!
   const to = weekDates[6]!

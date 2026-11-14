@@ -78,6 +78,7 @@
   animation: dropIn 500ms var(--ease-out) both;
   animation-delay: calc(var(--n) * 45ms);
 }
+.settled { animation: none; }
 .divider {
   width: 340px; height: 640px;
   border-radius: 14px;

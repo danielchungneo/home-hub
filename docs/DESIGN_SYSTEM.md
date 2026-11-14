@@ -383,9 +383,22 @@ The `Suspense` fallback for tab screens in `App.tsx`: the real sidebar plus an e
 - Cap mount staggers (about 8–14 items) so the Pi isn’t scheduling dozens of enters at once. Prefer response-driven motion over every-tile fly-ins.
 - `prefers-reduced-motion` sets `animation: none` and shortens transitions (in `base.css`). Jukebox also skips the pick overlay in JS.
 
+### Blob avatar motion
+
+`<BlobAvatar animation animationKey>` (and `<MemberBlobAvatar>`, which passes them through) plays one-shot motions with the **Web Animations API**, not CSS classes. To replay a motion, set `animation` and bump `animationKey`; the avatar is never remounted.
+
+- Motions (`squish` 480ms · `hop` 580ms · `wiggle` 620ms · `nod` 480ms · `celebrate` 720ms · `blink` 250ms) are the `MOTIONS` keyframe table in `BlobAvatar/motion.ts`. Add or tune motions there, not in CSS.
+- For motion that fires often, call `playBlobMotion(element, motion)` directly on the avatar's DOM node instead of going through props, so nothing re-renders. Idle does this for its ambient face motions and hit wiggles. A new motion on an avatar cancels the one already playing.
+- Every motion except blink animates the **outer character `<svg>`** (an HTML-level box the compositor can move). Translates are % of the full avatar box, so the character (~60% of it) moves about 0.6× what the old per-`<g>` values did.
+- **Blink** animates the eyes `<g>` (each character puts `eyesClassName` on it; `.eyes` sets `transform-box: fill-box`). It's the one main-thread motion, so keep it short and rare.
+- The tint disc is its own `<svg class="bg">` behind the character, so it stays still while the character moves.
+- Motions have no fill and are cancelled on change or unmount, so nothing stays in the cascade.
+- `BlobAvatar` is `memo`'d; keep its props stable (no inline objects) so a parent re-render doesn't re-render every avatar.
+- Reduced motion: WAAPI ignores the `animation: none` rule in `base.css`, so `BlobAvatar` and `Idle` check `matchMedia('(prefers-reduced-motion: reduce)')` themselves. Do the same for any new WAAPI motion.
+
 ### Idle / Cooking / Settings / keyboard
 
-- **Idle:** fridge-collage hangout — sticky-note floor washes, drifting member-color blooms (deep + soft tint), star/peach accent wash, and confetti dots behind the cast. Weather + clock sit on slightly tilted paper stamps; weather copy matches header casing (`partly cloudy · high 72°`). Family blobs are large; unused characters join as smaller colorful guests (cap ~11); no name labels. **Physics** (`lib/idlePhysics.ts`): random spawn, slow constant drift, bounce off screen edges, weather/clock/playing/hint cards, and each other; blob hits send both away along the contact axis in opposite directions (with a short pair cooldown); positions written via `translate3d` (no React re-render per frame). Bumps trigger a wiggle on both blobs; faces also blink/nod on a peaceful timer. `prefers-reduced-motion` freezes after spawn. No photo slideshow.
+- **Idle:** fridge-collage hangout — sticky-note floor washes, member-color blooms (deep + soft tint), star/peach accent wash, and confetti dots behind the cast. The backdrop is static: looping it kept the Pi 3 hot enough to throttle, so only the cast moves. Weather + clock sit on slightly tilted paper stamps; weather copy matches header casing (`partly cloudy · high 72°`). Family blobs are large; unused characters join as smaller colorful guests (cap ~11); no name labels. **Physics** (`lib/idlePhysics.ts`): random spawn, slow constant drift, bounce off screen edges, weather/clock/playing/hint cards, and each other; blob hits send both away along the contact axis in opposite directions (with a short pair cooldown); physics runs in 2s segments (`SEGMENT_MS`): it steps at 30 Hz for the whole segment up front, samples 20 keyframes per blob, and hands each path to the blob's wrapper as one Web Animation (`fill: 'forwards'`) that the compositor plays (no main-thread work or React re-render per frame). **Move / rest cycle:** the cast moves for 20s (`MOVE_MS`), then rests completely still for 40s (`REST_MS`): physics `pace` eases travel up over the first segment and down to a stop over the last; at rest each blob's transform is written to its style, all animations are cancelled and face motions hold off. While anything animates, Chromium's GPU process redraws a 1080p frame ~60×/s, which kept the Pi at its soft temperature limit; at rest it draws nothing. When the next segment starts, the previous one is **cancelled** — two transform animations on one element make Chromium refuse to composite it, which was the biggest cost on the Pi. Card bounds are re-measured only on mount, resize and when their content changes. Bumps play a WAAPI hit wiggle (`HIT_WIGGLE`) on the avatar shell, timed to when the hit plays, plus the BlobAvatar `wiggle` face motion; faces also blink/nod/squish/hop on a peaceful timer. Both go through `playBlobMotion` on the DOM node, never React state, so Idle only re-renders when the clock, weather or song changes (see Blob avatar motion). CSS one-shots in `Idle.module.css` use `backwards` fill with the rest state in the base rule, so finished animations don't linger in style recalcs. `prefers-reduced-motion` freezes after spawn. No photo slideshow.
 - **Cooking:** step text uses `.anim-rise`; progress segments use `scaleX`; timer value pops on manual change / done (not every countdown tick).
 - **Settings:** section body swaps with a short rise/fade when the left nav changes.
 - **SoftKeyboard:** rises with `.anim-rise` on mount.
@@ -442,19 +455,20 @@ One-shot only; nothing here loops except the steam.
 ### Workout motion
 
 - Plan cards rise in with a 60ms stagger; done = stamp pops (`--dur-slow`), +points float up and fade.
-- Swap: chips slide down; the new plan cross-fades in. The coach's three "Thinking…" dots are the one non-music loop allowed, only while a request is in flight (max ~10s), opacity and a small lift, 900ms cycle.
+- Swap: chips slide down; the new plan cross-fades in. The coach's three "Thinking…" dots are one non-music in-flight loop (max ~10s), opacity and a small lift, 900ms cycle. Jukebox “starting playback” is the music equivalent (see Music motion).
 - Session: steps slide in from the right (400ms); set dots pop; the ring's `stroke-dashoffset` updates once a second (documented exception: one small SVG stroke). Finish: 8 stars burst out once and fade.
 - Heat map: first ~14 squares stagger in; the rest appear still. No looping anything on the overview.
 
 ### Music motion (Jukebox only)
 
-The only looping animations allowed in the app, and only while music is playing:
+The only looping animations allowed in the app while music is playing (plus one in-flight exception below):
 
 - Calm, not rhythmic: the slowest loop sets the mood. Pulse every **3.2s**, rings over **6.4s**, record one turn per **4s**, equalizer bars **1.8–2.6s**. Never under 1.8s per cycle.
 - Small: scale changes ≤ 5% (art 2%, glow 5%), ring opacity ≤ 0.3.
 - **Pause everything with playback** (`animation-play-state: paused`); hide the rings.
 - One-shot transitions (the pick animation) can be bolder but must end in a fade, never a hard cut, and finish in under 2.5s.
 - **Record wall:** covers rise in with a capped stagger when Albums / Playlists mounts; the pick overlay stays the celebration.
+- **Starting playback:** while a play command is in flight (speaker wake / agent confirm, max ~20s), Now playing may keep glow + breathe + vinyl spin with a soft status opacity pulse and **no rings**. Same exception pattern as the coach’s “Thinking…” dots — only while waiting, never as idle decoration.
 - No per-song tempo: Spotify's BPM data isn't available to new apps.
 
 ---
@@ -489,6 +503,10 @@ These are rules, not suggestions.
 - **Styling:** CSS Modules + CSS custom properties only. Zero runtime CSS-in-JS. No Tailwind or MUI needed.
 - **Code splitting:** every screen is `React.lazy` in `App.tsx`. Keep shared code in `components/` small.
 - **Infinite animations:** only the Jukebox music motion above (only while playing) and the steam on tonight's dinner, and only on mounted views.
+- **What composites on the Pi:** CSS or WAAPI `transform`/`opacity` animations on HTML boxes (including an outer `<svg>` element) run on the compositor. Animations on elements *inside* an SVG (`<g>`, `<path>`) do not; they cost style, layout and paint every frame. Keep only one transform animation per element at a time (cancel the old one), or Chromium falls back to the main thread.
+- **Any motion costs the GPU process, not just the main thread:** while something animates, Chromium redraws the frame ~60×/s, and on the Pi that alone holds it near its soft temperature limit. Ambient, always-on screens (Idle) must have stretches where nothing animates at all.
+- **Don't let finished animations linger:** `fill: forwards`/`both` keeps an animation in the cascade and slows every style recalc. Use `backwards` with the end state in the base rule, or cancel the animation when it's done/replaced.
+- **Don't remount to replay:** `key={n}` remounts force a full style, layout and paint of the subtree. Replay with `element.animate(...)` instead (see Blob avatar motion).
 - **Non-transform exceptions:** the Calendar countdown ring animates `stroke-dashoffset` on one 132px SVG, once on load and at most once a minute. Don't use this for anything bigger or more frequent.
 - **Text input:** the Pi has no keyboard. Search fields and the meal write-in need an on-screen keyboard: either the compositor's (e.g. `squeekboard` under Wayland) or a small in-app keyboard component that appears when an input is focused. Keep inputs short (the write-in is capped at 40 characters).
 - **Forbidden:** `backdrop-filter`/blur, large or stacked `box-shadow` (only `--shadow-float` on the FAB, `--shadow-dialog` on the PIN dialog, and the kitchen paper shadows `--shadow-card` / `--shadow-lifted`, which sit on static cards inside a scroll layer), animating `width/height/top/left/background-color` in loops, autoplay video, big PNGs, JS scroll libraries, icon fonts, chart libraries.
@@ -497,7 +515,7 @@ These are rules, not suggestions.
 - **Timers:** the clock ticks once a minute (`useClock`). The idle detector uses one timeout. Countdown timers tick only while running.
 - **Realtime:** subscribe only to what the current screen shows; unsubscribe on unmount.
 - **Fonts:** two variable fonts, `wght` axis only, `font-display: swap`.
-- Build with `vite build` (target `safari14`/`es2020` for WPE WebKit). Never build on the Pi.
+- Build with `vite build` (target `safari14`/`es2020`, kept from the old WPE WebKit setup; the kiosk now runs Chromium in cage). Never build on the Pi.
 
 ---
 

@@ -33,6 +33,8 @@ const START_X = 40, DIVIDER_STEP = 90, CARD_W = 340, CARD_STEP = 310, GROUP_GAP 
 const TILTS = [-1, 0.7, -0.4, 1.1, -0.8, 0.5]
 const RESTS = [0, 8, 3, 12, 5]
 const TAB_X = [24, 110, 64]
+/** Dividers + cards that fit in the box before scrolling. Only these drop in; the rest start settled. */
+const ANIMATED_ITEMS = 8
 
 type Item =
   | { kind: 'divider'; key: string; x: number; course: Recipe['course']; count: number; tabX: number; n: number }
@@ -64,8 +66,9 @@ export default function Recipes() {
   const deleteRecipe = useDeleteRecipe()
   useLive('recipes', 'recipes')
 
-  const weekStart = startOfWeek(now)
-  const weekDates = useMemo(() => Array.from({ length: 7 }, (_, i) => localDate(addDays(weekStart, i))), [weekStart])
+  const todayKey = localDate(now)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const weekDates = useMemo(() => Array.from({ length: 7 }, (_, i) => localDate(addDays(startOfWeek(now), i))), [todayKey])
   const from = weekDates[0]!
   const to = weekDates[6]!
   const { data: planRows = [] } = useMealPlan(from, to)
@@ -94,6 +97,10 @@ export default function Recipes() {
     () => recipes.filter((r) => test(r) && matches(r, query)),
     [recipes, test, query],
   )
+  const counts = useMemo(() => {
+    const found = recipes.filter((r) => matches(r, query))
+    return Object.fromEntries(FILTERS.map((f) => [f.id, found.filter(f.test).length])) as Record<FilterId, number>
+  }, [recipes, query])
 
   const { items, width, shown } = useMemo(() => {
     const out: Item[] = []
@@ -203,7 +210,7 @@ export default function Recipes() {
               <span className={s.dot} aria-hidden="true" />
               {f.id === 'fav' && <Icon name={filter === 'fav' ? 'heart-solid' : 'heart'} size={18} />}
               {f.label}
-              <span className={s.count}>{recipes.filter((r) => f.test(r) && matches(r, query)).length}</span>
+              <span className={s.count}>{counts[f.id]}</span>
             </button>
           ))}
         </div>
@@ -228,11 +235,11 @@ export default function Recipes() {
           <div className={`${s.boxScroll} scroll-x`}>
             <div key={filter} className={s.boxInner} style={{ width }}>
               {items.map((it) => it.kind === 'divider' ? (
-                <div key={it.key} data-course={it.course} className={s.divider} style={{ left: it.x, ['--n' as string]: it.n }}>
+                <div key={it.key} data-course={it.course} className={it.n < ANIMATED_ITEMS ? s.divider : `${s.divider} ${s.settled}`} style={{ left: it.x, ['--n' as string]: it.n }}>
                   <span className={s.tab} style={{ left: it.tabX }}>{it.course}<span className={s.tabCount}>{it.count}</span></span>
                 </div>
               ) : (
-                <div key={it.key} className={s.slot} style={{ left: it.x, ['--n' as string]: it.n }}>
+                <div key={it.key} className={it.n < ANIMATED_ITEMS ? s.slot : `${s.slot} ${s.settled}`} style={{ left: it.x, ['--n' as string]: it.n }}>
                   <div
                     data-course={it.recipe.course}
                     className={pull?.id === it.recipe.id ? `${s.card} ${s.cardOut}` : s.card}

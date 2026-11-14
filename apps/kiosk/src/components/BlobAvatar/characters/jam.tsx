@@ -5,8 +5,6 @@ import type { BlobCharacterProps } from '../types'
  * Personality: Warm and generous; makes ordinary days feel special.
  */
 export function JamCharacter({
-  animation,
-  motionRun,
   faceScale,
   className,
   eyesClassName,
@@ -15,7 +13,7 @@ export function JamCharacter({
   const strokeW = 1.8 * faceScale
 
   return (
-    <g key={`${animation}:${motionRun}`} className={className}>
+    <g className={className}>
       <path
         d="M19.2 61.6C18.7 47.4 29.7 41.0 40.3 38.9C49.0 37.3 51.8 24.5 61.0 24.2C70.5 23.8 72.2 37.4 74.4 43.9C76.3 50.1 82.6 53.3 81.5 63.8C80.3 75.1 67.8 79.6 52.5 79.2C35.5 78.8 19.7 75.2 19.2 61.6Z"
         fill="var(--member, var(--moss))"

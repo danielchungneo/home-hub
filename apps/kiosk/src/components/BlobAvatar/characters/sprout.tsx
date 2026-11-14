@@ -5,8 +5,6 @@ import type { BlobCharacterProps } from '../types'
  * Personality: Curious and optimistic; always ready to try something new.
  */
 export function SproutCharacter({
-  animation,
-  motionRun,
   faceScale,
   className,
   eyesClassName,
@@ -15,7 +13,7 @@ export function SproutCharacter({
   const strokeW = 1.8 * faceScale
 
   return (
-    <g key={`${animation}:${motionRun}`} className={className}>
+    <g className={className}>
       <path
         d="M49.9 19.5C51.0 27.2 43.1 33.2 35.7 40.3C25.8 49.1 20.3 59.9 24.2 69.3C28.3 79.2 40.6 82.5 52.2 82.0C66.1 81.4 75.8 72.4 75.3 60.4C74.9 48.8 65.9 39.8 58.4 32.7C53.9 28.6 52.9 23.6 49.9 19.5Z"
         fill="var(--member, var(--moss))"

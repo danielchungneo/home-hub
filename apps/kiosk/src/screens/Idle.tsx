@@ -1,9 +1,10 @@
 import { MEMBER_COLOR_PRESETS, type Member } from '@hub/shared'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AVAILABLE_BLOB_CHARACTERS,
   BlobAvatar,
   parseBlobCharacter,
+  playBlobMotion,
   type BlobAnimation,
   type BlobCharacterId,
 } from '../components/BlobAvatar'
@@ -28,6 +29,35 @@ import s from './Idle.module.css'
 const PEACEFUL_MOTIONS: BlobAnimation[] = ['blink', 'nod', 'squish', 'hop']
 const RARE_MOTIONS: BlobAnimation[] = ['celebrate', 'hop']
 const CAST_CAP = 11
+/** Physics runs at 30 Hz, simulated a segment ahead; the compositor interpolates between keyframes. */
+const STEP_MS = 1000 / 30
+const SEGMENT_MS = 2000
+const SEGMENT_KEYFRAMES = 20
+/**
+ * The cast moves, then rests completely still. While anything animates, Chromium redraws a 1080p
+ * frame ~60×/s in the GPU process, which kept the Pi 3 at its soft temperature limit; at rest
+ * nothing animates, so it draws nothing. Both are whole segments; speed eases over one segment.
+ */
+const MOVE_MS = 20_000
+const REST_MS = 40_000
+const RAMP_MS = SEGMENT_MS
+
+/** Travel scale for a moment in the move phase: eases up from 0 and back down to 0 (smoothstep). */
+function paceAt(t: number) {
+  const r = Math.max(0, Math.min(1, t / RAMP_MS, (MOVE_MS - t) / RAMP_MS))
+  return r * r * (3 - 2 * r)
+}
+/** Whole-avatar hit reaction on the wrapper inside each buddy (physics owns the buddy's translate). */
+const HIT_WIGGLE: Keyframe[] = ([
+  [0, 'rotate(0deg) scale(1)'],
+  [0.16, 'rotate(-18deg) scale(1.08)'],
+  [0.32, 'rotate(16deg) scale(1.1)'],
+  [0.48, 'rotate(-12deg) scale(1.06)'],
+  [0.64, 'rotate(10deg) scale(1.04)'],
+  [0.8, 'rotate(-5deg) scale(1.02)'],
+  [1, 'rotate(0deg) scale(1)'],
+] as [number, string][]).map(([offset, transform]) => ({ offset, transform, easing: 'ease-in-out' }))
+const HIT_WIGGLE_MS = 620
 const BLOOMS: { color: string; className: string; soft?: boolean }[] = [
   { color: 'moss', className: s.bloom0 },
   { color: 'clay', className: s.bloom1 },
@@ -101,10 +131,17 @@ function buildCast(members: Member[]): IdleBuddy[] {
   return cast
 }
 
-function readRect(el: HTMLElement | null): IdleRect | null {
-  if (!el) return null
-  const r = el.getBoundingClientRect()
-  return { x: r.left, y: r.top, w: r.width, h: r.height }
+function screenBounds(): IdleBounds {
+  return { width: window.innerWidth || 1920, height: window.innerHeight || 1080, pad: 20 }
+}
+
+/** The cards blobs bounce off. Reads layout, so it runs on mount, resize and content changes only. */
+function obstacleRects(els: (HTMLElement | null)[]): IdleRect[] {
+  return els.flatMap((el) => {
+    if (!el) return []
+    const r = el.getBoundingClientRect()
+    return [{ x: r.left, y: r.top, w: r.width, h: r.height }]
+  })
 }
 
 /** Screensaver: physics hangout with clock, date, and weather. Tap dismisses (App). */
@@ -117,8 +154,6 @@ export default function Idle() {
   useLive('members', 'members')
 
   const cast = useMemo(() => buildCast(membersQ.data ?? []), [membersQ.data])
-  const [motions, setMotions] = useState<Record<string, { anim: BlobAnimation; key: number }>>({})
-  const [hitKeys, setHitKeys] = useState<Record<string, number>>({})
   const [ready, setReady] = useState(false)
 
   const weatherRef = useRef<HTMLDivElement>(null)
@@ -131,12 +166,24 @@ export default function Idle() {
   const boundsRef = useRef<IdleBounds>({ width: 1920, height: 1080, pad: 24 })
   const bumpCoolRef = useRef(new Map<string, number>())
   const pairCoolRef = useRef(new Map<string, number>())
+  /** True while the cast is resting; face motions hold off so nothing animates. */
+  const restingRef = useRef(false)
 
+  const w = weather.data
+  const playing = jukebox.data?.nowPlaying
+
+  const measure = useCallback(() => {
+    boundsRef.current = screenBounds()
+    obstaclesRef.current = obstacleRects([weatherRef.current, clockRef.current, playingRef.current, hintRef.current])
+  }, [])
+
+  // The cards only move when their content changes (weather loads, a song starts, the minute ticks).
+  useEffect(() => { measure() }, [measure, w, playing, now])
+
+  // Face motions go straight to the avatar's DOM node. Routing them through React state re-rendered
+  // the whole Idle tree about once a second, which was most of its remaining main-thread cost.
   const playMotion = (id: string, anim: BlobAnimation) => {
-    setMotions((prev) => ({
-      ...prev,
-      [id]: { anim, key: (prev[id]?.key ?? 0) + 1 },
-    }))
+    playBlobMotion(nodeRefs.current.get(id), anim)
   }
 
   // Face one-shots on a peaceful timer (separate from physics).
@@ -149,6 +196,7 @@ export default function Idle() {
       const delay = 900 + Math.floor(Math.random() * 1100)
       timers.push(window.setTimeout(() => {
         if (cancelled || !cast.length) return
+        if (restingRef.current) { schedule(); return }
         const pick = cast[Math.floor(Math.random() * cast.length)]
         const pool = Math.random() < 0.1 ? RARE_MOTIONS : PEACEFUL_MOTIONS
         playMotion(pick.id, pool[Math.floor(Math.random() * pool.length)])
@@ -177,18 +225,6 @@ export default function Idle() {
     if (!cast.length) return
     const motionOk = !reducedMotion()
 
-    const measure = () => {
-      const w = window.innerWidth || 1920
-      const h = window.innerHeight || 1080
-      boundsRef.current = { width: w, height: h, pad: 20 }
-      const next: IdleRect[] = []
-      for (const el of [weatherRef.current, clockRef.current, playingRef.current, hintRef.current]) {
-        const rect = readRect(el)
-        if (rect) next.push(rect)
-      }
-      obstaclesRef.current = next
-    }
-
     measure()
     pairCoolRef.current.clear()
     const bodies: IdleBody[] = []
@@ -204,92 +240,116 @@ export default function Idle() {
     }
     bodiesRef.current = bodies
 
-    const paint = (body: IdleBody) => {
-      const node = nodeRefs.current.get(body.id)
-      if (node) node.style.transform = `translate3d(${body.x}px, ${body.y}px, 0) translate(-50%, -50%)`
+    // Pixels only (no -50% translate) so the compositor can run the keyframes off the main thread.
+    const half = new Map(cast.map((b) => [b.id, b.size / 2]))
+    const position = (body: IdleBody) => {
+      const h = half.get(body.id) ?? 0
+      return `translate3d(${(body.x - h).toFixed(1)}px, ${(body.y - h).toFixed(1)}px, 0)`
     }
 
     // Paint initial positions (and static layout when motion is reduced).
-    for (const body of bodies) paint(body)
+    for (const body of bodies) {
+      const node = nodeRefs.current.get(body.id)
+      if (node) node.style.transform = position(body)
+    }
     setReady(true)
 
     if (!motionOk) return
 
-    let raf = 0
-    let last = performance.now()
-    let measureAt = 0
+    // Writing transforms every frame cost the Pi 3 ~15 ms of main thread per frame. Instead, simulate
+    // one segment ahead and hand each blob its path as Web Animations keyframes, which the
+    // compositor plays smoothly; the main thread only wakes once per segment.
+    const nodes = nodeRefs.current
+    const steps = Math.round(SEGMENT_MS / STEP_MS)
+    const sampleEvery = steps / SEGMENT_KEYFRAMES
+    const timers: number[] = []
+    const running = new Map<string, Animation>()
+    let segmentTimer = 0
+    /** How far into the current move phase this segment starts. */
+    let phaseMs = 0
 
-    const tick = (nowTs: number) => {
-      const dt = Math.min(0.05, (nowTs - last) / 1000)
-      last = nowTs
-      if (nowTs >= measureAt) {
-        measure()
-        measureAt = nowTs + 800
+    // Hold still: pin each blob where its last path ended and drop the animations, so the
+    // compositor has nothing to draw until the next move phase.
+    const rest = () => {
+      for (const b of bodies) {
+        const node = nodes.get(b.id)
+        if (node) node.style.transform = position(b)
       }
+      running.forEach((a) => a.cancel())
+      running.clear()
+      restingRef.current = true
+      segmentTimer = window.setTimeout(() => {
+        restingRef.current = false
+        phaseMs = 0
+        segment()
+      }, REST_MS)
+    }
 
-      const bumps = stepPhysics(
-        bodiesRef.current,
-        boundsRef.current,
-        obstaclesRef.current,
-        dt,
-        { now: nowTs, pairCool: pairCoolRef.current },
-      )
-      for (const body of bodiesRef.current) paint(body)
+    const segment = () => {
+      const start = performance.now()
+      const paths = new Map(bodies.map((b) => [b.id, [{ transform: position(b) }]]))
+      for (let i = 1; i <= steps; i++) {
+        const at = start + i * STEP_MS
+        const bumps = stepPhysics(bodies, boundsRef.current, obstaclesRef.current, STEP_MS / 1000, {
+          now: at,
+          pairCool: pairCoolRef.current,
+          pace: paceAt(phaseMs + i * STEP_MS),
+        })
+        if (i % sampleEvery === 0) for (const b of bodies) paths.get(b.id)!.push({ transform: position(b) })
 
-      // Big hit wiggle on both blobs (face + whole avatar shell).
-      for (const bump of bumps) {
-        for (const id of [bump.a, bump.b]) {
-          const cooled = bumpCoolRef.current.get(id) ?? 0
-          if (nowTs < cooled) continue
-          bumpCoolRef.current.set(id, nowTs + 620)
-          playMotion(id, 'wiggle')
-          setHitKeys((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))
+        // Big hit wiggle on both blobs (face + whole avatar shell), timed to when the hit plays.
+        for (const bump of bumps) {
+          for (const id of [bump.a, bump.b]) {
+            if (at < (bumpCoolRef.current.get(id) ?? 0)) continue
+            bumpCoolRef.current.set(id, at + HIT_WIGGLE_MS)
+            timers.push(window.setTimeout(() => {
+              playMotion(id, 'wiggle')
+              nodes.get(id)?.firstElementChild?.animate(HIT_WIGGLE, HIT_WIGGLE_MS)
+            }, at - start))
+          }
         }
       }
-
-      raf = requestAnimationFrame(tick)
+      for (const b of bodies) {
+        const node = nodes.get(b.id)
+        if (!node) continue
+        // Two transform animations on one element can't be composited, so drop the finished segment.
+        const previous = running.get(b.id)
+        running.set(b.id, node.animate(paths.get(b.id)!, { duration: SEGMENT_MS, fill: 'forwards' }))
+        previous?.cancel()
+      }
+      phaseMs += SEGMENT_MS
+      // The last segment eases to a stop; rest once it has played.
+      segmentTimer = window.setTimeout(phaseMs >= MOVE_MS ? rest : segment, SEGMENT_MS)
     }
 
-    raf = requestAnimationFrame(tick)
-    const onResize = () => measure()
-    window.addEventListener('resize', onResize)
+    segment()
+    window.addEventListener('resize', measure)
 
     return () => {
-      cancelAnimationFrame(raf)
-      window.removeEventListener('resize', onResize)
+      window.clearTimeout(segmentTimer)
+      timers.forEach((t) => window.clearTimeout(t))
+      running.forEach((a) => a.cancel())
+      restingRef.current = false
+      window.removeEventListener('resize', measure)
     }
-  }, [cast])
-
-  const w = weather.data
-  const playing = jukebox.data?.nowPlaying
-  const motionOk = !reducedMotion()
+  }, [cast, measure])
 
   return (
     <div className={s.page} role="dialog" aria-label="Idle. Tap anywhere to open the hub.">
       <div className={s.stage} aria-hidden="true">
         <div className={s.floor} />
-        {BLOOMS.map((bloom, i) => (
+        {/* Static on purpose: ~27 looping layers at 1080p kept the Pi 3's GPU and CPU pinned. */}
+        {BLOOMS.map((bloom) => (
           <span
             key={bloom.className}
             {...memberColorProps(bloom.color)}
-            className={[
-              s.bloom,
-              bloom.soft ? s.bloomSoft : '',
-              bloom.className,
-              motionOk ? s.bloomDrift : '',
-            ].filter(Boolean).join(' ')}
-            style={{ ['--n' as string]: i }}
+            className={[s.bloom, bloom.soft ? s.bloomSoft : '', bloom.className].filter(Boolean).join(' ')}
           />
         ))}
-        {CONFETTI.map((dot, i) => (
-          <span
-            key={dot.className}
-            {...memberColorProps(dot.color)}
-            className={[s.confetti, dot.className, motionOk ? s.confettiBob : ''].filter(Boolean).join(' ')}
-            style={{ ['--n' as string]: i }}
-          />
+        {CONFETTI.map((dot) => (
+          <span key={dot.className} {...memberColorProps(dot.color)} className={`${s.confetti} ${dot.className}`} />
         ))}
-        <span className={[s.accentWash, motionOk ? s.accentDrift : ''].filter(Boolean).join(' ')} />
+        <span className={s.accentWash} />
       </div>
 
       <div ref={weatherRef} className={s.weatherStamp}>
@@ -317,41 +377,32 @@ export default function Idle() {
       ) : null}
 
       <div className={s.playground} aria-label="Family and friends hanging out">
-        {cast.map((buddy, i) => {
-          const motion = motions[buddy.id]
-          const hitKey = hitKeys[buddy.id] ?? 0
-          return (
-            <div
-              key={buddy.id}
-              ref={(node) => {
-                if (node) nodeRefs.current.set(buddy.id, node)
-                else nodeRefs.current.delete(buddy.id)
-              }}
-              {...memberColorProps(buddy.color)}
-              className={[
-                s.buddy,
-                buddy.kind === 'guest' ? s.guest : s.member,
-                ready ? s.buddyIn : '',
-              ].filter(Boolean).join(' ')}
-              style={{ ['--n' as string]: i }}
-            >
-              <div
-                key={hitKey}
-                className={hitKey > 0 ? s.hitWiggle : undefined}
-              >
-                <BlobAvatar
-                  character={buddy.character}
-                  colorway={buddy.color}
-                  size={buddy.size}
-                  showBackground
-                  decorative
-                  animation={motion?.anim ?? 'idle'}
-                  animationKey={motion?.key ?? 0}
-                />
-              </div>
+        {cast.map((buddy, i) => (
+          <div
+            key={buddy.id}
+            ref={(node) => {
+              if (node) nodeRefs.current.set(buddy.id, node)
+              else nodeRefs.current.delete(buddy.id)
+            }}
+            {...memberColorProps(buddy.color)}
+            className={[
+              s.buddy,
+              buddy.kind === 'guest' ? s.guest : s.member,
+              ready ? s.buddyIn : '',
+            ].filter(Boolean).join(' ')}
+            style={{ ['--n' as string]: i }}
+          >
+            <div>
+              <BlobAvatar
+                character={buddy.character}
+                colorway={buddy.color}
+                size={buddy.size}
+                showBackground
+                decorative
+              />
             </div>
-          )
-        })}
+          </div>
+        ))}
       </div>
 
       <div className={s.info}>

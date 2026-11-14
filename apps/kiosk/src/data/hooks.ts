@@ -326,16 +326,35 @@ export const prefetchLiveScreens = (queryClient: QueryClient) => {
   ])
 }
 
-async function signedRecipeUrls(paths: (string | null)[]) {
-  const unique = [...new Set(paths.filter((p): p is string => Boolean(p)))]
-  if (!unique.length) return new Map<string, string>()
-  const { data, error } = await supabase.storage.from('recipe-images').createSignedUrls(unique, 60 * 60 * 24)
-  if (error) throw new Error(error.message)
-  const map = new Map<string, string>()
-  for (const row of data ?? []) {
-    if (row.path && row.signedUrl) map.set(row.path, row.signedUrl)
+const SIGNED_URL_SECONDS = 60 * 60 * 24
+const SIGNED_URL_REUSE_MS = (SIGNED_URL_SECONDS - 60 * 60) * 1000
+
+/**
+ * Signed URLs by storage path. Reusing them keeps each <img> src stable across refetches, so the
+ * Pi keeps its downloaded, decoded photo instead of fetching and decoding it again. A photo
+ * replaced under the same path bumps the recipe's updated_at, which forces a fresh URL.
+ */
+const signedUrlCache = new Map<string, { url: string; version: string; reuseUntil: number }>()
+
+async function signedRecipeUrls(rows: { image_path: string | null; updated_at: string }[]) {
+  const now = Date.now()
+  const wanted = new Map(rows.flatMap((r) => (r.image_path ? [[r.image_path, r.updated_at] as const] : [])))
+  const missing = [...wanted].filter(([path, version]) => {
+    const hit = signedUrlCache.get(path)
+    return !hit || hit.version !== version || hit.reuseUntil <= now
+  })
+  if (missing.length) {
+    const { data, error } = await supabase.storage
+      .from('recipe-images')
+      .createSignedUrls(missing.map(([path]) => path), SIGNED_URL_SECONDS)
+    if (error) throw new Error(error.message)
+    for (const row of data ?? []) {
+      if (row.path && row.signedUrl) {
+        signedUrlCache.set(row.path, { url: row.signedUrl, version: wanted.get(row.path)!, reuseUntil: now + SIGNED_URL_REUSE_MS })
+      }
+    }
   }
-  return map
+  return (path: string | null) => (path ? signedUrlCache.get(path)?.url ?? null : null)
 }
 
 const recipesQuery = () =>
@@ -343,8 +362,8 @@ const recipesQuery = () =>
     queryKey: ['recipes'],
     queryFn: async () => {
       const rows = await run(() => supabase.from('recipes').select('*').order('title'))
-      const urls = await signedRecipeUrls(rows.map((r) => r.image_path))
-      return rows.map((r) => toRecipe(r, r.image_path ? urls.get(r.image_path) : null))
+      const urlFor = await signedRecipeUrls(rows)
+      return rows.map((r) => toRecipe(r, urlFor(r.image_path)))
     },
   })
 

@@ -40,10 +40,6 @@
   opacity: 0.35;
 }
 
-.accentDrift {
-  animation: accentDrift 14s ease-in-out infinite;
-}
-
 .bloom {
   position: absolute;
   border-radius: 50%;
@@ -67,11 +63,6 @@
 .bloom9 { left: 62%; top: 12%; width: 200px; height: 200px; }
 .bloom10 { left: 18%; top: 36%; width: 160px; height: 160px; }
 .bloom11 { left: 82%; top: 72%; width: 190px; height: 190px; }
-
-.bloomDrift {
-  animation: bloomDrift calc(11s + var(--n, 0) * 0.9s) ease-in-out infinite;
-  animation-delay: calc(var(--n, 0) * -1.4s);
-}
 
 .confetti {
   position: absolute;
@@ -97,11 +88,6 @@
 .dot12 { left: 12%; top: 76%; width: 14px; height: 14px; }
 .dot13 { left: 58%; top: 8%; width: 12px; height: 18px; border-radius: 8px; }
 
-.confettiBob {
-  animation: confettiBob calc(5.6s + var(--n, 0) * 0.4s) ease-in-out infinite;
-  animation-delay: calc(var(--n, 0) * -0.7s);
-}
-
 .weatherStamp {
   position: absolute;
   top: 32px;
@@ -116,7 +102,7 @@
   border: 3px solid var(--honey);
   box-shadow: var(--shadow-card);
   transform: rotate(-2deg);
-  animation: weatherIn var(--dur-slow) var(--ease-out) both;
+  animation: weatherIn var(--dur-slow) var(--ease-out) backwards;
 }
 .weatherIcon {
   width: 48px;
@@ -194,26 +180,23 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  /* Physics owns transform (center at x,y). Hide until first paint. */
+  /* Physics owns transform (offset by half the avatar size so x,y is the center). Hide until first paint. */
   will-change: transform;
   transform: translate3d(-9999px, -9999px, 0);
   opacity: 0;
   z-index: 2;
 }
 
+/* Entrances and hits use backwards fill: the rest state lives in the base rule, so finished
+   animations drop off instead of being re-applied on every physics frame's style recalc. */
 .buddyIn {
-  animation: buddyFade var(--dur-slow) var(--ease-out) both;
+  opacity: 1;
+  animation: buddyFade var(--dur-slow) var(--ease-out) backwards;
   animation-delay: calc(40ms + var(--n, 0) * 55ms);
 }
 
 .guest { z-index: 1; }
 .member { z-index: 2; }
-
-/* Whole-avatar hit reaction (physics owns the outer translate). */
-.hitWiggle {
-  animation: hitWiggle 620ms ease-in-out both;
-  transform-origin: center center;
-}
 
 .info {
   position: absolute;
@@ -238,7 +221,7 @@
   border: 4px solid var(--moss);
   box-shadow: var(--shadow-dialog);
   transform: rotate(-1deg);
-  animation: stampIn var(--dur-slow) var(--ease-out) both;
+  animation: stampIn var(--dur-slow) var(--ease-out) backwards;
 }
 
 .time {
@@ -266,7 +249,8 @@
   background: var(--idle-stamp);
   border: 3px solid var(--color-border-strong);
   box-shadow: var(--shadow-card);
-  animation: stampIn var(--dur-slow) var(--ease-out) both;
+  transform: rotate(-1deg);
+  animation: stampIn var(--dur-slow) var(--ease-out) backwards;
   animation-delay: 140ms;
 }
 
@@ -285,37 +269,8 @@
   to { opacity: 1; }
 }
 
-@keyframes hitWiggle {
-  0%, 100% { transform: rotate(0deg) scale(1); }
-  16% { transform: rotate(-18deg) scale(1.08); }
-  32% { transform: rotate(16deg) scale(1.1); }
-  48% { transform: rotate(-12deg) scale(1.06); }
-  64% { transform: rotate(10deg) scale(1.04); }
-  80% { transform: rotate(-5deg) scale(1.02); }
-}
-
-@keyframes bloomDrift {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  33% { transform: translate(calc(-50% + 22px), calc(-50% - 10px)) scale(1.05); }
-  66% { transform: translate(calc(-50% - 14px), calc(-50% - 18px)) scale(1.08); }
-}
-
-@keyframes confettiBob {
-  0%, 100% { transform: translate(-50%, -50%) rotate(18deg); }
-  50% { transform: translate(-50%, calc(-50% - 18px)) rotate(-10deg); }
-}
-
-@keyframes accentDrift {
-  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.32; }
-  50% { transform: translate(24px, -18px) scale(1.08); opacity: 0.42; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .buddyIn,
-  .hitWiggle,
-  .bloomDrift,
-  .confettiBob,
-  .accentDrift,
   .clockBlock,
   .weatherStamp,
   .hint,

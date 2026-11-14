@@ -195,6 +195,8 @@ export type PhysicsStepOptions = {
   now?: number
   /** Pair key → cooldown-until timestamp. */
   pairCool?: Map<string, number>
+  /** 0–1 scale on how far bodies travel this step (velocities are kept), for easing into and out of rests. */
+  pace?: number
 }
 
 /** Integrate one frame. Returns fresh blob-blob hits (not cooldown repeats). */
@@ -209,10 +211,11 @@ export function stepPhysics(
   const step = Math.min(dt, 1 / 20)
   const now = options.now ?? 0
   const pairCool = options.pairCool
+  const travel = step * (options.pace ?? 1)
 
   for (const body of bodies) {
-    body.x += body.vx * step
-    body.y += body.vy * step
+    body.x += body.vx * travel
+    body.y += body.vy * travel
     bounceWalls(body, bounds)
     for (const rect of obstacles) bounceObstacle(body, rect)
   }

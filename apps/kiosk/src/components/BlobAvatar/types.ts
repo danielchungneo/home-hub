@@ -72,8 +72,6 @@ export interface BlobAvatarProps {
 
 /** Shared props each character SVG receives from BlobAvatar. */
 export interface BlobCharacterProps {
-  animation: BlobAnimation
-  motionRun: number
   /** Scales facial features so 28px stays readable. */
   faceScale: number
   className?: string

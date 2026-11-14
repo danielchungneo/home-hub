@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { memberColorProps } from '../../lib/colors'
 import { resolveCharacter } from './characters'
 import s from './BlobAvatar.module.css'
-import type { BlobAnimation, BlobAvatarProps } from './types'
+import { playBlobMotion } from './motion'
+import type { BlobAvatarProps } from './types'
 
 export type {
   BlobAnimation,
@@ -11,15 +12,6 @@ export type {
   BlobColorway,
 } from './types'
 export { AVAILABLE_BLOB_CHARACTERS, BLOB_CHARACTER_IDS, parseBlobCharacter } from './types'
-
-const MOTION_CLASS: Partial<Record<BlobAnimation, string>> = {
-  squish: s.squish,
-  hop: s.hop,
-  wiggle: s.wiggle,
-  nod: s.nod,
-  celebrate: s.celebrate,
-}
-
 /** Scale facial strokes so tiny assignee avatars stay readable on the Pi. */
 function faceScaleFor(size: number) {
   if (size <= 28) return 1.7
@@ -31,7 +23,7 @@ function faceScaleFor(size: number) {
  * Soft blob avatar for family members. Artwork is per-character; colorways
  * reuse the hub's member palette via `data-color`.
  */
-export function BlobAvatar({
+export const BlobAvatar = memo(function BlobAvatar({
   character = 'pebble',
   colorway = 'moss',
   size = 64,
@@ -43,43 +35,41 @@ export function BlobAvatar({
   ariaLabel = 'Pebble avatar',
   decorative = false,
 }: BlobAvatarProps) {
-  const [activeMotion, setActiveMotion] = useState<BlobAnimation>('idle')
-  const [motionRun, setMotionRun] = useState(0)
+  const svgRef = useRef<SVGSVGElement>(null)
 
-  // Remount the character group whenever animation or key changes so the same
-  // motion can replay without timers or Web Animations bookkeeping.
+  // Replayed with Web Animations on the existing nodes: remounting the SVG per motion (the old
+  // key trick) cost the Pi a style, layout and paint pass for the whole avatar every time.
   useEffect(() => {
-    setActiveMotion(animation)
-    setMotionRun((n) => n + 1)
+    const run = playBlobMotion(svgRef.current, animation)
+    return () => run?.cancel()
   }, [animation, animationKey])
 
   const Character = resolveCharacter(character)
   const clickable = typeof onClick === 'function'
   const colorProps = memberColorProps(colorway, { width: size, height: size })
-  const motionClass = MOTION_CLASS[activeMotion]
-  const eyesClass =
-    activeMotion === 'blink' ? `${s.eyes} ${s.blink}` : s.eyes
 
+  // Motions animate the outer <svg> (a CSS box the compositor can move) rather than a group
+  // inside it, which Chromium re-styles, re-lays-out and repaints on the main thread every
+  // frame. The tint disc is its own layer so it stays put while the character moves.
   const svg = (
-    <svg
-      className={s.svg}
-      aria-hidden="true"
-      viewBox="0 0 100 100"
-      width="100%"
-      height="100%"
-      focusable="false"
-    >
+    <>
       {showBackground && (
-        <circle cx="50" cy="50" r="47" fill="var(--member-tint, var(--moss-tint))" />
+        <svg className={s.bg} aria-hidden="true" viewBox="0 0 100 100" focusable="false">
+          <circle cx="50" cy="50" r="47" fill="var(--member-tint, var(--moss-tint))" />
+        </svg>
       )}
-      <Character
-        animation={activeMotion}
-        motionRun={motionRun}
-        faceScale={faceScaleFor(size)}
-        className={[s.character, motionClass].filter(Boolean).join(' ')}
-        eyesClassName={eyesClass}
-      />
-    </svg>
+      <svg
+        ref={svgRef}
+        className={s.svg}
+        aria-hidden="true"
+        viewBox="0 0 100 100"
+        width="100%"
+        height="100%"
+        focusable="false"
+      >
+        <Character faceScale={faceScaleFor(size)} eyesClassName={s.eyes} />
+      </svg>
+    </>
   )
 
   const rootClass = [s.root, clickable && s.interactive, className].filter(Boolean).join(' ')
@@ -111,4 +101,4 @@ export function BlobAvatar({
       {svg}
     </span>
   )
-}
+})
