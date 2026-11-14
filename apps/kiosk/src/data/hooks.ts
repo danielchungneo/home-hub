@@ -386,6 +386,7 @@ function toHouseholdSettings(row: {
   pin_protect_settings: boolean
   pin_protect_deletes: boolean
   pin_lock_minutes: number
+  jukebox_kid_friendly: boolean
 }): HouseholdSettings {
   return {
     householdId: row.household_id,
@@ -400,11 +401,12 @@ function toHouseholdSettings(row: {
     pinProtectSettings: row.pin_protect_settings,
     pinProtectDeletes: row.pin_protect_deletes,
     pinLockMinutes: row.pin_lock_minutes,
+    jukeboxKidFriendly: row.jukebox_kid_friendly,
   }
 }
 
 const SETTINGS_SELECT =
-  'household_id, sleep_start, sleep_end, idle_minutes, slide_seconds, weather_units, location_label, location_zip, pin_protect_rewards, pin_protect_settings, pin_protect_deletes, pin_lock_minutes' as const
+  'household_id, sleep_start, sleep_end, idle_minutes, slide_seconds, weather_units, location_label, location_zip, pin_protect_rewards, pin_protect_settings, pin_protect_deletes, pin_lock_minutes, jukebox_kid_friendly' as const
 
 const householdSettingsQuery = () =>
   queryOptions({
@@ -492,6 +494,7 @@ export function useUpdateHouseholdSettings() {
       if (input.pinProtectSettings !== undefined) patch.pin_protect_settings = input.pinProtectSettings
       if (input.pinProtectDeletes !== undefined) patch.pin_protect_deletes = input.pinProtectDeletes
       if (input.pinLockMinutes !== undefined) patch.pin_lock_minutes = input.pinLockMinutes
+      if (input.jukeboxKidFriendly !== undefined) patch.jukebox_kid_friendly = input.jukeboxKidFriendly
       await run(() => supabase.from('household_settings').update(patch).not('household_id', 'is', null))
     },
     onSettled: () => {

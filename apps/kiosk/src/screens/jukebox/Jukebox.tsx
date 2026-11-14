@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNav } from '../../app/nav'
 import { AppShell, PageHeader } from '../../components/AppShell'
 import { Icon } from '../../components/Icon'
 import { SoftKeyboard } from '../../components/SoftKeyboard'
-import { StatusPill } from '../../components/primitives'
+import { StatusPill, Switch } from '../../components/primitives'
+import { useHouseholdSettings, useUpdateHouseholdSettings } from '../../data/hooks'
 import type { Collection } from '@hub/shared'
 import { DetailView, SearchView, SongsView, WallView } from './Browse'
 import { MiniPlayer, NowPlaying } from './NowPlaying'
@@ -13,14 +15,22 @@ import s from './Jukebox.module.css'
 
 type Tab = 'songs' | 'playlists' | 'albums' | 'now'
 
+const TAB_IDS: Tab[] = ['now', 'albums', 'playlists', 'songs']
+
+const hashTab = (): Tab | null => {
+  const h = window.location.hash.replace('#jukebox-', '')
+  return TAB_IDS.includes(h as Tab) ? (h as Tab) : null
+}
+
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 export default function Jukebox() {
   const jb = useJukebox()
-  const [tab, setTab] = useState<Tab>(() => {
-    const h = window.location.hash.replace('#jukebox-', '')
-    return (['now', 'albums', 'playlists'] as Tab[]).includes(h as Tab) ? (h as Tab) : 'songs'
-  })
+  const { requirePin } = useNav()
+  const settings = useHouseholdSettings()
+  const updateSettings = useUpdateHouseholdSettings()
+  // null until ready so we can land on Now playing when something is already going
+  const [tab, setTab] = useState<Tab | null>(() => hashTab())
   const [detail, setDetail] = useState<Collection | null>(null)
   const [query, setQuery] = useState('')
   const [keyboard, setKeyboard] = useState(false)
@@ -30,6 +40,23 @@ export default function Jukebox() {
   useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), [])
 
   if (!jb.ready) return <AppShell>{null}</AppShell>
+
+  const activeTab: Tab =
+    tab ?? (jb.player.playing && jb.player.track ? 'now' : 'songs')
+
+  const kidFriendly = settings.data?.jukeboxKidFriendly ?? false
+  const setKidFriendly = (on: boolean) => {
+    const save = () => void updateSettings.mutateAsync({ jukeboxKidFriendly: on }).catch(() => {})
+    if (on) {
+      save()
+      return
+    }
+    requirePin({
+      title: 'Turn off kid-friendly music',
+      detail: 'Parent mode',
+      onSuccess: save,
+    })
+  }
 
   const speaker = jb.speakers.find((x) => x.id === jb.player.speakerId)?.name ?? jb.speakers[0]?.name ?? 'Speaker'
   const clearSearch = () => { setQuery(''); setKeyboard(false) }
@@ -56,10 +83,10 @@ export default function Jukebox() {
 
   let body
   if (query.trim()) body = <SearchView jb={jb} query={query} onPick={pick} onOpen={open} />
-  else if (tab === 'now') body = <NowPlaying jb={jb} />
+  else if (activeTab === 'now') body = <NowPlaying jb={jb} />
   else if (detail) body = <DetailView jb={jb} c={detail} onBack={() => setDetail(null)} onPick={pick} />
-  else if (tab === 'albums') body = <WallView items={jb.albums} kind="album" onPick={pick} onOpen={open} />
-  else if (tab === 'playlists') body = <WallView items={jb.playlists} kind="playlist" onPick={pick} onOpen={open} />
+  else if (activeTab === 'albums') body = <WallView items={jb.albums} kind="album" onPick={pick} onOpen={open} />
+  else if (activeTab === 'playlists') body = <WallView items={jb.playlists} kind="playlist" onPick={pick} onOpen={open} />
   else body = <SongsView jb={jb} tracks={jb.songs} recent={jb.recent} onPick={pick} onOpen={open} />
 
   return (
@@ -68,6 +95,11 @@ export default function Jukebox() {
         <PageHeader
           title="Jukebox"
           actions={<>
+            <span className={kidFriendly ? `${s.kidPill} ${s.kidPillOn}` : s.kidPill}>
+              {kidFriendly && <Icon name="lock" size={20} />}
+              <span className={s.kidPillText}>Kid-friendly</span>
+              <Switch checked={kidFriendly} label="Kid-friendly music" onChange={setKidFriendly} />
+            </span>
             <span className={s.speakerPill}><Icon name="speaker" size={22} />{jb.player.playing ? `Playing in ${speaker}` : `Speaker: ${speaker}`}</span>
             <StatusPill tone={jb.speakers.some((sp) => sp.available) ? 'ok' : 'off'}>
               {jb.speakers.some((sp) => sp.available) ? 'Spotify connected' : 'No speakers yet'}
@@ -78,7 +110,7 @@ export default function Jukebox() {
         <div className={s.toolbar}>
           <div role="tablist" aria-label="Browse music" className={s.tabs}>
             {tabs.map((t) => {
-              const on = tab === t.id && !query
+              const on = activeTab === t.id && !query
               return (
                 <button key={t.id} type="button" role="tab" aria-selected={on} className={on ? `${s.tab} ${s.tabOn}` : s.tab} onClick={() => goTab(t.id)}>
                   {t.label}<span className={s.tabCount}>{t.count}</span>
@@ -102,7 +134,7 @@ export default function Jukebox() {
             {query && <button type="button" className={s.searchClear} aria-label="Clear search" onClick={clearSearch}><Icon name="close" size={20} /></button>}
           </label>
           {current && (
-            <button type="button" aria-pressed={tab === 'now' && !query} className={tab === 'now' && !query ? `${s.nowBtn} ${s.nowBtnOn}` : s.nowBtn} onClick={() => { setTab('now'); clearSearch() }}>
+            <button type="button" aria-pressed={activeTab === 'now' && !query} className={activeTab === 'now' && !query ? `${s.nowBtn} ${s.nowBtnOn}` : s.nowBtn} onClick={() => { setTab('now'); clearSearch() }}>
               <span className={s.nowBtnArt}><Cover item={current} size={48} /></span>
               <Equalizer playing={jb.player.playing} />
               Now playing
@@ -112,10 +144,10 @@ export default function Jukebox() {
 
         <div className={keyboard ? `${s.body} ${s.bodyWithKeyboard}` : s.body}>{body}</div>
 
-        {tab !== 'now' && !query && current && !keyboard && <MiniPlayer jb={jb} onOpen={() => setTab('now')} />}
+        {activeTab !== 'now' && !query && current && !keyboard && <MiniPlayer jb={jb} onOpen={() => setTab('now')} />}
 
         {jb.toast && (
-          <div role="status" className={s.toast}><Icon name="tick" size={20} stroke={3} />{jb.toast}</div>
+          <div role="status" className={`${s.toast} anim-toast`}><Icon name="tick" size={20} stroke={3} />{jb.toast}</div>
         )}
         {picking && <PickOverlay item={picking} line={`${picking.subtitle} · putting it on in the ${speaker}`} />}
         {reveal && <Reveal item={reveal} />}

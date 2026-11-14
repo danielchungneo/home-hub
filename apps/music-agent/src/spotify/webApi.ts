@@ -79,6 +79,7 @@ export type PlaybackState = {
     name: string
     duration_ms: number
     uri: string
+    explicit?: boolean
     artists: { name: string }[]
     album?: { name: string; images?: { url: string }[] }
   } | null
@@ -92,6 +93,7 @@ export type CollectionTrack = {
   album?: string
   imageUrl?: string
   durationMs?: number
+  explicit?: boolean
 }
 
 export type CollectionResult = {
@@ -207,6 +209,7 @@ export async function getCollectionTracks(uri: string): Promise<CollectionResult
           uri?: string
           name?: string
           duration_ms?: number
+          explicit?: boolean
           artists?: { name: string }[]
         } | null>
         next?: string | null
@@ -225,6 +228,7 @@ export async function getCollectionTracks(uri: string): Promise<CollectionResult
         album: album?.name,
         imageUrl: pickImage(album?.images),
         durationMs: t.duration_ms,
+        explicit: Boolean(t.explicit),
       })
       if (tracks.length >= MAX_COLLECTION_TRACKS) break
     }
@@ -237,6 +241,7 @@ export async function getCollectionTracks(uri: string): Promise<CollectionResult
           uri?: string
           name?: string
           duration_ms?: number
+          explicit?: boolean
           artists?: { name: string }[]
         } | null>
         next?: string | null
@@ -250,6 +255,7 @@ export async function getCollectionTracks(uri: string): Promise<CollectionResult
           album: album?.name,
           imageUrl: pickImage(album?.images),
           durationMs: t.duration_ms,
+          explicit: Boolean(t.explicit),
         })
         if (tracks.length >= MAX_COLLECTION_TRACKS) break
       }
@@ -292,6 +298,7 @@ export async function getCollectionTracks(uri: string): Promise<CollectionResult
             uri?: string
             name?: string
             duration_ms?: number
+            explicit?: boolean
             artists?: { name: string }[]
             album?: { name?: string; images?: { url: string }[] }
           } | null
@@ -301,7 +308,7 @@ export async function getCollectionTracks(uri: string): Promise<CollectionResult
       }>(`/playlists/${parsed.id}/tracks?${new URLSearchParams({
         limit: String(pageSize),
         offset: String(offset),
-        fields: 'next,total,items(track(uri,name,duration_ms,artists(name),album(name,images)))',
+        fields: 'next,total,items(track(uri,name,duration_ms,explicit,artists(name),album(name,images)))',
       })}`)
 
       const items = page?.items ?? []
@@ -316,6 +323,7 @@ export async function getCollectionTracks(uri: string): Promise<CollectionResult
           album: t.album?.name,
           imageUrl: pickImage(t.album?.images),
           durationMs: t.duration_ms,
+          explicit: Boolean(t.explicit),
         })
         if (tracks.length >= MAX_COLLECTION_TRACKS) break
       }
@@ -366,6 +374,19 @@ export type SearchHit = {
   durationMs?: number
   trackCount?: number
   owned?: boolean
+  explicit?: boolean
+}
+
+/** True when Spotify marks the track as explicit. Unknown / non-track URIs → false. */
+export async function isTrackExplicit(uri: string): Promise<boolean> {
+  const parsed = parseSpotifyId(uri)
+  if (!parsed || parsed.kind !== 'track') return false
+  try {
+    const track = await spotify<{ explicit?: boolean }>(`/tracks/${parsed.id}`)
+    return Boolean(track?.explicit)
+  } catch {
+    return false
+  }
 }
 
 /** Spotify search (dev mode: max 10 per type). */
@@ -379,6 +400,7 @@ export async function searchMusic(query: string, limit = 10): Promise<SearchHit[
         name: string
         uri: string
         duration_ms: number
+        explicit?: boolean
         artists: { name: string }[]
         album?: { name?: string; images?: { url: string }[] }
       } | null>
@@ -413,6 +435,7 @@ export async function searchMusic(query: string, limit = 10): Promise<SearchHit[
       album: t.album?.name,
       imageUrl: pickImage(t.album?.images),
       durationMs: t.duration_ms,
+      explicit: Boolean(t.explicit),
     }))
 
   const albums: SearchHit[] = (data?.albums?.items ?? [])

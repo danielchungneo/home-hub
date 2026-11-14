@@ -83,6 +83,8 @@ export function useJukebox() {
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<number>()
   const advanceSent = useRef<string | null>(null)
+  /** Block end-of-song advance briefly after play — queue Realtime can arrive before now-playing. */
+  const playGraceUntil = useRef(0)
 
   const flash = useCallback((msg: string) => {
     setToast(msg)
@@ -142,19 +144,32 @@ export function useJukebox() {
   }
 
   // progressMs is only refreshed ~every 5s; extrapolate so end-of-song timing stays honest.
+  // Cap by wall-clock since the URI changed — otherwise a stale high progress_ms from the
+  // previous song (common right after play/advance) schedules advance in a few hundred ms
+  // and burns through the album queue.
   const progressSnap = useRef({ uri: null as string | null, ms: 0, at: 0 })
+  const trackStartedAt = useRef({ uri: null as string | null, at: 0 })
   useEffect(() => {
-    progressSnap.current = {
-      uri: player.current,
-      ms: player.positionMs,
-      at: Date.now(),
+    if (player.current !== trackStartedAt.current.uri) {
+      trackStartedAt.current = { uri: player.current, at: Date.now() }
+      progressSnap.current = { uri: player.current, ms: 0, at: Date.now() }
+      return
     }
-  }, [player.current, player.positionMs, player.playing])
+    const onTrackMs = Date.now() - trackStartedAt.current.at
+    // Early after a track change, huge position values are almost always leftover state.
+    const ms =
+      onTrackMs < 15_000 && player.positionMs > Math.max(30_000, player.durationMs * 0.2)
+        ? 0
+        : player.positionMs
+    progressSnap.current = { uri: player.current, ms, at: Date.now() }
+  }, [player.current, player.positionMs, player.playing, player.durationMs])
 
   const elapsedMs = () => {
     const snap = progressSnap.current
-    if (!player.playing || !player.current || snap.uri !== player.current) return player.positionMs
-    return Math.min(player.durationMs || Infinity, snap.ms + (Date.now() - snap.at))
+    if (!player.playing || !player.current || snap.uri !== player.current) return 0
+    const raw = snap.ms + (Date.now() - snap.at)
+    const wall = Date.now() - trackStartedAt.current.at
+    return Math.min(player.durationMs || Infinity, raw, wall + 2_000)
   }
 
   // Reset dedupe when the track changes so the next song can auto-advance once.
@@ -171,12 +186,26 @@ export function useJukebox() {
 
     const trackUri = player.current
     const snap = progressSnap.current
-    const elapsed =
-      snap.uri === trackUri ? snap.ms + (Date.now() - snap.at) : player.positionMs
+    const rawElapsed =
+      snap.uri === trackUri ? snap.ms + (Date.now() - snap.at) : 0
+    const wallElapsed =
+      trackStartedAt.current.uri === trackUri
+        ? Date.now() - trackStartedAt.current.at
+        : 0
+    const elapsed = Math.min(rawElapsed, wallElapsed + 2_000)
     const remaining = player.durationMs - elapsed
-    const delay = Math.max(0, remaining) + 200
+    // Never trust a sub-5s remaining in the first 20s of a track — that's the stale-progress bug.
+    let delay =
+      wallElapsed < 20_000 && remaining < 5_000
+        ? Math.max(5_000, player.durationMs - wallElapsed) + 200
+        : Math.max(0, remaining) + 200
+    // Queue often updates (Realtime) before now-playing after a new play/album.
+    // Advancing then would skip the track we just started.
+    const graceLeft = playGraceUntil.current - Date.now()
+    if (graceLeft > 0) delay = Math.max(delay, graceLeft)
 
     const id = window.setTimeout(() => {
+      if (Date.now() < playGraceUntil.current) return
       if (advanceSent.current === trackUri) return
       advanceSent.current = trackUri
       send('advance')
@@ -201,14 +230,20 @@ export function useJukebox() {
       const t = typeof track === 'string' ? resolveTrack(track) : track
       if (!t) return
       setFrom(null)
+      playGraceUntil.current = Date.now() + 10_000
+      advanceSent.current = null
       send('play', { uri: t.uri })
     },
     playCollection: (c: Collection, opts: { startUri?: string; shuffle?: boolean } = {}) => {
       setFrom(c.title)
+      playGraceUntil.current = Date.now() + 10_000
+      advanceSent.current = null
       send('play', collectionPayload(c, opts))
       flash(opts.shuffle ? `Shuffling “${c.title}”` : `Playing “${c.title}”`)
     },
     playSearchHit: (hit: SearchHit) => {
+      playGraceUntil.current = Date.now() + 10_000
+      advanceSent.current = null
       if (hit.kind === 'track') {
         setFrom(null)
         send('play', { uri: hit.uri })
@@ -260,6 +295,8 @@ export function useJukebox() {
       if (!row) return
       const rest = queueRows.filter((_, k) => k !== i).map(asQueue)
       void queueMut.replaceAll.mutateAsync(rest)
+      playGraceUntil.current = Date.now() + 10_000
+      advanceSent.current = null
       send('play', { uri: row.spotifyUri })
     },
     moveUp: (i: number) => {

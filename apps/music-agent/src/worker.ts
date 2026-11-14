@@ -6,6 +6,7 @@ import {
   findDeviceByName,
   getCollectionTracks,
   getPlayback,
+  isTrackExplicit,
   listDevices,
   pausePlayback,
   resumePlayback,
@@ -22,6 +23,96 @@ import {
 } from './spotify/webApi'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+const MAX_EXPLICIT_SKIPS = 25
+
+let kidFriendlyCache: { value: boolean; at: number } | null = null
+
+async function isKidFriendlyMode(): Promise<boolean> {
+  // Short cache — parents toggle this live; a long TTL left skipNext running after turn-off.
+  if (kidFriendlyCache && Date.now() - kidFriendlyCache.at < 5_000) {
+    return kidFriendlyCache.value
+  }
+  const { data } = await db
+    .from('household_settings')
+    .select('jukebox_kid_friendly')
+    .eq('household_id', config.householdId)
+    .maybeSingle()
+  const value = Boolean(data?.jukebox_kid_friendly)
+  kidFriendlyCache = { value, at: Date.now() }
+  return value
+}
+
+function cleanTracks(tracks: CollectionTrack[]): CollectionTrack[] {
+  return tracks.filter((t) => !t.explicit)
+}
+
+async function ensureCleanUri(uri: string | undefined, kidFriendly: boolean): Promise<string | null> {
+  if (!uri) return null
+  if (!kidFriendly) return uri
+  if (await isTrackExplicit(uri)) {
+    console.log(`[music-agent] kid-friendly: skipping explicit ${uri}`)
+    return null
+  }
+  return uri
+}
+
+async function trackIsExplicit(item: NonNullable<PlaybackState['item']>): Promise<boolean> {
+  if (typeof item.explicit === 'boolean') return item.explicit
+  return isTrackExplicit(item.uri)
+}
+
+async function appQueueCount(): Promise<number> {
+  const { count } = await db
+    .from('jukebox_queue')
+    .select('*', { count: 'exact', head: true })
+    .eq('household_id', config.householdId)
+  return count ?? 0
+}
+
+/** Wait until Spotify reports the track we just asked it to play (avoids writing stale state). */
+async function waitForPlaybackUri(uri: string, timeoutMs = 5_000): Promise<PlaybackState | null> {
+  const deadline = Date.now() + timeoutMs
+  let last: PlaybackState | null = null
+  while (Date.now() < deadline) {
+    last = await getPlayback()
+    if (last?.item?.uri === uri) return last
+    await sleep(300)
+  }
+  return last
+}
+
+/**
+ * Kid-friendly guard for Spotify-owned context playback only.
+ * Never call skipNext while jukebox_queue has items — that abandons the app queue
+ * and is what broke album play after a playlist.
+ */
+async function skipExplicitContextPlayback(playback: PlaybackState): Promise<PlaybackState> {
+  if (!(await isKidFriendlyMode())) return playback
+  if ((await appQueueCount()) > 0) return playback
+
+  let current = playback
+  for (let i = 0; i < MAX_EXPLICIT_SKIPS; i++) {
+    if (!current.is_playing || !current.item?.uri) return current
+    if (!(await trackIsExplicit(current.item))) return current
+    console.log(`[music-agent] kid-friendly: skipping context track ${current.item.uri}`)
+    await skipNext(current.device?.id ?? undefined)
+    await sleep(500)
+    current = (await getPlayback()) ?? current
+  }
+  return current
+}
+
+async function startTrackAndConfirm(deviceId: string, uri: string): Promise<PlaybackState | null> {
+  await startPlayback({ deviceId, uri })
+  let playback = await waitForPlaybackUri(uri)
+  if (playback?.item?.uri === uri) return playback
+  // One retry — Connect speakers sometimes swallow the first play after a context playlist.
+  console.log(`[music-agent] play not confirmed for ${uri}; retrying`)
+  await startPlayback({ deviceId, uri })
+  playback = await waitForPlaybackUri(uri)
+  return playback
+}
 
 type RecentItem = {
   uri: string
@@ -206,6 +297,11 @@ export async function processCommand(cmd: CommandRow) {
       if (!deviceId) throw new Error(`${speaker.name} has no Spotify device id`)
     }
 
+    const kidFriendly = await isKidFriendlyMode()
+    /** When true, Spotify owns the track list (no app queue) — only then may we skipNext. */
+    let spotifyContextPlayback = false
+    let confirmedPlayback: PlaybackState | null | undefined
+
     switch (cmd.type) {
       case 'play': {
         if (!speaker || !deviceId) throw new Error('Speaker required for play')
@@ -232,14 +328,22 @@ export async function processCommand(cmd: CommandRow) {
               const idx = ordered.findIndex((t) => t.uri === body.startUri)
               if (idx > 0) ordered = ordered.slice(idx)
             }
+            if (kidFriendly) ordered = cleanTracks(ordered)
+            if (!ordered.length) {
+              throw new Error('No kid-friendly tracks in this album or playlist')
+            }
             const [first, ...rest] = ordered
             // App owns queue order — keep Spotify shuffle off.
             await setShuffle(false, deviceId)
             shuffleOverride = false
             await replaceQueue(rest)
-            await startPlayback({ deviceId, uri: first!.uri })
+            confirmedPlayback = await startTrackAndConfirm(deviceId, first!.uri)
+            if (!confirmedPlayback?.item || confirmedPlayback.item.uri !== first!.uri) {
+              throw new Error(`Couldn’t start “${first!.title}” on ${speaker.name}`)
+            }
           } else {
             // Unowned / empty playlist: Spotify picks tracks via context.
+            spotifyContextPlayback = true
             await replaceQueue([])
             if (body.shuffle) {
               await setShuffle(true, deviceId)
@@ -248,10 +352,12 @@ export async function processCommand(cmd: CommandRow) {
             await startPlayback({ deviceId, contextUri: body.contextUri })
           }
         } else {
-          await startPlayback({
-            deviceId,
-            uri: body.uri,
-          })
+          const uri = await ensureCleanUri(body.uri, kidFriendly)
+          if (!uri) throw new Error('That song is marked explicit — skipped for kid-friendly mode')
+          confirmedPlayback = await startTrackAndConfirm(deviceId, uri)
+          if (!confirmedPlayback?.item || confirmedPlayback.item.uri !== uri) {
+            throw new Error(`Couldn’t start that song on ${speaker.name}`)
+          }
         }
         break
       }
@@ -270,28 +376,36 @@ export async function processCommand(cmd: CommandRow) {
       case 'advance': {
         // App-owned queue: play the head of jukebox_queue, then delete it.
         if (!speaker || !deviceId) throw new Error('Speaker required for advance')
-        const { data: head } = await db
-          .from('jukebox_queue')
-          .select('*')
-          .eq('household_id', config.householdId)
-          .order('position', { ascending: true })
-          .limit(1)
-          .maybeSingle()
-        if (!head) {
-          // Do not pause. An empty queue is normal for context_uri playlists
-          // (Spotify advances itself) and for duplicate end-of-song advances;
-          // pausing here stops the track that just started.
-          break
-        }
-        const current = await getPlayback()
-        if (current?.item?.uri === head.spotify_uri && current.is_playing) {
-          // Duplicate advance after we already started this track — just consume the row.
+        for (let i = 0; i < MAX_EXPLICIT_SKIPS; i++) {
+          const { data: head } = await db
+            .from('jukebox_queue')
+            .select('*')
+            .eq('household_id', config.householdId)
+            .order('position', { ascending: true })
+            .limit(1)
+            .maybeSingle()
+          if (!head) {
+            // Do not pause. An empty queue is normal for context_uri playlists
+            // (Spotify advances itself) and for duplicate end-of-song advances;
+            // pausing here stops the track that just started.
+            break
+          }
+          const current = await getPlayback()
+          if (current?.item?.uri === head.spotify_uri && current.is_playing) {
+            // Duplicate advance after we already started this track — just consume the row.
+            await db.from('jukebox_queue').delete().eq('id', head.id)
+            break
+          }
+          if (kidFriendly && (await isTrackExplicit(head.spotify_uri))) {
+            console.log(`[music-agent] kid-friendly: dropping queue head ${head.spotify_uri}`)
+            await db.from('jukebox_queue').delete().eq('id', head.id)
+            continue
+          }
+          // Stay on the active device; transfer(play:false) pauses Connect speakers.
+          confirmedPlayback = await startTrackAndConfirm(deviceId, head.spotify_uri)
           await db.from('jukebox_queue').delete().eq('id', head.id)
           break
         }
-        // Stay on the active device; transfer(play:false) pauses Connect speakers.
-        await startPlayback({ deviceId, uri: head.spotify_uri })
-        await db.from('jukebox_queue').delete().eq('id', head.id)
         break
       }
       case 'volume': {
@@ -326,7 +440,12 @@ export async function processCommand(cmd: CommandRow) {
     }
 
     await sleep(400)
-    const playback = await getPlayback()
+    let playback = confirmedPlayback ?? (await getPlayback())
+    // Only Spotify-context plays need a post-play explicit skip. App-owned album/playlist
+    // tracks were already filtered; skipNext here was racing and killing the new play.
+    if (kidFriendly && spotifyContextPlayback && playback?.is_playing && playback.item?.uri) {
+      playback = await skipExplicitContextPlayback(playback)
+    }
     await writeState(speaker, playback, {
       recent: recentOverride,
       shuffle: shuffleOverride,
@@ -370,8 +489,14 @@ export async function drainPending() {
 /** Keep now-playing fresh while something is active. */
 export async function syncPlaybackState() {
   try {
-    const playback = await getPlayback()
+    let playback = await getPlayback()
     if (!playback) return
+
+    // Only skip via Spotify when we are NOT driving an app-owned queue.
+    if (playback.is_playing && playback.item?.uri) {
+      playback = await skipExplicitContextPlayback(playback)
+    }
+
     const { data: speakers } = await db
       .from('speakers')
       .select('*')

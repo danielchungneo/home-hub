@@ -27,6 +27,20 @@
 .note { margin: 8px 12px 16px; font-size: var(--text-md); font-weight: var(--weight-bold); color: var(--color-ink-2); line-height: 1.4; }
 
 /* ---------- Header + toolbar ---------- */
+.kidPill {
+  height: 56px;
+  display: inline-flex; align-items: center; gap: 12px;
+  padding: 0 10px 0 var(--space-5);
+  border-radius: var(--radius-pill);
+  background: var(--color-rail);
+  font-size: 16px; font-weight: var(--weight-heavy);
+  color: var(--color-ink-2);
+}
+.kidPillOn {
+  background: var(--member-tint, var(--color-surface));
+  color: var(--color-ink);
+}
+.kidPillText { white-space: nowrap; }
 .speakerPill {
   height: 56px;
   display: inline-flex; align-items: center; gap: 10px;
@@ -149,6 +163,14 @@
   padding: 0 70px;
 }
 .wallCell { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 6px; scroll-snap-align: center; }
+.wallCellIn {
+  animation: wallIn var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(var(--n) * var(--dur-stagger));
+}
+@keyframes wallIn {
+  from { transform: translateY(18px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
 .wallCover {
   position: relative;
   width: 230px; height: 230px; flex: none;
@@ -193,7 +215,15 @@
 .search { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 12px 20px; }
 .searchLabel { padding: 14px 12px 6px; }
 .result { flex: none; display: flex; align-items: center; gap: var(--space-4); height: 76px; padding: 0 12px; border-radius: 18px; }
+.resultBadges { display: flex; align-items: center; gap: 6px; flex: none; }
 .kindBadge { padding: 5px 12px; border-radius: var(--radius-pill); background: var(--color-surface-sunken); font-size: 14px; font-weight: var(--weight-heavy); color: var(--color-ink-2); }
+.explicitBadge {
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+  font-size: 14px; font-weight: var(--weight-heavy);
+}
 
 /* ---------- Empty states ---------- */
 .empty { margin: 8px 6px; padding: 28px; display: flex; flex-direction: column; gap: 8px; border: 2px dashed var(--color-border-strong); border-radius: 22px; font-size: var(--text-md); font-weight: var(--weight-bold); color: var(--color-ink-2); line-height: 1.4; }
@@ -336,7 +366,6 @@
   border-radius: var(--radius-pill);
   background: var(--color-ink); color: var(--color-on-ink);
   font-size: var(--text-md); font-weight: var(--weight-heavy); white-space: nowrap;
-  animation: toastIn var(--dur-base) var(--ease-out);
 }
 
 /* ---------- Pick animation (2.35s) ---------- */
@@ -394,8 +423,6 @@
 @keyframes progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes rise { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes toastIn { from { transform: translate(-50%, 16px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
-
 /* Timeline (2.35s): 0.00 lift · 0.45 record slides out · 0.80 spin · 1.35 record rolls off, sleeve fades · 1.75 wash · 2.35 switch */
 @keyframes pickBackdrop { 0% { opacity: 0; } 17%, 100% { opacity: 0.72; } }
 @keyframes pickSleeve {
@@ -423,13 +450,3 @@
   100% { opacity: 1; }
 }
 @keyframes reveal { from { opacity: 1; } to { opacity: 0; } }
-
-/* Local copies: CSS Modules scope keyframe names, so the global ones in base.css can't be referenced from here. */
-@keyframes rise {
-  from { transform: translateY(16px); opacity: 0; }
-  to { transform: none; opacity: 1; }
-}
-@keyframes fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}

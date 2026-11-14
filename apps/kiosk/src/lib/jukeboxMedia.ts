@@ -87,6 +87,7 @@ export function collectionTrackToTrack(t: {
   album?: string
   imageUrl?: string
   durationMs?: number
+  explicit?: boolean
 }): Track {
   return {
     uri: t.uri,
@@ -95,6 +96,7 @@ export function collectionTrackToTrack(t: {
     album: t.album ?? '',
     durationMs: t.durationMs ?? 0,
     art: artwork(t.uri, t.imageUrl),
+    explicit: t.explicit,
   }
 }
 
@@ -117,6 +119,7 @@ export function searchHitToTrack(hit: SearchHit): Track {
     album: hit.album ?? '',
     durationMs: hit.durationMs ?? 0,
     art: artwork(hit.uri, hit.imageUrl),
+    explicit: hit.explicit,
   }
 }
 

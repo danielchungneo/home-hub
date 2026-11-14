@@ -13,6 +13,7 @@ The Jukebox tab browses and plays the household's **favorited Spotify items** on
 - **Search** looks across Spotify. Any song, album or playlist in the results can be favorited with the heart, and from then on it shows up in its tab, with its art, on the hub and on every phone.
 - **Now playing** has a full view (big art, controls, speakers, and an **Up next** queue) plus a mini player docked under the browse tabs.
 - The **queue** belongs to the app: you can add to it, play a song next, move songs up, remove them, and clear it.
+- **Kid-friendly music** (toggle on the Jukebox header, also in Settings → Music & speakers) skips any Spotify track marked `explicit` before it plays. Anyone can turn it on; turning it off needs the parent PIN. The Pi music-agent enforces this on single-track play, album/playlist expansion, queue `advance`, and a playback sync guard for Spotify-owned playlist contexts.
 
 ---
 
@@ -20,7 +21,7 @@ The Jukebox tab browses and plays the household's **favorited Spotify items** on
 
 | View | What's on it |
 |---|---|
-| Toolbar (always) | Tabs (Songs · Playlists · Albums, with counts), search box (opens the on-screen SoftKeyboard — Chromium has no OS keyboard), and a "Now playing" button while something is playing |
+| Toolbar (always) | Header has a **Kid-friendly** switch (PIN only to turn off); tabs (Songs · Playlists · Albums, with counts), search box (opens the on-screen SoftKeyboard — Chromium has no OS keyboard), and a "Now playing" button while something is playing |
 | Songs | "Jump back in" (the last 4 albums or playlists played, from `play_collection` commands) and the list of favorite songs. Each row has Play, **Play next** and **Add to queue** |
 | Albums / Playlists | The **record wall**: covers leaning on two wooden ledges, scrolling sideways. Tap a cover to play it with the pick animation; tap the caption to see its songs |
 | Detail | Cover, title, meta, Play · Shuffle · Add all to queue · ♥, then the song list. Playlists you don't own show a note instead of songs (see §6) |
@@ -223,6 +224,7 @@ In §5 *Jukebox data* and §8 *Jukebox*, replace the `jukebox_favorites` row and
 
 Add to §14 open questions:
 
+- [x] Kid-friendly mode: skip Spotify `explicit` tracks (household_settings.jukebox_kid_friendly; music-agent enforces)
 - [ ] Can kids favorite and unfavorite, or is that parent-only (PIN)?
 - [ ] Should favorites also save to the Spotify account's library?
 - [ ] What should happen when the queue runs out: stop, or keep playing from the last album/playlist?

@@ -250,6 +250,7 @@ export type Database = {
           created_at: string
           household_id: string
           idle_minutes: number
+          jukebox_kid_friendly: boolean
           kroger_location_id: string | null
           location_label: string | null
           location_zip: string | null
@@ -268,6 +269,7 @@ export type Database = {
           created_at?: string
           household_id?: string
           idle_minutes?: number
+          jukebox_kid_friendly?: boolean
           kroger_location_id?: string | null
           location_label?: string | null
           location_zip?: string | null
@@ -286,6 +288,7 @@ export type Database = {
           created_at?: string
           household_id?: string
           idle_minutes?: number
+          jukebox_kid_friendly?: boolean
           kroger_location_id?: string | null
           location_label?: string | null
           location_zip?: string | null

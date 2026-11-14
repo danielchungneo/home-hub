@@ -95,7 +95,11 @@ export function WallView({ items, kind, onPick, onOpen }: {
       <div className={`${s.wallScroll} scroll-x`}>
         <div className={s.wallGrid}>
           {items.map((c, i) => (
-            <div key={c.uri} className={s.wallCell}>
+            <div
+              key={c.uri}
+              className={i < 12 ? `${s.wallCell} ${s.wallCellIn}` : s.wallCell}
+              style={i < 12 ? { ['--n' as string]: i } : undefined}
+            >
               <button type="button" className={s.wallCover} aria-label={`Play ${c.title}`} onClick={() => onPick(c)}
                 style={{ '--tilt': `${TILTS[i % TILTS.length]}deg` } as CSSProperties}>
                 <Cover item={c} size={230} />
@@ -285,7 +289,12 @@ export function SearchView({ jb, query, onPick, onOpen }: { jb: Jukebox; query: 
             <span className={s.rowSub}>{isTrack ? `${t.artist}${t.album ? ` · ${t.album}` : ''}` : c.subtitle}</span>
           </span>
         </button>
-        <span className={s.kindBadge}>{x.kind === 'track' ? 'Song' : x.kind === 'album' ? 'Album' : 'Playlist'}</span>
+        <span className={s.resultBadges}>
+          <span className={s.kindBadge}>{x.kind === 'track' ? 'Song' : x.kind === 'album' ? 'Album' : 'Playlist'}</span>
+          {isTrack && (x.hit?.explicit || t.explicit) ? (
+            <span className={s.explicitBadge}>Explicit</span>
+          ) : null}
+        </span>
         <span className={s.rowActions}>
           {isTrack
             ? <Button variant="secondary" icon="queue-add" onClick={() => jb.addToQueue(t)}>Queue</Button>

@@ -128,10 +128,12 @@ function CalendarSettings() {
   )
 }
 
-function MusicSettings() {
+function MusicSettings({ settings }: { settings: HouseholdSettings }) {
+  const { requirePin } = useNav()
   const speakers = useSpeakers()
   const state = useJukeboxState()
   const command = useJukeboxCommand()
+  const update = useUpdateHouseholdSettings()
   useLive('speakers', 'speakers')
   useLive('jukebox_state', 'jukeboxState')
 
@@ -153,8 +155,33 @@ function MusicSettings() {
     void command.mutateAsync({ type: 'transfer', speakerId: id, payload: {} }).catch(() => {})
   }
 
+  const setKidFriendly = (on: boolean) => {
+    const save = () => void update.mutateAsync({ jukeboxKidFriendly: on }).catch(() => {})
+    if (on) {
+      save()
+      return
+    }
+    requirePin({
+      title: 'Turn off kid-friendly music',
+      detail: 'Parent mode',
+      onSuccess: save,
+    })
+  }
+
   return (
     <div className={s.rows}>
+      <div className={s.row}>
+        <span className={s.rowText}>
+          <span>Kid-friendly music</span>
+          <small>Skip songs Spotify marks as explicit · PIN to turn off</small>
+        </span>
+        {settings.jukeboxKidFriendly && <Icon name="lock" size={22} />}
+        <Switch
+          checked={settings.jukeboxKidFriendly}
+          label="Kid-friendly music"
+          onChange={setKidFriendly}
+        />
+      </div>
       <div className={s.row}>
         <span className={s.rowText}>
           <span>Spotify account</span>
@@ -564,12 +591,12 @@ function FamilySettings({ members }: { members: Member[] }) {
       </Button>
 
       {open && (
-        <div className={s.confirmScrim} onClick={closeEditor}>
+        <div className={`${s.confirmScrim} anim-confirm-scrim`} onClick={closeEditor}>
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="member-editor-title"
-            className={s.memberDialog}
+            className={`${s.memberDialog} anim-confirm-rise`}
             onClick={(e) => e.stopPropagation()}
           >
             {confirmDelete && editing ? (
@@ -796,12 +823,12 @@ function WorkoutCoachSettings({ members }: { members: Member[] }) {
       </div>
 
       {editing && draft && (
-        <div className={s.confirmScrim} onClick={() => !busy && setEditingId(null)}>
+        <div className={`${s.confirmScrim} anim-confirm-scrim`} onClick={() => !busy && setEditingId(null)}>
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="coach-editor-title"
-            className={s.memberDialog}
+            className={`${s.memberDialog} anim-confirm-rise`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className={s.confirmText}>
@@ -976,7 +1003,7 @@ export default function Settings() {
           ))}
         </nav>
 
-        <Panel pad="lg" className={`${s.content} scroll-y`} aria-label={current.label}>
+        <Panel key={section} pad="lg" className={`${s.content} ${s.contentIn} scroll-y`} aria-label={current.label}>
           <h2 className={s.h2}>{current.label}</h2>
           {section === 'family' ? (
             members.data ? <FamilySettings members={members.data} /> : null
@@ -985,7 +1012,7 @@ export default function Settings() {
           ) : section === 'calendars' ? (
             <CalendarSettings />
           ) : section === 'music' ? (
-            <MusicSettings />
+            settings.data ? <MusicSettings settings={settings.data} /> : null
           ) : section === 'sleep' ? (
             settings.data ? <SleepSettings settings={settings.data} /> : null
           ) : section === 'weather' ? (

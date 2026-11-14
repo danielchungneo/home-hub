@@ -300,6 +300,8 @@ export interface HouseholdSettings {
   pinProtectSettings: boolean
   pinProtectDeletes: boolean
   pinLockMinutes: number
+  /** When true, music-agent skips Spotify tracks marked explicit. */
+  jukeboxKidFriendly: boolean
 }
 
 export interface ListItem {
@@ -384,6 +386,8 @@ export interface Track {
   album: string
   durationMs: number
   art: Artwork
+  /** Spotify parental-advisory flag when known (search / collection). */
+  explicit?: boolean
 }
 
 export interface Collection {
@@ -438,6 +442,8 @@ export interface SearchHit {
   durationMs?: number
   trackCount?: number
   owned?: boolean
+  /** Present on tracks when Spotify marks the song as explicit. */
+  explicit?: boolean
 }
 
 export interface Photo {
