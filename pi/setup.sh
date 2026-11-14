@@ -31,6 +31,12 @@ sudo systemctl restart zramswap
 echo "==> Console autologin on tty1"
 sudo raspi-config nonint do_boot_behaviour B2
 
+echo "==> Hide phantom HDMI-CEC pointer (stuck cage cursor)"
+sudo install -m 644 "$SCRIPT_DIR/udev/99-hub-hide-phantom-pointer.rules" \
+  /etc/udev/rules.d/99-hub-hide-phantom-pointer.rules
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+
 echo "==> Web root and Caddy"
 sudo mkdir -p /var/www/hub
 sudo chown "$KIOSK_USER:$KIOSK_USER" /var/www/hub

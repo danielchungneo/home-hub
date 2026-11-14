@@ -493,6 +493,7 @@ The only looping animations allowed in the app while music is playing (plus one 
 - Color is never the only signal: completed items also get a tick, the selected tab also changes weight, an asleep speaker also gets a dashed border and text.
 - Focus ring: 3px fjord outline with a 3px offset (`:focus-visible`), already global.
 - The mouse cursor is hidden on the Pi production build (`html.hide-cursor` in `base.css`, applied when `import.meta.env.PROD`). Local `pnpm dev` keeps the cursor so laptop work is usable. On the wall touchscreen, the pointer does not follow taps and would otherwise sit in the middle of the screen.
+- A stuck center cursor that CSS cannot hide is cage drawing over HDMI-CEC’s fake pointer (`vc4-hdmi`). `pi/udev/99-hub-hide-phantom-pointer.rules` (installed by `pi/setup.sh`) tells libinput to ignore that device.
 
 ---
 

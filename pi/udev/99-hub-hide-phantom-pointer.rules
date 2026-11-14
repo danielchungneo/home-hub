@@ -1,0 +1,5 @@
+# The Pi's HDMI-CEC node (vc4-hdmi) advertises pointer capability even with no
+# mouse attached. cage then draws a stuck cursor in the middle of the screen.
+# CSS cursor:none cannot hide it — the compositor owns that overlay.
+# Ignoring this device is fine: the wall kiosk uses the USB touchscreen only.
+ACTION=="add|change", KERNEL=="event*", ATTRS{name}=="vc4-hdmi*", ENV{LIBINPUT_IGNORE_DEVICE}="1"
