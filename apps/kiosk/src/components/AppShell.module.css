@@ -41,6 +41,7 @@
 
 /* Always-on color chip so each tab reads as itself, not a clone */
 .iconWell {
+  position: relative;
   width: 44px;
   height: 44px;
   display: flex;
@@ -51,6 +52,24 @@
   color: var(--member);
 }
 .label { line-height: 1.1; text-align: center; }
+
+/* Who still owes a workout today — member-colored pips under the Workout icon */
+.pending {
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  display: flex;
+  gap: 3px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.pendingDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--member);
+  box-shadow: 0 0 0 1.5px var(--color-ink);
+}
 
 /* Sleep / Settings: softer, no tint chip until selected */
 .quiet { color: var(--color-ink-soft); }

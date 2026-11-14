@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
-import type { ScreenId, ThemeColorToken } from '@hub/shared'
+import type { Member, ScreenId, ThemeColorToken } from '@hub/shared'
 import { useNav } from '../app/nav'
 import { useHouseholdSettings, useWeather } from '../data/hooks'
 import { useClock } from '../hooks/useClock'
+import { usePendingWorkoutsToday } from '../hooks/usePendingWorkoutsToday'
 import { memberColorProps } from '../lib/colors'
 import { formatTimeOfDay, time, weekday } from '../lib/format'
 import { TAB_COLOR } from '../lib/tabs'
@@ -25,6 +26,7 @@ const TABS: { id: ScreenId; label: string; icon: IconName }[] = [
 export function Sidebar() {
   const { screen, go, sleep, requirePin, settingsUnlockedUntil, markSettingsUnlocked } = useNav()
   const settings = useHouseholdSettings()
+  const pendingWorkouts = usePendingWorkoutsToday()
 
   const openSettings = () => {
     const protect = settings.data?.pinProtectSettings ?? true
@@ -54,6 +56,7 @@ export function Sidebar() {
           color={TAB_COLOR[t.id]}
           active={screen === t.id}
           onClick={() => go(t.id)}
+          pending={t.id === 'workout' ? pendingWorkouts : undefined}
         />
       ))}
       <div className={s.spacer} />
@@ -71,7 +74,7 @@ export function Sidebar() {
 }
 
 function NavItem({
-  label, icon, color, active, onClick, quiet,
+  label, icon, color, active, onClick, quiet, pending,
 }: {
   label: string
   icon: IconName
@@ -80,17 +83,39 @@ function NavItem({
   onClick: () => void
   /** Sleep / Settings — quieter idle, no always-on tint wash */
   quiet?: boolean
+  /** Member-colored pips for people who still need a workout today */
+  pending?: Member[]
 }) {
+  const pendingNames = pending?.map((m) => m.name) ?? []
+  const pendingHint =
+    pendingNames.length === 0
+      ? null
+      : pendingNames.length === 1
+        ? `${pendingNames[0]} still needs a workout`
+        : `${pendingNames.join(', ')} still need a workout`
+
   return (
     <button
       type="button"
       aria-current={active ? 'page' : undefined}
+      aria-label={pendingHint ? `${label}. ${pendingHint}` : undefined}
       {...memberColorProps(color)}
       className={[s.item, quiet && s.quiet, active && s.active].filter(Boolean).join(' ')}
       onClick={onClick}
     >
       <span className={s.iconWell} aria-hidden="true">
         <Icon name={icon} size={active ? 28 : 26} />
+        {pending && pending.length > 0 && (
+          <span className={s.pending}>
+            {pending.map((m) => (
+              <span
+                key={m.id}
+                className={s.pendingDot}
+                {...memberColorProps(m.color)}
+              />
+            ))}
+          </span>
+        )}
       </span>
       <span className={s.label}>{label}</span>
     </button>
