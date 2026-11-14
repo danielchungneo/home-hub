@@ -55,3 +55,16 @@ export function addItem(token: string, text: string, qty?: string) {
     body: JSON.stringify({ text, qty: qty || null }),
   })
 }
+
+export function removeItem(token: string, id: string) {
+  return call<{ ok: true; id: string }>(token, '?action=item', {
+    method: 'DELETE',
+    body: JSON.stringify({ id }),
+  })
+}
+
+export function clearList(token: string) {
+  return call<{ ok: true }>(token, '?action=clear', {
+    method: 'DELETE',
+  })
+}

@@ -4,7 +4,7 @@ import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2"
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-list-token",
-  "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
 }
 
 type ShareContext = {
@@ -163,6 +163,32 @@ Deno.serve(async (req) => {
         .single()
       if (error) throw new Error(error.message)
       return json({ item: itemPayload(data as ListItemRow) })
+    }
+
+    if (req.method === "DELETE" && (action === "item" || action === "remove")) {
+      const body = await req.json() as { id?: string }
+      if (!body.id) return json({ error: "Provide id" }, 400)
+      const { data, error } = await admin
+        .from("list_items")
+        .delete()
+        .eq("id", body.id)
+        .eq("list_id", share.listId)
+        .eq("household_id", share.householdId)
+        .select("id")
+        .maybeSingle()
+      if (error) throw new Error(error.message)
+      if (!data) return json({ error: "Item not found" }, 404)
+      return json({ ok: true, id: data.id })
+    }
+
+    if (req.method === "DELETE" && (action === "clear" || action === "clear-all")) {
+      const { error } = await admin
+        .from("list_items")
+        .delete()
+        .eq("list_id", share.listId)
+        .eq("household_id", share.householdId)
+      if (error) throw new Error(error.message)
+      return json({ ok: true })
     }
 
     return json({ error: "Not found" }, 404)

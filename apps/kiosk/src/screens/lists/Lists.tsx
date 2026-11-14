@@ -1,27 +1,37 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { MEMBER_COLOR_PRESETS, type ListItem, type MemberColor } from '@hub/shared'
+import { useNav } from '../../app/nav'
 import { AppShell, PageHeader } from '../../components/AppShell'
-import { Button } from '../../components/Button'
+import { Button, IconButton } from '../../components/Button'
 import { Icon, type IconName } from '../../components/Icon'
 import { MemberBlobAvatar } from '../../components/MemberBlobAvatar'
 import { SoftKeyboard } from '../../components/SoftKeyboard'
 import { Label } from '../../components/primitives'
-import { useAddWeekIngredients, useMealPlan, useRecipes } from '../../data/hooks'
+import { useAddWeekIngredients, useHouseholdSettings, useListShareLink, useMealPlan, useRecipes } from '../../data/hooks'
 import { useLive } from '../../data/live'
 import { localDate } from '../../data/mappers'
 import { memberColorProps } from '../../lib/colors'
 import { addDays, shortDay, startOfWeek } from '../../lib/format'
 import { category, categoryOrder, guessCategory, mealIngredientsFromRecipes } from '../../lib/lists'
 import { who } from '../../lib/members'
-import { useLists } from './useLists'
+import { isGroceriesList, useLists } from './useLists'
 import s from './Lists.module.css'
 
 const CHECK_MS = 420
 const LIST_ICONS: IconName[] = ['list', 'cart', 'bag', 'broom', 'key', 'sparkle']
 const LIST_COLORS: MemberColor[] = [...MEMBER_COLOR_PRESETS]
 
+function shopUrl(token: string) {
+  const base = (import.meta.env.VITE_LIST_SHOP_URL as string | undefined)?.replace(/\/$/, '')
+    || 'https://chung-smart-home.vercel.app/shop'
+  return `${base}/?token=${encodeURIComponent(token)}`
+}
+
 export default function Lists() {
-  const { lists, feed, fresh, add, setChecked, clearChecked, clearAll, removeItem, createList, ready, parents } = useLists()
+  const { lists, fresh, add, setChecked, clearChecked, clearAll, removeItem, createList, deleteList, ready, parents } = useLists()
+  const { requirePin } = useNav()
+  const { data: settings } = useHouseholdSettings()
+  const shareLink = useListShareLink()
   useLive('meal_plan', 'mealPlan')
   useLive('recipes', 'recipes')
 
@@ -32,11 +42,15 @@ export default function Lists() {
   const [popping, setPopping] = useState<string | null>(null)
   const [mealsAdded, setMealsAdded] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [newIcon, setNewIcon] = useState<IconName>('list')
   const [newColor, setNewColor] = useState<MemberColor>('fjord')
   const [creatingBusy, setCreatingBusy] = useState(false)
+  const [showQr, setShowQr] = useState(false)
+  const [qrSrc, setQrSrc] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const timers = useRef<number[]>([])
   const later = (ms: number, fn: () => void) => { timers.current.push(window.setTimeout(fn, ms)) }
@@ -149,6 +163,39 @@ export default function Lists() {
     setConfirmClear(false)
     setToast(`${active.name} cleared`)
   }
+
+  const canDeleteActive = !!active && !isGroceriesList(active.name)
+
+  const askDeleteList = () => {
+    if (!canDeleteActive) return
+    const proceed = () => setConfirmDelete(true)
+    if (settings?.pinProtectDeletes) {
+      requirePin({
+        title: `To remove ${active.name}`,
+        detail: 'This deletes the list and everything on it.',
+        onSuccess: proceed,
+      })
+      return
+    }
+    proceed()
+  }
+
+  const confirmDeleteList = async () => {
+    if (!active || !canDeleteActive || deleting) return
+    const name = active.name
+    const id = active.id
+    setDeleting(true)
+    try {
+      await deleteList(id)
+      setConfirmDelete(false)
+      setToast(`Removed “${name}”`)
+    } catch (err) {
+      setToast(err instanceof Error ? err.message : 'Couldn’t remove that list')
+      setConfirmDelete(false)
+    } finally {
+      setDeleting(false)
+    }
+  }
   const submitCreate = async () => {
     const name = newName.trim().replace(/^./, (c) => c.toUpperCase())
     if (!name || creatingBusy) return
@@ -181,12 +228,26 @@ export default function Lists() {
     }
   }
 
+  const openPhoneQr = async () => {
+    if (!active || shareLink.isPending) return
+    setShowQr(true)
+    setQrSrc(null)
+    try {
+      const token = await shareLink.mutateAsync(active.id)
+      const url = shopUrl(token)
+      setQrSrc(`https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=12&data=${encodeURIComponent(url)}`)
+    } catch (err) {
+      setShowQr(false)
+      setToast(err instanceof Error ? err.message : 'Couldn’t make a phone link')
+    }
+  }
+
   return (
     <AppShell>
       <PageHeader
         eyebrow={`Lists · ${toGet} things to get across ${lists.length} lists`}
         title={<span key={active?.id ?? 'none'} className={s.title}>{active?.name ?? 'Lists'}</span>}
-        actions={
+        actions={<>
           <span className={s.live}>
             <span className={s.liveFaces}>
               {parents.slice(0, 2).map((p) => (
@@ -198,12 +259,24 @@ export default function Lists() {
             <span className={s.liveDot} />
             Live with {liveNames} phones
           </span>
-        }
+          {active && (
+            <Button
+              variant="rail"
+              size="lg"
+              pill
+              icon="bag"
+              disabled={shareLink.isPending}
+              onClick={() => void openPhoneQr()}
+            >
+              Open on phone
+            </Button>
+          )}
+        </>}
       />
 
       <div className={s.layout}>
         <div className={s.left}>
-          <nav className={s.rail} aria-label="All lists">
+          <nav className={`${s.rail} scroll-y`} aria-label="All lists">
             {lists.map((l, i) => {
               const left = l.items.filter((x) => !x.checked).length
               const got = l.items.length - left
@@ -226,21 +299,6 @@ export default function Lists() {
               <Icon name="plus" size={20} />New list
             </button>
           </nav>
-          <section className={s.feed} aria-label="Live from phones" aria-live="polite">
-            <span className={s.feedHead}><span className={s.feedDot} />Live from phones</span>
-            {feed.slice(0, 4).map((f) => {
-              const w = who(f.who)
-              return (
-                <div key={f.id} className={s.feedRow}>
-                  <span {...memberColorProps(w.color)} className={s.feedFace}>
-                    <MemberBlobAvatar memberId={w.id} size={34} showBackground={false} decorative />
-                  </span>
-                  <span className={s.feedText}><span>{f.text}</span><span className={s.feedWhen}>{f.when}</span></span>
-                </div>
-              )
-            })}
-            {!feed.length && <span className={s.feedWhen}>New items from phones show up here.</span>}
-          </section>
         </div>
 
         {active ? (
@@ -279,16 +337,25 @@ export default function Lists() {
               </div>
             )}
 
-            {active.items.length > 0 && (
+            {(active.items.length > 0 || canDeleteActive) && (
               <div className={s.listTools}>
                 <span className={s.listToolsHint}>
-                  {doneCount > 0 ? `${doneCount} checked · ${openCount} left` : `${active.items.length} on the list`}
+                  {active.items.length
+                    ? (doneCount > 0 ? `${doneCount} checked · ${openCount} left` : `${active.items.length} on the list`)
+                    : 'Empty list'}
                 </span>
                 <span className={s.listToolsActions}>
                   {doneCount > 0 && (
                     <button type="button" className={s.clear} onClick={clearDone}>Clear checked</button>
                   )}
-                  <button type="button" className={s.clear} onClick={() => setConfirmClear(true)}>Clear list</button>
+                  {active.items.length > 0 && (
+                    <button type="button" className={s.clear} onClick={() => setConfirmClear(true)}>Clear list</button>
+                  )}
+                  {canDeleteActive && (
+                    <button type="button" className={s.clear} onClick={askDeleteList}>
+                      {settings?.pinProtectDeletes ? 'Delete list…' : 'Delete list'}
+                    </button>
+                  )}
                 </span>
               </div>
             )}
@@ -491,9 +558,63 @@ export default function Lists() {
               </p>
             </div>
             <div className={s.confirmActions}>
-              <Button variant="secondary" size="lg" block onClick={() => setConfirmClear(false)}>Keep list</Button>
+              <Button variant="secondary" size="lg" block onClick={() => setConfirmClear(false)}>Keep items</Button>
               <Button variant="primary" size="lg" block onClick={confirmClearAll}>Clear list</Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDelete && active && canDeleteActive && (
+        <div className={s.confirmScrim} onClick={() => !deleting && setConfirmDelete(false)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-list-title"
+            className={s.confirm}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={s.confirmText}>
+              <h2 id="delete-list-title" className={s.confirmTitle}>Delete {active.name}?</h2>
+              <p className={s.confirmDetail}>
+                {active.items.length
+                  ? `This removes the list and all ${active.items.length} ${active.items.length === 1 ? 'item' : 'items'} on it. Groceries stays.`
+                  : 'This removes the list. Groceries stays.'}
+              </p>
+            </div>
+            <div className={s.confirmActions}>
+              <Button variant="secondary" size="lg" block disabled={deleting} onClick={() => setConfirmDelete(false)}>
+                Keep {active.name}
+              </Button>
+              <Button variant="primary" size="lg" block icon="trash" disabled={deleting} onClick={() => void confirmDeleteList()}>
+                {deleting ? 'Removing…' : 'Delete forever'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showQr && active && (
+        <div
+          className={s.qrScrim}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Open ${active.name} on your phone`}
+          onClick={() => setShowQr(false)}
+        >
+          <div className={s.qrCard} onClick={(e) => e.stopPropagation()}>
+            <div className={s.qrHead}>
+              <span className={s.qrTitle}>Open {active.name} on your phone</span>
+              <IconButton variant="secondary" icon="close" label="Close" onClick={() => setShowQr(false)} />
+            </div>
+            {qrSrc ? (
+              <>
+                <img className={s.qrImg} src={qrSrc} alt="" width={360} height={360} />
+                <p className={s.qrHint}>Scan to check items off and add things. Changes show up here live.</p>
+              </>
+            ) : (
+              <p className={s.qrHint}>Making a link…</p>
+            )}
           </div>
         </div>
       )}

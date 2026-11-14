@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { aisleSortKey } from '@hub/shared'
 import {
   addItem,
+  clearList,
   fetchList,
   getTokenFromLocation,
+  removeItem,
   toggleItem,
   type ShopItem,
   type ShopList,
@@ -14,6 +16,14 @@ function CheckIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M5 12.5 10 17.5 19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function CloseIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
     </svg>
   )
 }
@@ -34,6 +44,8 @@ export function App() {
   const [draft, setDraft] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  const [clearing, setClearing] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
 
   useEffect(() => {
     if (!token) return
@@ -84,6 +96,39 @@ export function App() {
       setError(err instanceof Error ? err.message : 'Could not update item')
     } finally {
       setBusyId(null)
+    }
+  }
+
+  async function onRemove(item: ShopItem) {
+    if (!token || busyId) return
+    setBusyId(item.id)
+    const previous = list
+    setList((prev) => (prev ? { ...prev, items: prev.items.filter((i) => i.id !== item.id) } : prev))
+    try {
+      await removeItem(token, item.id)
+      setError(null)
+    } catch (err) {
+      setList(previous)
+      setError(err instanceof Error ? err.message : 'Could not remove item')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function onClearList() {
+    if (!token || !list?.items.length || clearing) return
+    setClearing(true)
+    const previous = list
+    setList((prev) => (prev ? { ...prev, items: [] } : prev))
+    try {
+      await clearList(token)
+      setConfirmClear(false)
+      setError(null)
+    } catch (err) {
+      setList(previous)
+      setError(err instanceof Error ? err.message : 'Could not clear list')
+    } finally {
+      setClearing(false)
     }
   }
 
@@ -140,11 +185,31 @@ export function App() {
 
   return (
     <main className={s.page}>
-      <header>
-        <p className={s.eyebrow}>Shopping</p>
-        <h1 className={s.title}>{list.name}</h1>
-        <p className={s.summary}>{open.length} to get · {checked.length} in the cart</p>
+      <header className={s.head}>
+        <div className={s.headText}>
+          <p className={s.eyebrow}>Shopping</p>
+          <h1 className={s.title}>{list.name}</h1>
+          <p className={s.summary}>{open.length} to get · {checked.length} in the cart</p>
+        </div>
+        {list.items.length > 0 && (
+          confirmClear ? (
+            <div className={s.clearConfirm}>
+              <button type="button" className={s.clearKeep} disabled={clearing} onClick={() => setConfirmClear(false)}>
+                Keep
+              </button>
+              <button type="button" className={s.clearGo} disabled={clearing} onClick={() => void onClearList()}>
+                {clearing ? 'Clearing…' : 'Clear all'}
+              </button>
+            </div>
+          ) : (
+            <button type="button" className={s.clearBtn} onClick={() => setConfirmClear(true)}>
+              Clear list
+            </button>
+          )
+        )}
       </header>
+
+      {error && error !== 'missing' && <p className={s.banner} role="status">{error}</p>}
 
       <form
         className={s.addRow}
@@ -168,26 +233,36 @@ export function App() {
       </form>
 
       {open.length === 0 ? (
-        <p className={s.empty}>Everything’s in the cart. Nice work.</p>
+        <p className={s.empty}>{list.items.length ? 'Everything’s in the cart. Nice work.' : 'List is empty. Add something above.'}</p>
       ) : (
         <div className={s.groups}>
           {groups.map(([cat, items]) => (
             <section key={cat} className={s.group} aria-label={cat}>
               <h2 className={s.groupLabel}>{cat}</h2>
               {items.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={s.item}
-                  aria-pressed={false}
-                  aria-label={`Check off ${item.text}`}
-                  disabled={busyId === item.id}
-                  onClick={() => void onToggle(item)}
-                >
-                  <span className={s.check} aria-hidden="true" />
-                  <span className={s.itemText}>{item.text}</span>
-                  {item.qty && <span className={s.qty}>{item.qty}</span>}
-                </button>
+                <div key={item.id} className={s.row}>
+                  <button
+                    type="button"
+                    className={s.item}
+                    aria-pressed={false}
+                    aria-label={`Check off ${item.text}`}
+                    disabled={busyId === item.id}
+                    onClick={() => void onToggle(item)}
+                  >
+                    <span className={s.check} aria-hidden="true" />
+                    <span className={s.itemText}>{item.text}</span>
+                    {item.qty && <span className={s.qty}>{item.qty}</span>}
+                  </button>
+                  <button
+                    type="button"
+                    className={s.remove}
+                    aria-label={`Remove ${item.text}`}
+                    disabled={busyId === item.id}
+                    onClick={() => void onRemove(item)}
+                  >
+                    <CloseIcon />
+                  </button>
+                </div>
               ))}
             </section>
           ))}
@@ -198,18 +273,28 @@ export function App() {
         <section className={s.done} aria-label="In the cart">
           <h2 className={s.doneHead}>In the cart · {checked.length}</h2>
           {checked.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={s.doneItem}
-              aria-pressed={true}
-              aria-label={`Put back ${item.text}`}
-              disabled={busyId === item.id}
-              onClick={() => void onToggle(item)}
-            >
-              <span className={`${s.check} ${s.checkOn}`} aria-hidden="true"><CheckIcon /></span>
-              <span className={s.strike}>{item.text}</span>
-            </button>
+            <div key={item.id} className={s.row}>
+              <button
+                type="button"
+                className={s.doneItem}
+                aria-pressed={true}
+                aria-label={`Put back ${item.text}`}
+                disabled={busyId === item.id}
+                onClick={() => void onToggle(item)}
+              >
+                <span className={`${s.check} ${s.checkOn}`} aria-hidden="true"><CheckIcon /></span>
+                <span className={s.strike}>{item.text}</span>
+              </button>
+              <button
+                type="button"
+                className={s.remove}
+                aria-label={`Remove ${item.text}`}
+                disabled={busyId === item.id}
+                onClick={() => void onRemove(item)}
+              >
+                <CloseIcon />
+              </button>
+            </div>
           ))}
         </section>
       )}

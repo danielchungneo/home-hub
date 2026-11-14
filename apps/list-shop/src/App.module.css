@@ -20,6 +20,21 @@
   border: 0;
 }
 
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.headText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .eyebrow {
   margin: 0;
   font-size: 12px;
@@ -41,6 +56,59 @@
   margin: 0;
   color: var(--color-ink-2);
   font-size: var(--text-md);
+  font-weight: 700;
+}
+
+.clearBtn {
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-ink-2);
+  font-size: var(--text-sm);
+  font-weight: 800;
+}
+
+.clearConfirm {
+  flex: none;
+  display: flex;
+  gap: 8px;
+}
+
+.clearKeep,
+.clearGo {
+  min-height: 44px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: 800;
+}
+
+.clearKeep {
+  background: var(--color-surface-sunken);
+  color: var(--color-ink-2);
+}
+
+.clearGo {
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+}
+
+.clearGo:disabled,
+.clearKeep:disabled {
+  opacity: 0.5;
+}
+
+.banner {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--clay-tint);
+  color: var(--clay);
+  font-size: var(--text-sm);
   font-weight: 700;
 }
 
@@ -103,7 +171,15 @@
   color: var(--color-ink-3);
 }
 
+.row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
 .item {
+  flex: 1;
+  min-width: 0;
   min-height: var(--touch-min);
   display: flex;
   align-items: center;
@@ -118,6 +194,23 @@
 
 .item:active {
   transform: scale(0.98);
+}
+
+.remove {
+  flex: none;
+  width: var(--touch-min);
+  min-height: var(--touch-min);
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: var(--color-surface);
+  color: var(--color-ink-3);
+}
+
+.remove:active {
+  transform: scale(0.96);
+  color: var(--clay);
 }
 
 .check {
@@ -177,6 +270,8 @@
 }
 
 .doneItem {
+  flex: 1;
+  min-width: 0;
   min-height: 52px;
   display: flex;
   align-items: center;
@@ -187,6 +282,15 @@
   background: var(--color-surface-muted);
   text-align: left;
   color: var(--color-ink-2);
+}
+
+.done .remove {
+  min-height: 52px;
+  height: 52px;
+  width: 52px;
+  border-radius: 16px;
+  background: var(--color-surface-muted);
+  border: none;
 }
 
 .strike {

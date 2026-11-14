@@ -4,6 +4,7 @@ import {
   useClearChecked,
   useClearList,
   useCreateList,
+  useDeleteList,
   useDeleteListItem,
   useLists as useListsQuery,
   useMembers,
@@ -13,18 +14,19 @@ import type { MemberColor } from '@hub/shared'
 import type { IconName } from '../../components/Icon'
 import { useLive } from '../../data/live'
 import { ensureSession, supabase } from '../../lib/supabase'
-import { who } from '../../lib/members'
 import type { ShoppingList } from '../../lib/types'
 
-export interface FeedEntry { id: string; who: string; text: string; when: string }
 export interface NewRow { text: string; category: string; qty?: string }
 
-let seq = 0
-const nextId = () => `f${Date.now().toString(36)}${++seq}`
+/** The household groceries list stays — everything else can be removed. */
+export function isGroceriesList(name: string) {
+  const n = name.trim().toLowerCase()
+  return n === 'groceries' || n === 'grocery'
+}
 
 /**
  * List state over Supabase. Mutations map to list_items insert / update checked /
- * delete checked. Realtime inserts from phones arrive through `receive`.
+ * delete. Phone and kiosk stay one-to-one via `useLive` on `list_items`.
  */
 export function useLists() {
   const query = useListsQuery()
@@ -34,15 +36,15 @@ export function useLists() {
   const addItem = useAddListItem()
   const deleteItem = useDeleteListItem()
   const createListMut = useCreateList()
+  const deleteListMut = useDeleteList()
   const toggleItem = useToggleListItem()
   const clearCheckedMut = useClearChecked()
   const clearListMut = useClearList()
 
-  const [feed, setFeed] = useState<FeedEntry[]>([])
   /** Item id → who added it just now ('hub' or a member id). */
   const [fresh, setFresh] = useState<Record<string, string>>({})
   const timers = useRef<number[]>([])
-  /** Texts we just inserted from the hub — skip receive for those Realtime echoes. */
+  /** Texts we just inserted from the hub — skip phone-badge for those Realtime echoes. */
   const pendingHub = useRef(new Set<string>())
   useEffect(() => () => timers.current.forEach(window.clearTimeout), [])
 
@@ -115,19 +117,16 @@ export function useLists() {
     })
   }, [createListMut, query.data])
 
-  /** A change from someone's phone (Realtime). Data itself arrives via useLive refetch. */
-  const receive = useCallback((listId: string, row: NewRow, memberId: string, name: string) => {
-    markFresh(
-      (query.data?.find((l) => l.id === listId)?.items ?? [])
-        .filter((i) => i.text.toLowerCase() === row.text.toLowerCase() && !i.checked)
-        .map((i) => i.id)
-        .slice(-1),
-      memberId,
-    )
-    setFeed((f) => [{ id: nextId(), who: memberId, text: `${name} added ${row.text}`, when: 'Just now' }, ...f].slice(0, 6))
-  }, [markFresh, query.data])
+  /** DELETE lists row (and items via cascade). Groceries is protected. */
+  const deleteList = useCallback(async (listId: string) => {
+    const list = query.data?.find((l) => l.id === listId)
+    if (!list) throw new Error('List not found')
+    if (isGroceriesList(list.name)) throw new Error('Groceries can’t be deleted')
+    await deleteListMut.mutateAsync(listId)
+  }, [deleteListMut, query.data])
 
-  // Realtime INSERT → receive for phone-added rows (added_by ≠ hub / missing = skip badge until column exists).
+  // Realtime INSERT from a phone → brief "New · {name}" badge on the row.
+  // Checked / unchecked / edits sync through useLive refetch of the same list.
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | undefined
     let cancelled = false
@@ -143,8 +142,6 @@ export function useLists() {
               id: string
               list_id: string
               text: string
-              category: string | null
-              quantity: string | null
               added_by?: string | null
             }
             const key = `${row.list_id}:${row.text.toLowerCase()}`
@@ -154,12 +151,7 @@ export function useLists() {
             }
             const addedBy = row.added_by
             if (!addedBy) return
-            const name = who(addedBy).name
-            receive(row.list_id, {
-              text: row.text,
-              category: row.category ?? 'Other',
-              qty: row.quantity ?? undefined,
-            }, addedBy, name)
+            markFresh([row.id], addedBy)
           },
         )
         .subscribe()
@@ -168,11 +160,10 @@ export function useLists() {
       cancelled = true
       if (channel) void supabase.removeChannel(channel)
     }
-  }, [receive])
+  }, [markFresh])
 
   return {
     lists,
-    feed,
     fresh,
     add,
     setChecked,
@@ -180,7 +171,7 @@ export function useLists() {
     clearAll,
     removeItem,
     createList,
-    receive,
+    deleteList,
     ready: Boolean(query.data && members.data),
     parents: (members.data ?? []).filter((m) => m.role === 'parent'),
   }
