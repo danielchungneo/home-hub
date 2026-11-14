@@ -163,6 +163,10 @@
   /* Idle / photo overlays (tokenized; no component hex) */
   --color-frost: rgba(247, 246, 243, 0.92);
   --color-frost-soft: rgba(247, 246, 243, 0.55);
+
+  /* Idle hangout stage — fridge-collage energy, still from the family palette */
+  --idle-floor: var(--color-board);
+  --idle-stamp: var(--color-surface); /* solid plate so stamps read over the busy stage */
 }
 
 /*

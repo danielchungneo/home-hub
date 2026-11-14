@@ -95,6 +95,9 @@ Member colors are also reused as category accents (meal slots, reward tiles, lis
 | `--color-star-gold` | bounty-edge | Star glyph wherever stars are money (Star Shop) |
 | `--color-peach` | `#E9A27E` | Running-timer button |
 | `--color-scrim` | rgba ink 62% | Text panels over photos |
+| `--color-frost` / `-soft` | paper 92% / 55% | Idle chips over busy scenes |
+| `--idle-floor` | board | Idle hangout base |
+| `--idle-stamp` | surface | Idle weather + clock stamps (solid over the busy stage) |
 | `--color-night` / `--color-night-ink` | `#0B0A09` / `#8A8178` | Sleep screen only |
 | `--color-backdrop` | `#24201C` | Full-screen dim behind the Jukebox pick animation |
 | `--color-wall` | `#E9E0D2` | Jukebox record wall |
@@ -382,7 +385,7 @@ The `Suspense` fallback for tab screens in `App.tsx`: the real sidebar plus an e
 
 ### Idle / Cooking / Settings / keyboard
 
-- **Idle:** one wake sequence — clock rises, “Today” panel rises slightly later, agenda rows stagger (~50ms), now-playing chip fades. No loops.
+- **Idle:** fridge-collage hangout — sticky-note floor washes, drifting member-color blooms (deep + soft tint), star/peach accent wash, and confetti dots behind the cast. Weather + clock sit on slightly tilted paper stamps; weather copy matches header casing (`partly cloudy · high 72°`). Family blobs are large; unused characters join as smaller colorful guests (cap ~11); no name labels. **Physics** (`lib/idlePhysics.ts`): random spawn, slow constant drift, bounce off screen edges, weather/clock/playing/hint cards, and each other; blob hits send both away along the contact axis in opposite directions (with a short pair cooldown); positions written via `translate3d` (no React re-render per frame). Bumps trigger a wiggle on both blobs; faces also blink/nod on a peaceful timer. `prefers-reduced-motion` freezes after spawn. No photo slideshow.
 - **Cooking:** step text uses `.anim-rise`; progress segments use `scaleX`; timer value pops on manual change / done (not every countdown tick).
 - **Settings:** section body swaps with a short rise/fade when the left nav changes.
 - **SoftKeyboard:** rises with `.anim-rise` on mount.

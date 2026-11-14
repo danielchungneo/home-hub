@@ -45,7 +45,6 @@ const CARDIO_OPTIONS: { id: CardioKind; label: string }[] = [
 const EQUIPMENT_OPTIONS = ['Pull-up bar', 'Bands', 'Dumbbells', 'Kettlebell', 'Yoga mat']
 
 const IDLE_OPTIONS = [3, 5, 10, 15, 30]
-const SLIDE_OPTIONS = [10, 15, 20, 30, 45]
 const LOCK_OPTIONS = [1, 2, 5, 10, 15]
 const SLEEP_STARTS = ['21:00', '21:30', '22:00', '22:30', '23:00']
 const SLEEP_ENDS = ['05:00', '05:30', '06:00', '06:30', '07:00']
@@ -285,25 +284,14 @@ function SleepSettings({ settings }: { settings: HouseholdSettings }) {
         <Button variant="secondary" className={s.value}>Dim clock</Button>
       </div>
       <div className={s.row}>
-        <span className={s.rowText}><span>Start slideshow after</span></span>
+        <span className={s.rowText}><span>Idle screen after</span><small>Family hangout with the clock</small></span>
         <Button
           variant="secondary"
           iconRight="chevron-right"
           className={s.value}
           onClick={() => patch({ idleMinutes: cycle(IDLE_OPTIONS, settings.idleMinutes) })}
         >
-          {settings.idleMinutes} minutes idle
-        </Button>
-      </div>
-      <div className={s.row}>
-        <span className={s.rowText}><span>Each slideshow photo</span></span>
-        <Button
-          variant="secondary"
-          iconRight="chevron-right"
-          className={s.value}
-          onClick={() => patch({ slideSeconds: cycle(SLIDE_OPTIONS, settings.slideSeconds) })}
-        >
-          {settings.slideSeconds} seconds
+          {settings.idleMinutes} minutes
         </Button>
       </div>
       <div className={s.row}>
