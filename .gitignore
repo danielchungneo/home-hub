@@ -27,3 +27,7 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .vercel
+
+# Local scratch (Pi diagnose scripts, coach design drops)
+pi/tmp/
+workout-coach/
