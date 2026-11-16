@@ -3,6 +3,29 @@ import { config } from '../config'
 type Token = { accessToken: string; expiresAt: number }
 let cached: Token | null = null
 
+/** Wall-clock ms until which Spotify Web API calls should be skipped after a 429. */
+let rateLimitedUntil = 0
+
+export function spotifyRateLimitedUntil(): number {
+  return rateLimitedUntil
+}
+
+export function isSpotifyRateLimited(): boolean {
+  return Date.now() < rateLimitedUntil
+}
+
+function noteRateLimit(res: Response) {
+  const raw = res.headers.get('Retry-After')
+  // Honor Spotify's Retry-After (seen as multi-thousand seconds after dual-agent polling).
+  // Floor 30s so we don't hammer; cap 1h so a bad header can't silence the house overnight.
+  const parsed = raw && /^\d+$/.test(raw) ? Number(raw) : 60
+  const retryAfterSec = Math.min(Math.max(parsed, 30), 10_800)
+  rateLimitedUntil = Math.max(rateLimitedUntil, Date.now() + retryAfterSec * 1000)
+  console.warn(
+    `[music-agent] Spotify 429 Retry-After=${raw ?? 'none'} — backing off ${retryAfterSec}s`,
+  )
+}
+
 async function refreshAccessToken(): Promise<string> {
   if (cached && cached.expiresAt > Date.now() + 60_000) return cached.accessToken
 
@@ -30,6 +53,8 @@ async function refreshAccessToken(): Promise<string> {
 }
 
 async function spotify<T>(path: string, init: RequestInit = {}): Promise<T | null> {
+  // Do not soft-block here: user play/pause must still attempt after a 429 cooldown.
+  // Background sync/speaker refresh gate on isSpotifyRateLimited() themselves.
   const token = await refreshAccessToken()
   const res = await fetch(`https://api.spotify.com/v1${path}`, {
     ...init,
@@ -39,6 +64,10 @@ async function spotify<T>(path: string, init: RequestInit = {}): Promise<T | nul
       ...(init.headers ?? {}),
     },
   })
+  if (res.status === 429) {
+    noteRateLimit(res)
+    throw new Error('Too many requests')
+  }
   // Player control endpoints often return 204, or 200 with an empty / non-JSON body.
   if (res.status === 204) return null
   const text = (await res.text()).trim()

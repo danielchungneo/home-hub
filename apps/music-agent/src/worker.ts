@@ -6,8 +6,10 @@ import {
   findDeviceByName,
   getCollectionTracks,
   getPlayback,
+  isSpotifyRateLimited,
   isTrackExplicit,
   listDevices,
+  spotifyRateLimitedUntil,
   pausePlayback,
   resumePlayback,
   setRepeat,
@@ -134,6 +136,7 @@ function payload(cmd: CommandRow) {
     subtitle?: string
     imageUrl?: string
     kind?: 'album' | 'playlist'
+    _retries?: number
   }
 }
 
@@ -461,6 +464,28 @@ export async function processCommand(cmd: CommandRow) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error(`[music-agent] command failed: ${message}`)
+    const body = payload(cmd)
+    const retries = typeof body._retries === 'number' ? body._retries : 0
+    if (message.includes('Too many requests') && retries < 4) {
+      const waitMs = isSpotifyRateLimited()
+        ? Math.max(5_000, spotifyRateLimitedUntil() - Date.now())
+        : 60_000
+      console.warn(
+        `[music-agent] rate-limited — retrying ${cmd.type} ${cmd.id} in ${Math.ceil(waitMs / 1000)}s (attempt ${retries + 1})`,
+      )
+      // Stay pending so a restart can pick it up; schedule a live retry too.
+      await db
+        .from('jukebox_commands')
+        .update({
+          payload: { ...body, _retries: retries + 1 },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', cmd.id)
+      setTimeout(() => {
+        void enqueueCommand({ ...cmd, payload: { ...body, _retries: retries + 1 } })
+      }, waitMs + 500)
+      return
+    }
     await finish(cmd.id, 'failed', message)
   }
 }
@@ -486,11 +511,11 @@ export async function drainPending() {
   }
 }
 
-/** Keep now-playing fresh while something is active. */
-export async function syncPlaybackState() {
+/** Keep now-playing fresh while something is active. Returns whether Spotify reports playing. */
+export async function syncPlaybackState(): Promise<boolean> {
   try {
     let playback = await getPlayback()
-    if (!playback) return
+    if (!playback) return false
 
     // Only skip via Spotify when we are NOT driving an app-owned queue.
     if (playback.is_playing && playback.item?.uri) {
@@ -506,7 +531,9 @@ export async function syncPlaybackState() {
       ? (speakers ?? []).find((s) => s.name.trim().toLowerCase() === activeName.trim().toLowerCase()) ?? null
       : null
     await writeState(speaker, playback)
+    return Boolean(playback.is_playing)
   } catch (err) {
     console.warn('[music-agent] playback sync failed', err instanceof Error ? err.message : err)
+    return false
   }
 }
