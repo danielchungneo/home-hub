@@ -61,7 +61,10 @@ export function fetchHousehold(token: string) {
   })
 }
 
-export function analyzeRecipe(token: string, input: { url?: string; text?: string }) {
+export function analyzeRecipe(
+  token: string,
+  input: { url?: string; text?: string; images?: string[] },
+) {
   return call<AnalyzeResult>(token, '?action=analyze', {
     method: 'POST',
     body: JSON.stringify(input),
@@ -84,6 +87,9 @@ export function uploadRecipeImage(token: string, dataUrl: string, recipeId?: str
 
 /** Matches PHOTO_SHORT_SIDE in the recipe-import function: the kiosk never shows photos bigger than this. */
 const PHOTO_SHORT_SIDE = 640
+/** Long side for vision OCR — enough for dense screenshot text without megapixel dumps. */
+const VISION_LONG_SIDE = 1536
+export const MAX_PARSE_IMAGES = 4
 
 function readAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -94,26 +100,46 @@ function readAsDataUrl(file: File) {
   })
 }
 
-/** Phone photos are often 12 MP; shrink to the kiosk's size as JPEG before uploading. */
-export async function fileToDataUrl(file: File) {
+async function shrinkToDataUrl(
+  file: File,
+  opts: { mode: 'short' | 'long'; size: number; quality: number },
+) {
   const src = URL.createObjectURL(file)
   try {
     const img = new Image()
     img.src = src
     await img.decode()
-    const scale = PHOTO_SHORT_SIDE / Math.min(img.naturalWidth, img.naturalHeight)
-    if (scale >= 1) return await readAsDataUrl(file)
+    const dim = opts.mode === 'short'
+      ? Math.min(img.naturalWidth, img.naturalHeight)
+      : Math.max(img.naturalWidth, img.naturalHeight)
+    const scale = opts.size / dim
+    if (scale >= 1) {
+      // Still re-encode large non-JPEG sources as JPEG for predictable payload size.
+      if (file.type === 'image/jpeg' || file.type === 'image/jpg') return await readAsDataUrl(file)
+    }
     const canvas = document.createElement('canvas')
-    canvas.width = Math.round(img.naturalWidth * scale)
-    canvas.height = Math.round(img.naturalHeight * scale)
+    const w = scale >= 1 ? img.naturalWidth : Math.round(img.naturalWidth * scale)
+    const h = scale >= 1 ? img.naturalHeight : Math.round(img.naturalHeight * scale)
+    canvas.width = w
+    canvas.height = h
     const ctx = canvas.getContext('2d')
     if (!ctx) return await readAsDataUrl(file)
     ctx.imageSmoothingQuality = 'high'
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-    return canvas.toDataURL('image/jpeg', 0.8)
+    ctx.drawImage(img, 0, 0, w, h)
+    return canvas.toDataURL('image/jpeg', opts.quality)
   } catch {
     return await readAsDataUrl(file)
   } finally {
     URL.revokeObjectURL(src)
   }
+}
+
+/** Phone photos are often 12 MP; shrink to the kiosk's size as JPEG before uploading. */
+export async function fileToDataUrl(file: File) {
+  return shrinkToDataUrl(file, { mode: 'short', size: PHOTO_SHORT_SIDE, quality: 0.8 })
+}
+
+/** Shrink a recipe card/screenshot for OpenAI vision parse (higher res than kiosk hero). */
+export async function fileToVisionDataUrl(file: File) {
+  return shrinkToDataUrl(file, { mode: 'long', size: VISION_LONG_SIDE, quality: 0.85 })
 }

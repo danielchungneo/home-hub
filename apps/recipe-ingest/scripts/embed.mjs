@@ -6,6 +6,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const dist = join(root, 'dist')
 const outDir = resolve(root, '../../supabase/functions/recipe-ingest')
 const publicDir = join(root, 'public-host')
+const vercelRecipe = resolve(root, '../../../smart-home/Chung Smart Home/spotify-nfc/recipe')
 
 if (!existsSync(dist)) {
   console.error('Missing dist/. Run vite build first.')
@@ -32,6 +33,12 @@ const inlined = html
 mkdirSync(outDir, { recursive: true })
 mkdirSync(publicDir, { recursive: true })
 writeFileSync(join(publicDir, 'index.html'), inlined)
+
+if (existsSync(dirname(vercelRecipe))) {
+  mkdirSync(vercelRecipe, { recursive: true })
+  writeFileSync(join(vercelRecipe, 'index.html'), inlined)
+  console.log(`Wrote ${vercelRecipe}/index.html for Vercel /recipe`)
+}
 
 // Edge function only redirects; Supabase Forces text/plain + CSP sandbox on HTML bodies.
 writeFileSync(

@@ -278,13 +278,25 @@ function inferStepUses(text: string, ingredients: Ingredient[]): string[] {
   }).map((ing) => ing.name)
 }
 
+const MAX_PARSE_IMAGES = 4
+
+type OpenAIContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string; detail: "high" } }
+
+function isParseImageDataUrl(value: string) {
+  return /^data:image\/(jpeg|jpg|png|webp|gif);base64,/i.test(value)
+}
+
 async function normalizeWithOpenAI(input: {
   url: string | null
   extracted: Extracted | null
   extraText: string | null
+  images: string[]
 }): Promise<RecipeDraft> {
   const apiKey = requireEnv("OPENAI_API_KEY")
-  const system = `You convert messy webpage or social-media recipe content into a clean cooking recipe for a family kitchen hub.
+  const hasImages = input.images.length > 0
+  const system = `You convert messy webpage, social-media, or photo/screenshot recipe content into a clean cooking recipe for a family kitchen hub.
 Return ONLY valid JSON matching this schema:
 {
   "title": string,
@@ -311,17 +323,33 @@ Rules:
 - Include 1–2 meal tags, exactly one time tag matching prepMin+cookMin, and 1 cuisine tag when clear (else Other or omit).
 - icon should be one of: pot, bowl, bread, leaf, flame, fish, egg, mug, cart.
 - Prefer the provided schema.org Recipe JSON when present.
+- When photos/screenshots are provided, read all visible recipe text (printed, handwritten, or UI overlays). Multiple images are pages/parts of the same recipe — merge them in order.
+- Ignore non-recipe chrome (ads, nav, likes, watermarks) unless it is part of the recipe.
 - If content is incomplete, still produce a best-effort recipe and note uncertainty only in a step tip.`
 
   const userPayload = {
     sourceUrl: input.url,
-    platform: input.extracted?.platform ?? null,
+    platform: hasImages ? (input.extracted?.platform ?? "photo") : (input.extracted?.platform ?? null),
     schemaOrgRecipe: input.extracted?.jsonLd ?? null,
     pageTitle: input.extracted?.title ?? null,
     pageDescription: input.extracted?.description ?? null,
     pageText: input.extracted?.text?.slice(0, 10000) ?? null,
     pastedCaptionOrTranscript: input.extraText,
+    photoCount: hasImages ? input.images.length : 0,
   }
+
+  const userContent: OpenAIContentPart[] | string = hasImages
+    ? [
+      {
+        type: "text",
+        text: `Extract one cookable recipe from the attached photo(s)/screenshot(s) and any text context below. Return JSON only.\n\n${JSON.stringify(userPayload)}`,
+      },
+      ...input.images.map((url): OpenAIContentPart => ({
+        type: "image_url",
+        image_url: { url, detail: "high" },
+      })),
+    ]
+    : JSON.stringify(userPayload)
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -335,7 +363,7 @@ Rules:
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: system },
-        { role: "user", content: JSON.stringify(userPayload) },
+        { role: "user", content: userContent },
       ],
     }),
   })
@@ -391,6 +419,7 @@ Rules:
     ingredients,
     steps,
     sourceUrl: input.url,
+    // Parse photos are OCR sources only — never use them as the kiosk hero image.
     imageUrl: input.extracted?.imageUrl ?? null,
     color,
     icon: String(parsed.icon || "pot"),
@@ -559,10 +588,25 @@ Deno.serve(async (req) => {
     if (!household) return json({ error: "Invalid or missing import token" }, 401)
 
     if (req.method === "POST" && (action === "analyze" || action === "")) {
-      const body = await req.json() as { url?: string; text?: string }
+      const body = await req.json() as { url?: string; text?: string; images?: unknown }
       const sourceUrl = body.url?.trim() || null
       const extraText = body.text?.trim() || null
-      if (!sourceUrl && !extraText) return json({ error: "Provide a url and/or text" }, 400)
+      const rawImages = Array.isArray(body.images) ? body.images.map(String) : []
+      if (rawImages.length > MAX_PARSE_IMAGES) {
+        return json({ error: `At most ${MAX_PARSE_IMAGES} photos per import` }, 400)
+      }
+      const images = rawImages.filter(isParseImageDataUrl)
+      if (rawImages.length && images.length !== rawImages.length) {
+        return json({ error: "Images must be jpeg, png, webp, or gif data URLs" }, 400)
+      }
+      // Rough guard: ~6MB JSON body keeps edge memory sane with up to 4 vision JPEGs.
+      const approxBytes = images.reduce((n, img) => n + img.length, 0)
+      if (approxBytes > 8_000_000) {
+        return json({ error: "Photos are too large. Try fewer or smaller screenshots." }, 400)
+      }
+      if (!sourceUrl && !extraText && !images.length) {
+        return json({ error: "Provide a url, text, and/or photos" }, 400)
+      }
 
       let extracted: Extracted | null = null
       if (sourceUrl) {
@@ -572,7 +616,7 @@ Deno.serve(async (req) => {
           return json({ error: "Invalid url" }, 400)
         }
         extracted = await extractFromUrl(sourceUrl)
-        if (extracted.thin && !extraText) {
+        if (extracted.thin && !extraText && !images.length) {
           return json({
             needsText: true,
             platform: extracted.platform,
@@ -586,8 +630,12 @@ Deno.serve(async (req) => {
         }
       }
 
-      const draft = await normalizeWithOpenAI({ url: sourceUrl, extracted, extraText })
-      return json({ draft, needsText: false, platform: extracted?.platform ?? "text" })
+      const draft = await normalizeWithOpenAI({ url: sourceUrl, extracted, extraText, images })
+      return json({
+        draft,
+        needsText: false,
+        platform: images.length ? "photo" : (extracted?.platform ?? "text"),
+      })
     }
 
     if (req.method === "POST" && action === "upload-image") {

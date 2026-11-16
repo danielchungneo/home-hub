@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   RECIPE_TAG_GROUPS,
   type RecipeTag,
@@ -7,9 +7,11 @@ import {
   withSyncedTimeTag,
 } from '@hub/shared'
 import {
+  MAX_PARSE_IMAGES,
   analyzeRecipe,
   fetchHousehold,
   fileToDataUrl,
+  fileToVisionDataUrl,
   getTokenFromLocation,
   saveRecipe,
   uploadRecipeImage,
@@ -21,7 +23,11 @@ import s from './App.module.css'
 
 type Phase = 'form' | 'needsText' | 'analyzing' | 'review' | 'success' | 'error-token'
 
-const ANALYZE_STAGES = ['Fetching the page', 'Reading the recipe', 'Asking ChatGPT', 'Finding a photo']
+type ParsePhoto = { id: string; previewUrl: string; file: File }
+
+const LINK_ANALYZE_STAGES = ['Fetching the page', 'Reading the recipe', 'Asking ChatGPT', 'Finding a photo']
+const PHOTO_ANALYZE_STAGES = ['Reading the photo', 'Asking ChatGPT', 'Building the draft']
+const TEXT_ANALYZE_STAGES = ['Reading the recipe', 'Asking ChatGPT', 'Building the draft']
 
 function emptyDraft(): RecipeDraft {
   return {
@@ -45,9 +51,13 @@ export function App() {
   const [householdName, setHouseholdName] = useState('your kitchen')
   const [url, setUrl] = useState('')
   const [text, setText] = useState('')
+  const [parsePhotos, setParsePhotos] = useState<ParsePhoto[]>([])
+  const parsePhotosRef = useRef(parsePhotos)
+  parsePhotosRef.current = parsePhotos
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [stageIdx, setStageIdx] = useState(0)
+  const [analyzeStages, setAnalyzeStages] = useState(LINK_ANALYZE_STAGES)
   const [draft, setDraft] = useState<RecipeDraft>(emptyDraft())
   const [saving, setSaving] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
@@ -63,19 +73,73 @@ export function App() {
     if (phase !== 'analyzing') return
     setStageIdx(0)
     const id = window.setInterval(() => {
-      setStageIdx((i) => Math.min(i + 1, ANALYZE_STAGES.length - 1))
+      setStageIdx((i) => Math.min(i + 1, analyzeStages.length - 1))
     }, 900)
     return () => window.clearInterval(id)
-  }, [phase])
+  }, [phase, analyzeStages])
+
+  useEffect(() => {
+    return () => {
+      for (const photo of parsePhotosRef.current) URL.revokeObjectURL(photo.previewUrl)
+    }
+  }, [])
+
+  function clearParsePhotos() {
+    setParsePhotos((prev) => {
+      for (const photo of prev) URL.revokeObjectURL(photo.previewUrl)
+      return []
+    })
+  }
+
+  function onParsePhotosSelected(files: FileList | null) {
+    if (!files?.length) return
+    setError(null)
+    const incoming = Array.from(files).filter((f) => f.type.startsWith('image/'))
+    if (!incoming.length) {
+      setError('Please choose photo images.')
+      return
+    }
+    setParsePhotos((prev) => {
+      const room = MAX_PARSE_IMAGES - prev.length
+      if (room <= 0) {
+        setError(`You can add up to ${MAX_PARSE_IMAGES} photos.`)
+        return prev
+      }
+      const next = incoming.slice(0, room).map((file) => ({
+        id: crypto.randomUUID(),
+        previewUrl: URL.createObjectURL(file),
+        file,
+      }))
+      if (incoming.length > room) {
+        setError(`Only ${MAX_PARSE_IMAGES} photos allowed — extras were skipped.`)
+      }
+      return [...prev, ...next]
+    })
+  }
+
+  function removeParsePhoto(id: string) {
+    setParsePhotos((prev) => {
+      const victim = prev.find((p) => p.id === id)
+      if (victim) URL.revokeObjectURL(victim.previewUrl)
+      return prev.filter((p) => p.id !== id)
+    })
+  }
 
   async function runAnalyze(extraText?: string) {
     if (!token) return
     setError(null)
+    const hasUrl = Boolean(url.trim())
+    const hasPhotos = parsePhotos.length > 0
+    setAnalyzeStages(hasPhotos ? PHOTO_ANALYZE_STAGES : hasUrl ? LINK_ANALYZE_STAGES : TEXT_ANALYZE_STAGES)
     setPhase('analyzing')
     try {
+      const images = hasPhotos
+        ? await Promise.all(parsePhotos.map((p) => fileToVisionDataUrl(p.file)))
+        : undefined
       const result = await analyzeRecipe(token, {
         url: url.trim() || undefined,
         text: (extraText ?? text).trim() || undefined,
+        images,
       })
       if (result.needsText) {
         setMessage(result.message || 'Paste the caption or recipe text to continue.')
@@ -91,6 +155,7 @@ export function App() {
         ingredients: result.draft.ingredients.length ? result.draft.ingredients : [{ qty: 1, unit: '', name: '' }],
         steps: result.draft.steps.length ? result.draft.steps : [{ text: '' }],
       })
+      clearParsePhotos()
       setPhase('review')
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -161,6 +226,17 @@ export function App() {
     }))
   }
 
+  function resetForm() {
+    setUrl('')
+    setText('')
+    setMessage(null)
+    clearParsePhotos()
+    setDraft(emptyDraft())
+    setPhase('form')
+  }
+
+  const canAnalyze = Boolean(url.trim() || text.trim() || parsePhotos.length)
+
   if (phase === 'error-token') {
     return (
       <main className={s.page}>
@@ -182,7 +258,7 @@ export function App() {
           ? 'It is in the family recipe box on the hub.'
           : phase === 'review'
             ? 'Edit anything that looks off, then save it to the hub.'
-            : 'Paste a webpage or social video link. We will turn it into a cookable recipe.'}
+            : 'Paste a link, add notes, or snap a photo of a recipe card or screenshot.'}
       </p>
 
       {(phase === 'form' || phase === 'needsText') && (
@@ -200,6 +276,40 @@ export function App() {
               autoCorrect="off"
             />
           </label>
+          <div className={s.label}>
+            Photo of recipe
+            <div className={s.parsePhotoGrid}>
+              {parsePhotos.map((photo) => (
+                <div key={photo.id} className={s.parsePhotoThumb}>
+                  <img src={photo.previewUrl} alt="" />
+                  <button
+                    type="button"
+                    className={s.parsePhotoRemove}
+                    aria-label="Remove photo"
+                    onClick={() => removeParsePhoto(photo.id)}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {parsePhotos.length < MAX_PARSE_IMAGES && (
+                <label className={s.parsePhotoAdd}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    hidden
+                    onChange={(e) => {
+                      onParsePhotosSelected(e.target.files)
+                      e.target.value = ''
+                    }}
+                  />
+                  {parsePhotos.length ? 'Add more' : 'Add photos'}
+                </label>
+              )}
+            </div>
+            <p className={s.hint}>Up to {MAX_PARSE_IMAGES} pages or screenshots. These are for reading the recipe — add a food photo later if you want.</p>
+          </div>
           <label className={s.label}>
             {phase === 'needsText' ? 'Caption or recipe text' : 'Caption / notes (optional)'}
             <textarea
@@ -217,7 +327,7 @@ export function App() {
             <button
               type="button"
               className={s.primary}
-              disabled={!url.trim() && !text.trim()}
+              disabled={!canAnalyze}
               onClick={() => void runAnalyze()}
             >
               Analyze recipe
@@ -232,7 +342,7 @@ export function App() {
           <h2 className={s.title} style={{ fontSize: 28 }}>Working on it</h2>
           <p className={s.lede} style={{ marginBottom: 0 }}>This usually takes a few seconds.</p>
           <div className={s.stages} aria-live="polite">
-            {ANALYZE_STAGES.map((label, i) => (
+            {analyzeStages.map((label, i) => (
               <div
                 key={label}
                 className={`${s.stage} ${i === stageIdx ? s.stageOn : ''} ${i < stageIdx ? s.stageDone : ''}`}
@@ -415,17 +525,7 @@ export function App() {
           <h2 className={s.title} style={{ fontSize: 30 }}>{draft.title}</h2>
           <p className={s.lede}>Added to the family recipe box.</p>
           <div className={s.actions}>
-            <button
-              type="button"
-              className={s.primary}
-              onClick={() => {
-                setUrl('')
-                setText('')
-                setMessage(null)
-                setDraft(emptyDraft())
-                setPhase('form')
-              }}
-            >
+            <button type="button" className={s.primary} onClick={resetForm}>
               Add another
             </button>
           </div>
