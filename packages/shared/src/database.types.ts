@@ -111,6 +111,77 @@ export type Database = {
           },
         ]
       }
+      bounties: {
+        Row: {
+          claimed_at: string | null
+          claimed_by: string | null
+          created_at: string
+          created_by: string | null
+          due_day: number | null
+          household_id: string
+          id: string
+          points: number
+          template_id: string
+          updated_at: string
+          week_of: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_day?: number | null
+          household_id?: string
+          id?: string
+          points: number
+          template_id: string
+          updated_at?: string
+          week_of: string
+        }
+        Update: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_day?: number | null
+          household_id?: string
+          id?: string
+          points?: number
+          template_id?: string
+          updated_at?: string
+          week_of?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bounties_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bounties_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bounties_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bounties_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "task_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_sources: {
         Row: {
           account_email: string | null
@@ -174,6 +245,47 @@ export type Database = {
           },
           {
             foreignKeyName: "calendar_sources_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coach_plans: {
+        Row: {
+          created_at: string
+          date: string
+          direction: string | null
+          member_id: string
+          model: string
+          plan: Json
+          signals: Json | null
+          swap_reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          direction?: string | null
+          member_id: string
+          model: string
+          plan: Json
+          signals?: Json | null
+          swap_reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          direction?: string | null
+          member_id?: string
+          model?: string
+          plan?: Json
+          signals?: Json | null
+          swap_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_plans_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "members"
@@ -777,8 +889,58 @@ export type Database = {
           },
         ]
       }
+      meal_calendars: {
+        Row: {
+          created_at: string
+          household_id: string
+          id: string
+          list_id: string
+          member_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          household_id?: string
+          id?: string
+          list_id: string
+          member_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          id?: string
+          list_id?: string
+          member_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_calendars_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_calendars_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_calendars_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meal_plan: {
         Row: {
+          calendar_id: string
           created_at: string
           date: string
           household_id: string
@@ -789,6 +951,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          calendar_id: string
           created_at?: string
           date: string
           household_id?: string
@@ -799,6 +962,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          calendar_id?: string
           created_at?: string
           date?: string
           household_id?: string
@@ -809,6 +973,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "meal_plan_calendar_id_fkey"
+            columns: ["calendar_id"]
+            isOneToOne: false
+            referencedRelation: "meal_calendars"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "meal_plan_household_id_fkey"
             columns: ["household_id"]
@@ -829,7 +1000,6 @@ export type Database = {
         Row: {
           active: boolean
           avatar: string | null
-          /** Named preset or `#RRGGBB` (not system `slate`). */
           color: string
           created_at: string
           earns_points: boolean
@@ -881,47 +1051,6 @@ export type Database = {
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      coach_plans: {
-        Row: {
-          created_at: string
-          date: string
-          direction: string | null
-          member_id: string
-          model: string
-          plan: Json
-          signals: Json | null
-          swap_reason: string | null
-        }
-        Insert: {
-          created_at?: string
-          date: string
-          direction?: string | null
-          member_id: string
-          model: string
-          plan: Json
-          signals?: Json | null
-          swap_reason?: string | null
-        }
-        Update: {
-          created_at?: string
-          date?: string
-          direction?: string | null
-          member_id?: string
-          model?: string
-          plan?: Json
-          signals?: Json | null
-          swap_reason?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "coach_plans_member_id_fkey"
-            columns: ["member_id"]
-            isOneToOne: false
-            referencedRelation: "members"
             referencedColumns: ["id"]
           },
         ]
@@ -1310,77 +1439,6 @@ export type Database = {
           },
         ]
       }
-      bounties: {
-        Row: {
-          claimed_at: string | null
-          claimed_by: string | null
-          created_at: string
-          created_by: string | null
-          due_day: number | null
-          household_id: string
-          id: string
-          points: number
-          template_id: string
-          updated_at: string
-          week_of: string
-        }
-        Insert: {
-          claimed_at?: string | null
-          claimed_by?: string | null
-          created_at?: string
-          created_by?: string | null
-          due_day?: number | null
-          household_id?: string
-          id?: string
-          points: number
-          template_id: string
-          updated_at?: string
-          week_of: string
-        }
-        Update: {
-          claimed_at?: string | null
-          claimed_by?: string | null
-          created_at?: string
-          created_by?: string | null
-          due_day?: number | null
-          household_id?: string
-          id?: string
-          points?: number
-          template_id?: string
-          updated_at?: string
-          week_of?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "bounties_claimed_by_fkey"
-            columns: ["claimed_by"]
-            isOneToOne: false
-            referencedRelation: "members"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bounties_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "members"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bounties_household_id_fkey"
-            columns: ["household_id"]
-            isOneToOne: false
-            referencedRelation: "households"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bounties_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "task_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       task_completions: {
         Row: {
           approved_by: string | null
@@ -1400,7 +1458,7 @@ export type Database = {
           completed_at?: string
           completed_by?: string | null
           created_at?: string
-          for_date?: string
+          for_date: string
           household_id?: string
           id?: string
           member_id?: string | null
@@ -1689,13 +1747,33 @@ export type Database = {
     Functions: {
       complete_plan_part: {
         Args: { p_feel?: string; p_member: string; p_part: string }
-        Returns: Database["public"]["Tables"]["activities"]["Row"]
+        Returns: {
+          created_at: string
+          date: string
+          distance_mi: number | null
+          external_id: string | null
+          feel: string | null
+          id: string
+          kind: string
+          member_id: string
+          minutes: number
+          plan_part: string | null
+          source: string
+          title: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       current_household_id: { Args: never; Returns: string }
       current_profile_kind: {
         Args: never
         Returns: Database["public"]["Enums"]["profile_kind"]
       }
+      ensure_weekly_reward_deals: { Args: never; Returns: undefined }
       invoke_calendar_sync: { Args: never; Returns: number }
       invoke_coach_daily: { Args: never; Returns: number }
       set_parent_pin: { Args: { pin: string }; Returns: undefined }
@@ -1718,7 +1796,18 @@ export type Database = {
         | "repeat"
       jukebox_media_kind: "track" | "album" | "playlist"
       meal_slot: "breakfast" | "lunch" | "dinner" | "snack"
-      member_color: "moss" | "clay" | "honey" | "fjord" | "plum" | "pine" | "berry" | "sand" | "ocean" | "rose" | "slate"
+      member_color:
+        | "moss"
+        | "clay"
+        | "honey"
+        | "fjord"
+        | "plum"
+        | "pine"
+        | "berry"
+        | "sand"
+        | "ocean"
+        | "rose"
+        | "slate"
       member_role: "parent" | "child"
       profile_kind: "person" | "kiosk"
       redemption_status: "requested" | "approved" | "denied"
@@ -1869,7 +1958,19 @@ export const Constants = {
       ],
       jukebox_media_kind: ["track", "album", "playlist"],
       meal_slot: ["breakfast", "lunch", "dinner", "snack"],
-      member_color: ["moss", "clay", "honey", "fjord", "plum", "pine", "berry", "sand", "ocean", "rose", "slate"],
+      member_color: [
+        "moss",
+        "clay",
+        "honey",
+        "fjord",
+        "plum",
+        "pine",
+        "berry",
+        "sand",
+        "ocean",
+        "rose",
+        "slate",
+      ],
       member_role: ["parent", "child"],
       profile_kind: ["person", "kiosk"],
       redemption_status: ["requested", "approved", "denied"],

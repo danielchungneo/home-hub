@@ -1,15 +1,28 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import type { MealEntry, MealSlot } from '@hub/shared'
+import { SYSTEM_COLOR, type MealEntry, type MealSlot, type Member } from '@hub/shared'
 import { useNav } from '../../app/nav'
 import { AppShell, PageHeader } from '../../components/AppShell'
 import { Button, IconButton } from '../../components/Button'
 import { FoodPhoto } from '../../components/FoodPhoto'
 import { Icon } from '../../components/Icon'
-import { HeroBand, Label, Rail } from '../../components/primitives'
-import { useAddWeekIngredients, useMealPlan, useRecipes, useUpsertMealPlan } from '../../data/hooks'
+import { MemberBlobAvatar } from '../../components/MemberBlobAvatar'
+import { HeroBand, Label, PersonPill, PersonRail, Rail } from '../../components/primitives'
+import {
+  useAddWeekIngredients,
+  useCreateMealCalendar,
+  useMealCalendars,
+  useMealPlan,
+  useMembers,
+  useRecipes,
+  useUpsertMealPlan,
+  type MealCalendarRow,
+  type MealPlanRow,
+} from '../../data/hooks'
 import { useLive } from '../../data/live'
 import { localDate } from '../../data/mappers'
+import { memberColorProps } from '../../lib/colors'
 import { MEAL_SLOTS } from '../../lib/mealSlots'
+import { FAMILY } from '../../lib/members'
 import { useClock } from '../../hooks/useClock'
 import { addDays, monthDay, shortDay, startOfWeek, time, weekday } from '../../lib/format'
 import { entryRecipe, entryText, timeLabel, totalMin } from '../../lib/recipes'
@@ -19,6 +32,14 @@ import s from './Meals.module.css'
 
 type Plan = Record<MealSlot, MealEntry[]>
 export interface SlotRef { slot: MealSlot; day: number }
+
+type Ghost = {
+  calendarId: string
+  ownerId: string | null
+  ownerName: string
+  ownerColor: string
+  entry: MealEntry
+}
 
 /** Board tilts so the cards look stuck on by hand. */
 const TILTS = [-1.5, 1, -0.5, 1.8, -1.2, 0.6, -0.8]
@@ -36,17 +57,52 @@ function emptyPlan(): Plan {
 }
 
 function planFromRows(
-  rows: { date: string; slot: MealSlot; recipeId: string | null; title: string | null }[],
+  rows: MealPlanRow[],
   weekDates: string[],
+  calendarId: string,
 ): Plan {
   const plan = emptyPlan()
   for (const row of rows) {
+    if (row.calendarId !== calendarId) continue
     const day = weekDates.indexOf(row.date)
     if (day < 0) continue
     if (row.recipeId) plan[row.slot][day] = { recipeId: row.recipeId }
     else if (row.title) plan[row.slot][day] = { text: row.title }
   }
   return plan
+}
+
+function ghostsFromRows(
+  rows: MealPlanRow[],
+  weekDates: string[],
+  activeCalendarId: string,
+  calendars: MealCalendarRow[],
+  members: Member[],
+): Record<string, Ghost> {
+  const byId = new Map(calendars.map((c) => [c.id, c]))
+  const out: Record<string, Ghost> = {}
+  for (const row of rows) {
+    if (row.calendarId === activeCalendarId) continue
+    const day = weekDates.indexOf(row.date)
+    if (day < 0) continue
+    const cal = byId.get(row.calendarId)
+    if (!cal) continue
+    const member = cal.memberId ? members.find((m) => m.id === cal.memberId) : null
+    const entry: MealEntry = row.recipeId
+      ? { recipeId: row.recipeId }
+      : row.title
+        ? { text: row.title }
+        : null
+    if (!entry) continue
+    out[`${row.slot}:${day}`] = {
+      calendarId: row.calendarId,
+      ownerId: cal.memberId,
+      ownerName: member?.name ?? FAMILY.name,
+      ownerColor: member?.color ?? SYSTEM_COLOR,
+      entry,
+    }
+  }
+  return out
 }
 
 export default function Meals() {
@@ -63,19 +119,60 @@ export default function Meals() {
   const to = weekDates[6]!
 
   const { data: recipes = [] } = useRecipes()
+  const { data: members = [] } = useMembers()
+  const { data: calendars = [] } = useMealCalendars()
   const { data: planRows = [] } = useMealPlan(from, to)
   const upsertMeal = useUpsertMealPlan()
+  const createCalendar = useCreateMealCalendar()
   const addIngredients = useAddWeekIngredients()
   useLive('recipes', 'recipes')
   useLive('meal_plan', 'mealPlan')
+  useLive('meal_calendars', 'mealCalendars')
+  useLive('members', 'members')
 
-  const remotePlan = useMemo(() => planFromRows(planRows, weekDates), [planRows, weekDates])
+  const familyCalendar = useMemo(
+    () => calendars.find((c) => c.memberId == null) ?? null,
+    [calendars],
+  )
+  const memberCalendars = useMemo(
+    () => calendars.filter((c) => c.memberId != null),
+    [calendars],
+  )
+  const [activeCalendarId, setActiveCalendarId] = useState<string | null>(null)
+  const activeCalendar = useMemo(() => {
+    if (activeCalendarId) {
+      const hit = calendars.find((c) => c.id === activeCalendarId)
+      if (hit) return hit
+    }
+    return familyCalendar
+  }, [activeCalendarId, calendars, familyCalendar])
+
+  useEffect(() => {
+    if (!activeCalendarId && familyCalendar) setActiveCalendarId(familyCalendar.id)
+  }, [activeCalendarId, familyCalendar])
+
+  const remotePlan = useMemo(
+    () => (activeCalendar ? planFromRows(planRows, weekDates, activeCalendar.id) : emptyPlan()),
+    [planRows, weekDates, activeCalendar],
+  )
+  const ghosts = useMemo(
+    () => (activeCalendar
+      ? ghostsFromRows(planRows, weekDates, activeCalendar.id, calendars, members)
+      : {}),
+    [planRows, weekDates, activeCalendar, calendars, members],
+  )
+  const familyDinnerPlan = useMemo(
+    () => (familyCalendar ? planFromRows(planRows, weekDates, familyCalendar.id) : emptyPlan()),
+    [planRows, weekDates, familyCalendar],
+  )
+
   const [plan, setPlan] = useState<Plan>(remotePlan)
   const [picking, setPicking] = useState<SlotRef | null>(null)
   const [flight, setFlight] = useState<Flight | null>(null)
   const [landed, setLanded] = useState<string | null>(null)
   const [addedCount, setAddedCount] = useState<number | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [addingPlan, setAddingPlan] = useState(false)
   const cells = useRef(new Map<string, HTMLElement>())
   const timers = useRef<number[]>([])
 
@@ -92,13 +189,27 @@ export default function Meals() {
 
   const later = (ms: number, fn: () => void) => { timers.current.push(window.setTimeout(fn, ms)) }
 
+  const activeMembers = useMemo(() => members.filter((m) => m.active), [members])
+  const availableForPlan = useMemo(() => {
+    const taken = new Set(memberCalendars.map((c) => c.memberId))
+    return activeMembers.filter((m) => !taken.has(m.id))
+  }, [activeMembers, memberCalendars])
+
+  const activeListName = activeCalendar?.listName ?? 'Groceries'
+  const activeEntries = useMemo(
+    () => (activeCalendar ? planRows.filter((r) => r.calendarId === activeCalendar.id) : []),
+    [planRows, activeCalendar],
+  )
+
   /** Drawer → board: fly a copy of the picked card onto the slot, then drop the real one in. */
   const place = (picked: Picked, fromRect: DOMRect) => {
-    if (!picking) return
+    if (!picking || !activeCalendar) return
     const key = `${picking.slot}:${picking.day}`
+    if (ghosts[key]) return
     const toRect = cells.current.get(key)!.getBoundingClientRect()
     const target = picking
     const date = weekDates[target.day]!
+    const calendarId = activeCalendar.id
     setFlight({ picked, from: fromRect, to: toRect, go: false })
     later(30, () => setFlight((f) => f && { ...f, go: true }))
     later(640, () => {
@@ -107,45 +218,90 @@ export default function Meals() {
       setPicking(null)
       setLanded(key)
       if (picked.entry && 'recipeId' in picked.entry) {
-        void upsertMeal.mutateAsync({ date, slot: target.slot, recipeId: picked.entry.recipeId, title: null })
+        void upsertMeal.mutateAsync({
+          calendarId,
+          date,
+          slot: target.slot,
+          recipeId: picked.entry.recipeId,
+          title: null,
+        }).catch((err) => setToast(err instanceof Error ? err.message : 'Couldn’t save that meal'))
       } else if (picked.entry && 'text' in picked.entry) {
-        void upsertMeal.mutateAsync({ date, slot: target.slot, recipeId: null, title: picked.entry.text })
+        void upsertMeal.mutateAsync({
+          calendarId,
+          date,
+          slot: target.slot,
+          recipeId: null,
+          title: picked.entry.text,
+        }).catch((err) => setToast(err instanceof Error ? err.message : 'Couldn’t save that meal'))
       }
     })
     later(1000, () => setLanded(null))
   }
 
   const clearSlot = () => {
-    if (!picking) return
+    if (!picking || !activeCalendar) return
+    const key = `${picking.slot}:${picking.day}`
+    if (ghosts[key]) return
     const date = weekDates[picking.day]!
     setPlan((p) => { const n = clone(p); n[picking.slot][picking.day] = null; return n })
-    void upsertMeal.mutateAsync({ date, slot: picking.slot, clear: true })
+    void upsertMeal.mutateAsync({ calendarId: activeCalendar.id, date, slot: picking.slot, clear: true })
     setPicking(null)
   }
 
   const pushGroceries = async () => {
-    if (addedCount != null || addIngredients.isPending) return
+    if (!activeCalendar || addedCount != null || addIngredients.isPending) return
     try {
-      const result = await addIngredients.mutateAsync({ entries: planRows, recipes })
+      const result = await addIngredients.mutateAsync({
+        entries: activeEntries,
+        recipes,
+        listId: activeCalendar.listId,
+      })
       const changed = result.added + (result.updated ?? 0)
       setAddedCount(changed)
+      const listLabel = result.listName || activeListName
       setToast(
         result.added && result.updated
-          ? `Added ${result.added}, updated ${result.updated} on Groceries`
+          ? `Added ${result.added}, updated ${result.updated} on ${listLabel}`
           : result.added
-            ? `Added ${result.added} ingredients to Groceries`
+            ? `Added ${result.added} ingredients to ${listLabel}`
             : result.updated
-              ? `Updated ${result.updated} amounts on Groceries`
-              : 'Groceries already up to date',
+              ? `Updated ${result.updated} amounts on ${listLabel}`
+              : `${listLabel} already up to date`,
       )
     } catch (err) {
       setToast(err instanceof Error ? err.message : 'Couldn’t add ingredients')
     }
   }
 
-  const tonightEntry = plan.dinner[today]
+  const addMemberPlan = async (member: Member) => {
+    if (createCalendar.isPending) return
+    try {
+      const created = await createCalendar.mutateAsync({
+        memberId: member.id,
+        memberName: member.name,
+        memberColor: member.color,
+      })
+      setActiveCalendarId(created.id)
+      setAddingPlan(false)
+      setAddedCount(null)
+      setToast(`${member.name}’s meal plan ready`)
+    } catch (err) {
+      setToast(err instanceof Error ? err.message : 'Couldn’t add that meal plan')
+    }
+  }
+
+  const switchCalendar = (id: string) => {
+    setActiveCalendarId(id)
+    setPicking(null)
+    setAddedCount(null)
+  }
+
+  const tonightEntry = familyDinnerPlan.dinner[today]
   const tonight = entryRecipe(recipes, tonightEntry)
   const startBy = tonight ? new Date(new Date(now).setHours(DINNER_AT, 0, 0, 0) - totalMin(tonight) * 60_000) : null
+  const planLabel = activeCalendar?.memberId
+    ? (members.find((m) => m.id === activeCalendar.memberId)?.name ?? 'Personal')
+    : 'Family'
 
   return (
     <AppShell>
@@ -166,7 +322,7 @@ export default function Meals() {
               pill
               variant={addedCount != null ? 'secondary' : 'primary'}
               className={addedCount != null ? `${s.cart} ${s.cartDone}` : s.cart}
-              disabled={addIngredients.isPending}
+              disabled={!activeCalendar || addIngredients.isPending}
               onClick={() => void pushGroceries()}
             >
               <span className={`${s.cartIcon}${addedCount != null ? ' anim-wiggle' : ''}`}><Icon name="cart" size={24} /></span>
@@ -177,13 +333,13 @@ export default function Meals() {
                   : 'Add this week’s ingredients'}
             </Button>
             {addedCount != null && addedCount > 0 && (
-              <span className={s.cartChip} aria-hidden="true">+{addedCount} to Groceries</span>
+              <span className={s.cartChip} aria-hidden="true">+{addedCount} to {activeListName}</span>
             )}
           </span>
         </>}
       />
 
-      {/* ---------- Tonight ---------- */}
+      {/* ---------- Tonight (always Family dinner) ---------- */}
       <HeroBand
         xl
         surface
@@ -210,7 +366,15 @@ export default function Meals() {
         }
         trailing={
           <>
-            <Button variant="secondary" size="lg" pill onClick={() => setPicking({ slot: 'dinner', day: today })}>
+            <Button
+              variant="secondary"
+              size="lg"
+              pill
+              onClick={() => {
+                if (familyCalendar) switchCalendar(familyCalendar.id)
+                setPicking({ slot: 'dinner', day: today })
+              }}
+            >
               {tonightEntry ? 'Swap' : 'Plan dinner'}
             </Button>
             {tonight && <>
@@ -221,8 +385,43 @@ export default function Meals() {
         }
       />
 
+      <div className={s.planBar}>
+        <PersonRail label="Whose meal plan" className={s.planRail}>
+          {familyCalendar && (
+            <PersonPill
+              colorProps={memberColorProps(SYSTEM_COLOR)}
+              pressed={activeCalendar?.id === familyCalendar.id}
+              onClick={() => switchCalendar(familyCalendar.id)}
+              avatar={<span className={s.familyAvatar} aria-hidden="true"><Icon name="people" size={28} /></span>}
+              name="Family"
+              sub={familyCalendar.listName}
+            />
+          )}
+          {memberCalendars.map((cal) => {
+            const member = members.find((m) => m.id === cal.memberId)
+            if (!member) return null
+            return (
+              <PersonPill
+                key={cal.id}
+                colorProps={memberColorProps(member.color)}
+                pressed={activeCalendar?.id === cal.id}
+                onClick={() => switchCalendar(cal.id)}
+                avatar={<MemberBlobAvatar memberId={member.id} size={48} showBackground={false} decorative />}
+                name={member.name}
+                sub={cal.listName}
+              />
+            )
+          })}
+        </PersonRail>
+        {availableForPlan.length > 0 && (
+          <Button size="lg" pill variant="secondary" icon="plus" onClick={() => setAddingPlan(true)}>
+            Add plan
+          </Button>
+        )}
+      </div>
+
       {/* ---------- Fridge board ---------- */}
-      <section aria-label="Meal plan" className={s.board}>
+      <section aria-label={`${planLabel} meal plan`} className={s.board}>
         <div />
         {Array.from({ length: 7 }, (_, i) => (
           <div key={i} className={i === today && weekOffset === 0 ? `${s.day} ${s.dayToday}` : s.day}>
@@ -239,23 +438,47 @@ export default function Meals() {
             </div>
             {plan[slot.id].map((entry, day) => {
               const key = `${slot.id}:${day}`
-              const recipe = entryRecipe(recipes, entry)
-              const text = entryText(entry)
+              const ghost = ghosts[key]
+              const recipe = entryRecipe(recipes, ghost ? ghost.entry : entry)
+              const text = entryText(ghost ? ghost.entry : entry)
               const label = recipe?.title ?? text
               const isToday = day === today && weekOffset === 0
+              const taken = !!ghost
               return (
                 <div key={key} data-slot={slot.id} className={isToday ? `${s.cell} ${s.cellToday}` : s.cell}
                   style={{ ['--n' as string]: day * 4 + ri * 3 }}>
                   <button type="button"
                     ref={(el) => { if (el) cells.current.set(key, el); else cells.current.delete(key) }}
                     data-course={recipe?.course}
-                    className={[s.item, recipe ? s.recipe : text ? s.note : s.empty, landed === key && s.landed].filter(Boolean).join(' ')}
+                    disabled={taken}
+                    className={[
+                      s.item,
+                      recipe ? s.recipe : text ? s.note : s.empty,
+                      taken && s.ghost,
+                      landed === key && s.landed,
+                    ].filter(Boolean).join(' ')}
                     style={label ? { ['--tilt' as string]: `${TILTS[(day + ri * 3) % TILTS.length]}deg` } : undefined}
-                    aria-label={`${shortDay(day)} ${slot.label}: ${label ? `${label}. Tap to swap` : 'empty. Tap to add'}`}
-                    onClick={() => setPicking({ slot: slot.id, day })}>
+                    {...(taken ? memberColorProps(ghost.ownerColor) : {})}
+                    aria-label={
+                      taken
+                        ? `${shortDay(day)} ${slot.label}: ${label ?? 'meal'} on ${ghost.ownerName}’s plan`
+                        : `${shortDay(day)} ${slot.label}: ${label ? `${label}. Tap to swap` : 'empty. Tap to add'}`
+                    }
+                    onClick={() => {
+                      if (taken) return
+                      setPicking({ slot: slot.id, day })
+                    }}>
+                    {taken && (
+                      <span className={s.ghostOwner}>
+                        {ghost.ownerId
+                          ? <MemberBlobAvatar memberId={ghost.ownerId} size={28} showBackground={false} decorative />
+                          : <Icon name="people" size={18} />}
+                        <span>{ghost.ownerName}</span>
+                      </span>
+                    )}
                     {recipe && <BoardRecipe recipe={recipe} />}
-                    {text && <span className={s.noteText}>{text}</span>}
-                    {!entry && <span className={s.add}><Icon name="plus" size={18} />Add</span>}
+                    {text && !recipe && <span className={s.noteText}>{text}</span>}
+                    {!entry && !taken && <span className={s.add}><Icon name="plus" size={18} />Add</span>}
                   </button>
                 </div>
               )
@@ -266,7 +489,7 @@ export default function Meals() {
 
       <Drawer
         picking={picking}
-        hidden={!picking || !!flight}
+        hidden={!picking || !!flight || !!(picking && ghosts[`${picking.slot}:${picking.day}`])}
         filled={!!(picking && plan[picking.slot][picking.day])}
         recipes={recipes}
         onPick={place}
@@ -275,6 +498,44 @@ export default function Meals() {
       />
 
       {flight && <FlyingCard flight={flight} />}
+
+      {addingPlan && (
+        <div className={`${s.confirmScrim} anim-confirm-scrim`} onClick={() => !createCalendar.isPending && setAddingPlan(false)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-meal-plan-title"
+            className={`${s.confirm} anim-confirm-rise`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={s.confirmText}>
+              <h2 id="add-meal-plan-title" className={s.confirmTitle}>Add a meal plan</h2>
+              <p className={s.confirmDetail}>
+                Pick someone to get their own fridge board and grocery list. Family stays as it is.
+              </p>
+            </div>
+            <div className={s.memberPick}>
+              {availableForPlan.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={s.memberPickBtn}
+                  disabled={createCalendar.isPending}
+                  {...memberColorProps(m.color)}
+                  onClick={() => void addMemberPlan(m)}
+                >
+                  <MemberBlobAvatar memberId={m.id} size={56} decorative />
+                  <span className={s.memberPickName}>{m.name}</span>
+                  <span className={s.memberPickSub}>{m.name}’s groceries</span>
+                </button>
+              ))}
+            </div>
+            <Button variant="secondary" size="lg" pill disabled={createCalendar.isPending} onClick={() => setAddingPlan(false)}>
+              Not now
+            </Button>
+          </div>
+        </div>
+      )}
 
       {toast && <div role="status" className={`${s.toast} anim-toast`}><Icon name="tick" size={20} stroke={3} />{toast}</div>}
     </AppShell>

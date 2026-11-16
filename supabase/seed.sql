@@ -116,6 +116,25 @@ insert into public.lists (id, household_id, name, icon, color, sort_order) value
   ('33333333-3333-3333-3333-333333333303', '11111111-1111-1111-1111-111111111111', 'Hardware store', 'key', 'clay', 3),
   ('33333333-3333-3333-3333-333333333304', '11111111-1111-1111-1111-111111111111', 'Gift ideas', 'sparkle', 'honey', 4);
 
+-- Family meal calendar → Groceries (member plans are opt-in from the kiosk).
+-- Migration already backfills a Family calendar; point it at the seeded Groceries list.
+update public.meal_calendars
+set list_id = '33333333-3333-3333-3333-333333333301'
+where household_id = '11111111-1111-1111-1111-111111111111'
+  and member_id is null;
+
+insert into public.meal_calendars (id, household_id, member_id, list_id)
+select
+  '55555555-5555-5555-5555-555555555501',
+  '11111111-1111-1111-1111-111111111111',
+  null,
+  '33333333-3333-3333-3333-333333333301'
+where not exists (
+  select 1 from public.meal_calendars
+  where household_id = '11111111-1111-1111-1111-111111111111'
+    and member_id is null
+);
+
 insert into public.list_items (household_id, list_id, text, category, quantity, assignee_id, checked_at, sort_order)
 select '11111111-1111-1111-1111-111111111111', l.list_id, i.text, i.category, i.qty, m.member_id,
   case when i.checked then now() end, i.ord

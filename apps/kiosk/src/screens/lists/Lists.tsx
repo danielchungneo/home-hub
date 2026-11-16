@@ -14,7 +14,7 @@ import { memberColorProps } from '../../lib/colors'
 import { addDays, shortDay, startOfWeek } from '../../lib/format'
 import { category, categoryOrder, guessCategory, mealIngredientsFromRecipes } from '../../lib/lists'
 import { who } from '../../lib/members'
-import { isGroceriesList, useLists } from './useLists'
+import { useLists } from './useLists'
 import s from './Lists.module.css'
 
 const CHECK_MS = 420
@@ -28,12 +28,16 @@ function shopUrl(token: string) {
 }
 
 export default function Lists() {
-  const { lists, fresh, add, setChecked, clearChecked, clearAll, removeItem, createList, deleteList, ready, parents } = useLists()
+  const {
+    lists, fresh, add, setChecked, clearChecked, clearAll, removeItem, createList, deleteList,
+    isMealPlanList, mealCalendars, ready, parents,
+  } = useLists()
   const { requirePin } = useNav()
   const { data: settings } = useHouseholdSettings()
   const shareLink = useListShareLink()
   useLive('meal_plan', 'mealPlan')
   useLive('recipes', 'recipes')
+  useLive('meal_calendars', 'mealCalendars')
 
   const [activeId, setActiveId] = useState('')
   const [draft, setDraft] = useState('')
@@ -74,10 +78,18 @@ export default function Lists() {
     [weekStart],
   )
   const { data: planRows = [] } = useMealPlan(weekDates[0]!, weekDates[6]!)
+  const familyCalendar = useMemo(
+    () => mealCalendars.find((c) => c.memberId == null) ?? null,
+    [mealCalendars],
+  )
+  const familyPlanRows = useMemo(
+    () => (familyCalendar ? planRows.filter((r) => r.calendarId === familyCalendar.id) : []),
+    [planRows, familyCalendar],
+  )
 
   const dinners = useMemo(() => {
     const byDate = new Map(
-      planRows
+      familyPlanRows
         .filter((r) => r.slot === 'dinner' && r.recipeId)
         .map((r) => [r.date, r.recipeId!]),
     )
@@ -88,7 +100,7 @@ export default function Lists() {
       if (!recipe) return []
       return [{ day, recipe }]
     })
-  }, [planRows, recipes, weekDates])
+  }, [familyPlanRows, recipes, weekDates])
 
   const ingredients = useMemo(() => mealIngredientsFromRecipes(dinners), [dinners])
 
@@ -164,7 +176,7 @@ export default function Lists() {
     setToast(`${active.name} cleared`)
   }
 
-  const canDeleteActive = !!active && !isGroceriesList(active.name)
+  const canDeleteActive = !!active && !isMealPlanList(active.id, active.name)
 
   const askDeleteList = () => {
     if (!canDeleteActive) return
@@ -214,14 +226,18 @@ export default function Lists() {
     }
   }
   const addMeals = async () => {
-    if (mealsAdded || addIngredients.isPending) return
+    if (mealsAdded || addIngredients.isPending || !familyCalendar) return
     setMealsAdded(true)
-    const groceries = lists.find((l) => l.name.toLowerCase() === 'groceries')
-    if (groceries) setActiveId(groceries.id)
+    setActiveId(familyCalendar.listId)
     try {
-      const result = await addIngredients.mutateAsync({ entries: planRows, recipes })
+      const result = await addIngredients.mutateAsync({
+        entries: familyPlanRows,
+        recipes,
+        listId: familyCalendar.listId,
+      })
       const n = result.added + (result.updated ?? 0)
-      setToast(n ? `Added ${result.added || n} ingredients from this week’s meals` : 'Groceries already up to date')
+      const listLabel = result.listName || familyCalendar.listName
+      setToast(n ? `Added ${result.added || n} ingredients from this week’s meals` : `${listLabel} already up to date`)
     } catch (err) {
       setMealsAdded(false)
       setToast(err instanceof Error ? err.message : 'Couldn’t add ingredients')

@@ -47,6 +47,29 @@
 .chip { padding: 6px 14px; border-radius: var(--radius-pill); background: var(--color-surface-sunken); font-size: var(--text-sm); font-weight: var(--weight-heavy); }
 .chipTint { background: var(--member-tint); color: var(--member); }
 
+/* ---------- Whose meal plan ---------- */
+.planBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 72px;
+  flex: none;
+}
+.planRail {
+  flex: 1;
+  min-width: 0;
+}
+.familyAvatar {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 24px;
+  background: var(--member-tint);
+  color: var(--member);
+}
+
 /* ---------- Fridge board ---------- */
 .board {
   flex: 1; min-height: 0;
@@ -117,6 +140,80 @@
 
 .empty { border: 2px dashed var(--color-track); border-radius: var(--radius-sm); }
 .add { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: var(--text-sm); font-weight: var(--weight-heavy); color: var(--color-ink-3); }
+
+/* Taken on another calendar: show meal + owner, not editable. */
+.ghost {
+  opacity: 0.48;
+  pointer-events: none;
+}
+.ghostOwner {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 16px);
+  padding: 2px 8px 2px 2px;
+  border-radius: var(--radius-pill);
+  background: var(--member-tint, var(--color-surface));
+  color: var(--member, var(--color-ink-2));
+  font-size: var(--text-xs);
+  font-weight: var(--weight-heavy);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.ghostOwner span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ghost .recipeBody { padding-top: 28px; }
+.ghost .noteText { padding-top: 34px; }
+
+.confirmScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-scrim);
+}
+.confirm {
+  width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: 40px 44px 36px;
+  border-radius: var(--radius-3xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-dialog);
+}
+.confirmText { display: flex; flex-direction: column; gap: 10px; text-align: center; }
+.confirmTitle { font-family: var(--font-display); font-weight: 400; font-size: var(--display-lg); line-height: 1.05; }
+.confirmDetail { font-size: 19px; font-weight: var(--weight-bold); line-height: 1.4; color: var(--color-ink-2); }
+.memberPick {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+.memberPickBtn {
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: var(--space-4);
+  border-radius: var(--radius-2xl);
+  background: var(--member-tint, var(--color-surface-sunken));
+  color: var(--color-ink);
+  text-align: center;
+}
+.memberPickBtn:disabled { opacity: 0.6; }
+.memberPickName { font-size: var(--text-md); font-weight: var(--weight-heavy); }
+.memberPickSub { font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--color-ink-2); }
 
 /* ---------- Flying card (drawer → board) ---------- */
 .fly {

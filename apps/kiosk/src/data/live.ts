@@ -22,6 +22,7 @@ type LiveTable =
   | 'calendar_sources'
   | 'recipes'
   | 'meal_plan'
+  | 'meal_calendars'
   | 'members'
   | 'household_settings'
   | 'athlete_profiles'

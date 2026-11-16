@@ -7,6 +7,7 @@ import {
   useDeleteList,
   useDeleteListItem,
   useLists as useListsQuery,
+  useMealCalendars,
   useMembers,
   useToggleListItem,
 } from '../../data/hooks'
@@ -31,7 +32,9 @@ export function isGroceriesList(name: string) {
 export function useLists() {
   const query = useListsQuery()
   const members = useMembers()
+  const calendars = useMealCalendars()
   useLive('list_items', 'lists')
+  useLive('meal_calendars', 'mealCalendars')
 
   const addItem = useAddListItem()
   const deleteItem = useDeleteListItem()
@@ -117,13 +120,27 @@ export function useLists() {
     })
   }, [createListMut, query.data])
 
-  /** DELETE lists row (and items via cascade). Groceries is protected. */
+  const mealListIds = useMemo(
+    () => new Set((calendars.data ?? []).map((c) => c.listId)),
+    [calendars.data],
+  )
+
+  /** True when this list backs a meal calendar (Family Groceries or a personal plan). */
+  const isMealPlanList = useCallback(
+    (listId: string, name?: string) =>
+      mealListIds.has(listId) || (name != null && isGroceriesList(name)),
+    [mealListIds],
+  )
+
+  /** DELETE lists row (and items via cascade). Meal-plan grocery lists stay. */
   const deleteList = useCallback(async (listId: string) => {
     const list = query.data?.find((l) => l.id === listId)
     if (!list) throw new Error('List not found')
-    if (isGroceriesList(list.name)) throw new Error('Groceries can’t be deleted')
+    if (isMealPlanList(listId, list.name)) {
+      throw new Error('That list is tied to a meal plan')
+    }
     await deleteListMut.mutateAsync(listId)
-  }, [deleteListMut, query.data])
+  }, [deleteListMut, isMealPlanList, query.data])
 
   // Realtime INSERT from a phone → brief "New · {name}" badge on the row.
   // Checked / unchecked / edits sync through useLive refetch of the same list.
@@ -172,7 +189,9 @@ export function useLists() {
     removeItem,
     createList,
     deleteList,
-    ready: Boolean(query.data && members.data),
+    isMealPlanList,
+    mealCalendars: calendars.data ?? [],
+    ready: Boolean(query.data && members.data && calendars.data),
     parents: (members.data ?? []).filter((m) => m.role === 'parent'),
   }
 }

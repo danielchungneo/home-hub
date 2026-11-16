@@ -419,6 +419,7 @@ export const toRecipe = (r: Row<'recipes'>, imageUrl?: string | null): KioskReci
 
 export type MealPlanRow = {
   id: string
+  calendarId: string
   date: string
   slot: Database['public']['Enums']['meal_slot']
   recipeId: string | null
@@ -427,11 +428,32 @@ export type MealPlanRow = {
 
 export const toMealPlanRow = (r: Row<'meal_plan'>): MealPlanRow => ({
   id: r.id,
+  calendarId: r.calendar_id,
   date: r.date,
   slot: r.slot,
   recipeId: r.recipe_id,
   title: r.title,
 })
+
+/** Family calendar has null memberId; member calendars point at one person + grocery list. */
+export type MealCalendarRow = {
+  id: string
+  memberId: string | null
+  listId: string
+  listName: string
+}
+
+export const toMealCalendarRow = (
+  r: Row<'meal_calendars'> & { lists?: { name: string } | { name: string }[] | null },
+): MealCalendarRow => {
+  const list = Array.isArray(r.lists) ? r.lists[0] : r.lists
+  return {
+    id: r.id,
+    memberId: r.member_id,
+    listId: r.list_id,
+    listName: list?.name ?? 'Groceries',
+  }
+}
 
 const asCardioKind = (v: unknown): CardioKind =>
   v === 'run' || v === 'walk' || v === 'bike' || v === 'swim' ? v : 'walk'

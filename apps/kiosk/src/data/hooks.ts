@@ -5,6 +5,7 @@ import {
   groceryQtyToString,
   guessGroceryAisle,
   ingredientToGroceryQty,
+  isMemberColorPreset,
   isShoppableIngredient,
   mergeGroceryQty,
   normalizeIngredientName,
@@ -30,6 +31,7 @@ import {
   toJukeboxState,
   toLedgerEntry,
   toList,
+  toMealCalendarRow,
   toMealPlanRow,
   toMember,
   toQueueItem,
@@ -40,6 +42,7 @@ import {
   toSpeaker,
   toTask,
   toTaskTemplate,
+  type MealCalendarRow,
   type MealPlanRow,
 } from './mappers'
 
@@ -319,6 +322,7 @@ export const prefetchLiveScreens = (queryClient: QueryClient) => {
     queryClient.prefetchQuery(calendarSourcesQuery()),
     queryClient.prefetchQuery(eventsQuery(weekStart.toISOString(), weekEnd.toISOString())),
     queryClient.prefetchQuery(recipesQuery()),
+    queryClient.prefetchQuery(mealCalendarsQuery()),
     queryClient.prefetchQuery(mealPlanQuery(localDate(weekStart), localDate(new Date(weekEnd.getTime() - 1)))),
     queryClient.prefetchQuery(householdQuery()),
     queryClient.prefetchQuery(householdSettingsQuery()),
@@ -365,6 +369,20 @@ const recipesQuery = () =>
       const urlFor = await signedRecipeUrls(rows)
       return rows.map((r) => toRecipe(r, urlFor(r.image_path)))
     },
+  })
+
+const mealCalendarsQuery = () =>
+  queryOptions({
+    queryKey: ['mealCalendars'],
+    queryFn: async () =>
+      (
+        await run(() =>
+          supabase
+            .from('meal_calendars')
+            .select('*, lists(name)')
+            .order('member_id', { ascending: true, nullsFirst: true }),
+        )
+      ).map(toMealCalendarRow),
   })
 
 const mealPlanQuery = (from: string, to: string) =>
@@ -1271,9 +1289,10 @@ export function useListShareLink() {
 
 export const useRecipes = () => useQuery(recipesQuery())
 export const useHousehold = () => useQuery(householdQuery())
+export const useMealCalendars = () => useQuery(mealCalendarsQuery())
 export const useMealPlan = (from: string, to: string) => useQuery(mealPlanQuery(from, to))
 
-export { type Weather }
+export { type Weather, type MealCalendarRow, type MealPlanRow }
 
 export function useUpdateRecipe() {
   const queryClient = useQueryClient()
@@ -1370,10 +1389,73 @@ export function useDeleteRecipe() {
   })
 }
 
+/** Opt-in personal meal calendar + linked grocery list for one household member. */
+export function useCreateMealCalendar() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ memberId, memberName, memberColor }: {
+      memberId: string
+      memberName: string
+      memberColor: string
+    }) => {
+      await ensureSession()
+      const { data: household, error: householdError } = await supabase
+        .from('households')
+        .select('id')
+        .limit(1)
+        .maybeSingle()
+      if (householdError) throw new Error(householdError.message)
+      if (!household) throw new Error('No household')
+
+      const listName = `${memberName}’s groceries`
+      const color: MemberColor = isMemberColorPreset(memberColor) ? memberColor : 'fjord'
+      const lists = await run(() =>
+        supabase.from('lists').select('id, sort_order').order('sort_order', { ascending: false }).limit(1),
+      )
+      const sortOrder = (lists[0]?.sort_order ?? 0) + 1
+      const list = await run(() =>
+        supabase
+          .from('lists')
+          .insert({
+            household_id: household.id,
+            name: listName,
+            icon: 'cart',
+            color,
+            sort_order: sortOrder,
+          })
+          .select('id, name')
+          .single(),
+      ) as { id: string; name: string }
+
+      try {
+        const calendar = await run(() =>
+          supabase
+            .from('meal_calendars')
+            .insert({
+              household_id: household.id,
+              member_id: memberId,
+              list_id: list.id,
+            })
+            .select('id')
+            .single(),
+        ) as { id: string }
+        return { id: calendar.id, listId: list.id, listName: list.name, memberId }
+      } catch (err) {
+        await supabase.from('lists').delete().eq('id', list.id)
+        throw err
+      }
+    },
+    onSettled: () => {
+      void refetch(queryClient, 'mealCalendars', 'lists')
+    },
+  })
+}
+
 export function useUpsertMealPlan() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (input: {
+      calendarId: string
       date: string
       slot: Database['public']['Enums']['meal_slot']
       recipeId?: string | null
@@ -1382,7 +1464,12 @@ export function useUpsertMealPlan() {
     }) => {
       if (input.clear) {
         await run(() =>
-          supabase.from('meal_plan').delete().eq('date', input.date).eq('slot', input.slot),
+          supabase
+            .from('meal_plan')
+            .delete()
+            .eq('calendar_id', input.calendarId)
+            .eq('date', input.date)
+            .eq('slot', input.slot),
         )
         return
       }
@@ -1394,18 +1481,27 @@ export function useUpsertMealPlan() {
         .maybeSingle()
       if (householdError) throw new Error(householdError.message)
       if (!household) throw new Error('No household')
-      await run(() =>
-        supabase.from('meal_plan').upsert(
-          {
-            household_id: household.id,
-            date: input.date,
-            slot: input.slot,
-            recipe_id: input.recipeId ?? null,
-            title: input.title ?? null,
-          },
-          { onConflict: 'household_id,date,slot' },
-        ),
-      )
+      try {
+        await run(() =>
+          supabase.from('meal_plan').upsert(
+            {
+              household_id: household.id,
+              calendar_id: input.calendarId,
+              date: input.date,
+              slot: input.slot,
+              recipe_id: input.recipeId ?? null,
+              title: input.title ?? null,
+            },
+            { onConflict: 'calendar_id,date,slot' },
+          ),
+        )
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        if (/meal_plan_household_id_date_slot|duplicate key|unique/i.test(message)) {
+          throw new Error('That slot is already filled on another meal plan')
+        }
+        throw err
+      }
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['mealPlan'] }),
   })
@@ -1456,14 +1552,21 @@ export function useAddWeekIngredients() {
     mutationFn: async ({
       entries,
       recipes,
+      listId,
     }: {
       entries: MealPlanRow[]
       recipes: Recipe[]
+      /** Target grocery list for this meal calendar. */
+      listId: string
     }) => {
       const lists = await run(() =>
-        supabase.from('lists').select('id, name, list_items(id, text, quantity)').order('sort_order'),
+        supabase
+          .from('lists')
+          .select('id, name, list_items(id, text, quantity)')
+          .eq('id', listId)
+          .limit(1),
       )
-      const groceries = lists.find((l) => l.name.toLowerCase() === 'groceries') ?? lists[0]
+      const groceries = lists[0]
       if (!groceries) throw new Error('No grocery list found')
 
       type Agg = {
@@ -1537,7 +1640,12 @@ export function useAddWeekIngredients() {
       for (const row of toUpdate) {
         await run(() => supabase.from('list_items').update({ quantity: row.quantity }).eq('id', row.id))
       }
-      return { added: toInsert.length, updated: toUpdate.length, listId: groceries.id }
+      return {
+        added: toInsert.length,
+        updated: toUpdate.length,
+        listId: groceries.id,
+        listName: groceries.name,
+      }
     },
     onSettled: () => refetch(queryClient, 'lists'),
   })
