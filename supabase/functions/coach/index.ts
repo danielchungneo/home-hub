@@ -8,6 +8,12 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { COACH_SYSTEM, coachUserMessage, PLAN_SCHEMA, type CoachContext } from '../_shared/coach-prompt.ts'
 import { computeSignals, type Direction, type Signals } from '../_shared/coach-signals.ts'
 
+const corsHeaders: Record<string, string> = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
 const POINTS = { cardio: 15, strength: 20 } // must match complete_plan_part()
 // OPENAI_API_KEY + COACH_MODEL match recipe-import (same OpenAI key; model must support Structured Outputs).
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
@@ -41,6 +47,7 @@ const weekdayName = async () => {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   try {
     const body = await req.json().catch(() => ({}))
     if (body.mode === 'swap') {
@@ -197,4 +204,4 @@ function sanitize(p: any, sig: Signals) {
 }
 
 const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
