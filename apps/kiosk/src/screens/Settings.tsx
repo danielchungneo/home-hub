@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNav } from '../app/nav'
 import { AppShell, PageHeader, settingsSleepLabel } from '../components/AppShell'
 import { Button } from '../components/Button'
@@ -21,11 +21,13 @@ import {
   useSetParentPin,
   useSpeakers,
   useToggleCalendarSource,
+  useUpdateHouseholdLocation,
   useUpdateHouseholdSettings,
   useUpdateMember,
   useUpsertAthleteProfile,
   type MemberInput,
 } from '../data/hooks'
+import { searchPlaces, type GeoPlace } from '../lib/weather'
 import { useLive } from '../data/live'
 import { useClock } from '../hooks/useClock'
 import { memberColorProps } from '../lib/colors'
@@ -304,30 +306,173 @@ function SleepSettings({ settings }: { settings: HouseholdSettings }) {
 
 function WeatherSettings({ settings }: { settings: HouseholdSettings }) {
   const update = useUpdateHouseholdSettings()
+  const setLocation = useUpdateHouseholdLocation()
+  const [editing, setEditing] = useState(false)
+  const [query, setQuery] = useState('')
+  const [keyboard, setKeyboard] = useState(false)
+  const [results, setResults] = useState<GeoPlace[]>([])
+  const [searching, setSearching] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
   const location = [settings.locationLabel, settings.locationZip].filter(Boolean).join(' · ') || 'Not set'
 
+  const openEditor = () => {
+    setQuery(settings.locationZip || settings.locationLabel || '')
+    setResults([])
+    setError(null)
+    setEditing(true)
+    setKeyboard(true)
+  }
+
+  const closeEditor = () => {
+    if (busy) return
+    setEditing(false)
+    setKeyboard(false)
+  }
+
+  useEffect(() => {
+    if (!editing) return
+    const q = query.trim()
+    if (q.length < 2) {
+      setResults([])
+      setSearching(false)
+      setError(null)
+      return
+    }
+    let cancelled = false
+    setSearching(true)
+    const t = window.setTimeout(() => {
+      void searchPlaces(q)
+        .then((places) => {
+          if (cancelled) return
+          setResults(places)
+          setError(places.length ? null : 'No places matched. Try a city or ZIP.')
+        })
+        .catch((err) => {
+          if (cancelled) return
+          setResults([])
+          setError(err instanceof Error ? err.message : 'Couldn’t search locations.')
+        })
+        .finally(() => {
+          if (!cancelled) setSearching(false)
+        })
+    }, 320)
+    return () => {
+      cancelled = true
+      window.clearTimeout(t)
+    }
+  }, [editing, query])
+
+  const pick = async (place: GeoPlace) => {
+    setBusy(true)
+    setError(null)
+    try {
+      await setLocation.mutateAsync(place)
+      setEditing(false)
+      setKeyboard(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Couldn’t save location.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
-    <div className={s.rows}>
-      <div className={s.row}>
-        <span className={s.rowText}><span>Location</span><small>Used only for the forecast</small></span>
-        <Button variant="secondary" className={s.value}>{location}</Button>
+    <>
+      <div className={s.rows}>
+        <div className={s.row}>
+          <span className={s.rowText}><span>Location</span><small>Used only for the forecast</small></span>
+          <Button variant="secondary" iconRight="chevron-right" className={s.value} onClick={openEditor}>
+            {location}
+          </Button>
+        </div>
+        <div className={s.row}>
+          <span className={s.rowText}><span>Units</span></span>
+          <Button
+            variant="secondary"
+            iconRight="chevron-right"
+            className={s.value}
+            onClick={() => void update.mutateAsync({ weatherUnits: settings.weatherUnits === 'f' ? 'c' : 'f' }).catch(() => {})}
+          >
+            {settings.weatherUnits === 'c' ? '°C' : '°F'}
+          </Button>
+        </div>
+        <div className={s.row}>
+          <span className={s.rowText}><span>Refresh every</span></span>
+          <Button variant="secondary" className={s.value}>30 minutes</Button>
+        </div>
       </div>
-      <div className={s.row}>
-        <span className={s.rowText}><span>Units</span></span>
-        <Button
-          variant="secondary"
-          iconRight="chevron-right"
-          className={s.value}
-          onClick={() => void update.mutateAsync({ weatherUnits: settings.weatherUnits === 'f' ? 'c' : 'f' }).catch(() => {})}
-        >
-          {settings.weatherUnits === 'c' ? '°C' : '°F'}
-        </Button>
-      </div>
-      <div className={s.row}>
-        <span className={s.rowText}><span>Refresh every</span></span>
-        <Button variant="secondary" className={s.value}>30 minutes</Button>
-      </div>
-    </div>
+
+      {editing && (
+        <div className={`${s.confirmScrim} anim-confirm-scrim`} onClick={closeEditor}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="location-editor-title"
+            className={`${s.memberDialog} anim-confirm-rise`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={s.confirmText}>
+              <h2 id="location-editor-title" className={s.confirmTitle}>Forecast location</h2>
+              <p className={s.confirmDetail}>Search a city or ZIP, then pick a match.</p>
+            </div>
+
+            <label className={s.addField}>
+              <Icon name="sun" size={24} stroke={2.6} />
+              <span className="sr-only">City or ZIP</span>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value.slice(0, 48))}
+                onFocus={() => setKeyboard(true)}
+                placeholder="City or ZIP"
+                autoComplete="off"
+                inputMode="none"
+              />
+            </label>
+
+            <div className={s.speakerPicker} role="listbox" aria-label="Matching places">
+              {results.map((place) => (
+                <button
+                  key={place.id}
+                  type="button"
+                  role="option"
+                  disabled={busy}
+                  className={s.speakerOption}
+                  onClick={() => void pick(place)}
+                >
+                  <Icon name="sun" size={22} />
+                  <span className={s.rowText}>
+                    <span>{place.label}</span>
+                    <small>{place.detail}</small>
+                  </span>
+                </button>
+              ))}
+              {!searching && query.trim().length >= 2 && !results.length && (
+                <p className={s.speakerEmpty}>{error ?? 'No places matched.'}</p>
+              )}
+              {searching && <p className={s.speakerEmpty}>Searching…</p>}
+              {query.trim().length < 2 && <p className={s.speakerEmpty}>Type at least 2 characters.</p>}
+            </div>
+
+            {error && results.length > 0 && <p className={s.formError}>{error}</p>}
+            <div className={s.confirmActions}>
+              <Button variant="secondary" size="lg" block disabled={busy} onClick={closeEditor}>
+                Cancel
+              </Button>
+            </div>
+
+            {keyboard && (
+              <SoftKeyboard
+                value={query}
+                onChange={(next) => setQuery(next.slice(0, 48))}
+                onDone={() => setKeyboard(false)}
+              />
+            )}
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -834,6 +979,7 @@ function WorkoutCoachSettings({ members }: { members: Member[] }) {
             aria-modal="true"
             aria-labelledby="coach-editor-title"
             className={`${s.memberDialog} anim-confirm-rise`}
+            {...memberColorProps(editing.color)}
             onClick={(e) => e.stopPropagation()}
           >
             <div className={s.confirmText}>

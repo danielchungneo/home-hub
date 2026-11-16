@@ -13,7 +13,7 @@ import {
   type Activity, type AthleteProfile, type CalendarEvent, type CalendarSource, type CardioKind, type CoachPlan, type Database, type Feel, type GroceryQty, type HouseholdSettings, type Ingredient, type Json, type JukeboxFavorite, type ListItem, type MediaKind, type Member, type MemberColor, type QueueItem, type RecipeStep, type Redemption, type RewardAisle, type RewardDeal, type SwapReason,
 } from '@hub/shared'
 import { ensureSession, supabase } from '../lib/supabase'
-import { fetchOpenMeteo, type Weather } from '../lib/weather'
+import { fetchOpenMeteo, type GeoPlace, type Weather } from '../lib/weather'
 import type { Recipe, Reward, ShoppingList } from '../lib/types'
 import type { Frequency, Schedule } from '../types'
 import { isoDate } from '../lib/tasks'
@@ -518,6 +518,54 @@ export function useUpdateHouseholdSettings() {
     },
     onSettled: () => {
       void refetch(queryClient, 'householdSettings')
+      void queryClient.invalidateQueries({ queryKey: ['weather'] })
+    },
+  })
+}
+
+/** Set forecast place: label/zip on settings, lat/lon (+ timezone) on the household. */
+export function useUpdateHouseholdLocation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (place: GeoPlace) => {
+      await ensureSession()
+      const { data: household, error: hErr } = await supabase
+        .from('households')
+        .select('id')
+        .limit(1)
+        .maybeSingle()
+      if (hErr) throw new Error(hErr.message)
+      if (!household) throw new Error('No household')
+
+      const { error: locErr } = await supabase
+        .from('households')
+        .update({
+          location_lat: place.lat,
+          location_lon: place.lon,
+          ...(place.timezone ? { timezone: place.timezone } : {}),
+        })
+        .eq('id', household.id)
+      if (locErr) throw new Error(locErr.message)
+
+      await run(() =>
+        supabase
+          .from('household_settings')
+          .update({
+            location_label: place.label,
+            location_zip: place.zip,
+          })
+          .eq('household_id', household.id),
+      )
+      return place
+    },
+    onMutate: async (place) =>
+      optimistic<HouseholdSettings>(queryClient, ['householdSettings'], (prev) => ({
+        ...prev,
+        locationLabel: place.label,
+        locationZip: place.zip,
+      })),
+    onSettled: () => {
+      void refetch(queryClient, 'householdSettings', 'household')
       void queryClient.invalidateQueries({ queryKey: ['weather'] })
     },
   })
