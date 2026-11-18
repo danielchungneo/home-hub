@@ -4,18 +4,26 @@
   z-index: 20;
   overflow: hidden;
   background: var(--idle-floor);
+  transition: background-color var(--dur-fade) var(--ease-out);
+}
+.page[data-sky='night'] {
+  background: var(--idle-night);
 }
 
-/* Fridge-collage stage: sticky-note washes + drifting member-color blooms. */
+/* Fridge-collage stage: sticky-note washes + member-color blooms; sky swaps with move/rest. */
 .stage {
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
 
-.floor {
+.floor,
+.floorNight {
   position: absolute;
   inset: 0;
+  transition: opacity var(--dur-fade) var(--ease-out);
+}
+.floor {
   background:
     radial-gradient(ellipse 70% 55% at 12% 18%, var(--note-snack) 0%, transparent 58%),
     radial-gradient(ellipse 60% 50% at 88% 12%, var(--note-breakfast) 0%, transparent 54%),
@@ -25,6 +33,70 @@
     radial-gradient(ellipse 36% 32% at 64% 28%, var(--ocean-tint) 0%, transparent 70%),
     var(--idle-floor);
 }
+.floorNight {
+  opacity: 0;
+  background: var(--idle-night);
+}
+.page[data-sky='night'] .floor { opacity: 0; }
+.page[data-sky='night'] .floorNight { opacity: 1; }
+
+/* Sun by day, moon + quiet stars by night — opacity only, then still. */
+.sun,
+.moon {
+  position: absolute;
+  border-radius: 50%;
+  transition: opacity var(--dur-fade) var(--ease-out);
+}
+.sun {
+  right: 7%;
+  top: 8%;
+  width: 132px;
+  height: 132px;
+  background:
+    radial-gradient(circle at 35% 32%, var(--idle-sun-core) 0%, var(--idle-sun) 42%, transparent 68%),
+    radial-gradient(circle at 50% 50%, var(--honey) 0%, transparent 55%);
+  opacity: 0.95;
+}
+.moon {
+  right: 8%;
+  top: 9%;
+  width: 96px;
+  height: 96px;
+  background: radial-gradient(circle at 32% 30%, var(--color-on-ink) 0%, var(--idle-moon) 55%, var(--fjord-tint) 100%);
+  opacity: 0;
+}
+/* Crescent bite: a night-colored disc covers the right side. */
+.moon::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: -22px;
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  background: var(--idle-night);
+}
+.skyStar {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--idle-star);
+  opacity: 0;
+  transition: opacity var(--dur-fade) var(--ease-out);
+}
+.skyStar0 { left: 12%; top: 14%; }
+.skyStar1 { left: 28%; top: 9%; width: 4px; height: 4px; }
+.skyStar2 { left: 46%; top: 16%; width: 5px; height: 5px; }
+.skyStar3 { left: 63%; top: 11%; }
+.skyStar4 { left: 74%; top: 22%; width: 4px; height: 4px; }
+.skyStar5 { left: 18%; top: 28%; width: 3px; height: 3px; }
+.skyStar6 { left: 88%; top: 36%; width: 5px; height: 5px; }
+.page[data-sky='night'] .sun { opacity: 0; }
+.page[data-sky='night'] .moon { opacity: 0.92; }
+.page[data-sky='night'] .skyStar { opacity: 0.7; }
+.page[data-sky='night'] .skyStar1,
+.page[data-sky='night'] .skyStar4 { opacity: 0.45; }
 
 .accentWash {
   position: absolute;
@@ -38,7 +110,9 @@
     radial-gradient(circle at 35% 40%, var(--color-star) 0%, transparent 42%),
     radial-gradient(circle at 70% 65%, var(--color-peach) 0%, transparent 46%);
   opacity: 0.35;
+  transition: opacity var(--dur-fade) var(--ease-out);
 }
+.page[data-sky='night'] .accentWash { opacity: 0.08; }
 
 .bloom {
   position: absolute;
@@ -46,11 +120,14 @@
   background: var(--member);
   opacity: 0.3;
   transform: translate(-50%, -50%);
+  transition: opacity var(--dur-fade) var(--ease-out);
 }
 .bloomSoft {
   background: var(--member-tint);
   opacity: 0.85;
 }
+.page[data-sky='night'] .bloom { opacity: 0.1; }
+.page[data-sky='night'] .bloomSoft { opacity: 0.16; }
 .bloom0 { left: 10%; top: 22%; width: 360px; height: 360px; }
 .bloom1 { left: 78%; top: 16%; width: 300px; height: 300px; opacity: 0.28; }
 .bloom2 { left: 58%; top: 70%; width: 380px; height: 380px; opacity: 0.26; }
@@ -72,7 +149,9 @@
   background: var(--member);
   opacity: 0.7;
   transform: translate(-50%, -50%) rotate(18deg);
+  transition: opacity var(--dur-fade) var(--ease-out);
 }
+.page[data-sky='night'] .confetti { opacity: 0.18; }
 .dot0 { left: 16%; top: 34%; }
 .dot1 { left: 34%; top: 14%; width: 14px; height: 14px; border-radius: 50%; }
 .dot2 { left: 62%; top: 22%; width: 22px; height: 12px; }
@@ -276,6 +355,17 @@
   .hint,
   .playing {
     animation: none !important;
+  }
+  .page,
+  .floor,
+  .floorNight,
+  .sun,
+  .moon,
+  .skyStar,
+  .accentWash,
+  .bloom,
+  .confetti {
+    transition: none !important;
   }
   .buddy {
     opacity: 1;

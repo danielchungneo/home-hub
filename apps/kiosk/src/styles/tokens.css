@@ -166,6 +166,11 @@
 
   /* Idle hangout stage — fridge-collage energy, still from the family palette */
   --idle-floor: var(--color-board);
+  --idle-night: #1A2230;           /* cool evening sky while the cast rests */
+  --idle-sun: var(--color-star);
+  --idle-sun-core: #FFE8B0;
+  --idle-moon: #E8EEF5;
+  --idle-star: var(--color-frost);
   --idle-stamp: var(--color-surface); /* solid plate so stamps read over the busy stage */
 }
 

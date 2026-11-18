@@ -160,6 +160,7 @@ export default function Idle() {
   const clockRef = useRef<HTMLDivElement>(null)
   const playingRef = useRef<HTMLDivElement>(null)
   const hintRef = useRef<HTMLSpanElement>(null)
+  const pageRef = useRef<HTMLDivElement>(null)
   const nodeRefs = useRef(new Map<string, HTMLDivElement>())
   const bodiesRef = useRef<IdleBody[]>([])
   const obstaclesRef = useRef<IdleRect[]>([])
@@ -269,7 +270,7 @@ export default function Idle() {
     let phaseMs = 0
 
     // Hold still: pin each blob where its last path ended and drop the animations, so the
-    // compositor has nothing to draw until the next move phase.
+    // compositor has nothing to draw until the next move phase. Night sky comes out with rest.
     const rest = () => {
       for (const b of bodies) {
         const node = nodes.get(b.id)
@@ -278,9 +279,12 @@ export default function Idle() {
       running.forEach((a) => a.cancel())
       running.clear()
       restingRef.current = true
+      // Day while they bump; night when they stop — DOM attr only (no cast re-render).
+      pageRef.current?.setAttribute('data-sky', 'night')
       segmentTimer = window.setTimeout(() => {
         restingRef.current = false
         phaseMs = 0
+        pageRef.current?.setAttribute('data-sky', 'day')
         segment()
       }, REST_MS)
     }
@@ -322,6 +326,7 @@ export default function Idle() {
       segmentTimer = window.setTimeout(phaseMs >= MOVE_MS ? rest : segment, SEGMENT_MS)
     }
 
+    pageRef.current?.setAttribute('data-sky', 'day')
     segment()
     window.addEventListener('resize', measure)
 
@@ -330,14 +335,21 @@ export default function Idle() {
       timers.forEach((t) => window.clearTimeout(t))
       running.forEach((a) => a.cancel())
       restingRef.current = false
+      pageRef.current?.setAttribute('data-sky', 'day')
       window.removeEventListener('resize', measure)
     }
   }, [cast, measure])
 
   return (
-    <div className={s.page} role="dialog" aria-label="Idle. Tap anywhere to open the hub.">
+    <div ref={pageRef} className={s.page} data-sky="day" role="dialog" aria-label="Idle. Tap anywhere to open the hub.">
       <div className={s.stage} aria-hidden="true">
         <div className={s.floor} />
+        <div className={s.floorNight} />
+        <span className={s.sun} />
+        <span className={s.moon} />
+        {[s.skyStar0, s.skyStar1, s.skyStar2, s.skyStar3, s.skyStar4, s.skyStar5, s.skyStar6].map((star) => (
+          <span key={star} className={`${s.skyStar} ${star}`} />
+        ))}
         {/* Static on purpose: ~27 looping layers at 1080p kept the Pi 3's GPU and CPU pinned. */}
         {BLOOMS.map((bloom) => (
           <span
