@@ -27,16 +27,17 @@ import {
   useUpsertAthleteProfile,
   type MemberInput,
 } from '../data/hooks'
+import { restartWifi } from '../lib/device'
 import { searchPlaces, type GeoPlace } from '../lib/weather'
 import { useLive } from '../data/live'
 import { useClock } from '../hooks/useClock'
 import { memberColorProps } from '../lib/colors'
 import { formatTimeOfDay } from '../lib/format'
 import { who } from '../lib/members'
-import type { AthleteProfile, CardioKind, HouseholdSettings, Member, MemberColor } from '@hub/shared'
+import type { AthleteProfile, CardioKind, HouseholdSettings, Member, ThemeColorToken } from '@hub/shared'
 import s from './Settings.module.css'
 
-type SectionId = 'family' | 'workout' | 'calendars' | 'music' | 'sleep' | 'weather' | 'pin'
+type SectionId = 'family' | 'workout' | 'calendars' | 'music' | 'sleep' | 'weather' | 'pin' | 'device'
 
 const CARDIO_OPTIONS: { id: CardioKind; label: string }[] = [
   { id: 'run', label: 'Run' },
@@ -470,6 +471,59 @@ function WeatherSettings({ settings }: { settings: HouseholdSettings }) {
               />
             )}
           </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+function DeviceSettings() {
+  const [busy, setBusy] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!toast) return
+    const t = window.setTimeout(() => setToast(null), 4000)
+    return () => window.clearTimeout(t)
+  }, [toast])
+
+  const onReconnect = async () => {
+    if (busy) return
+    setBusy(true)
+    setToast(null)
+    try {
+      await restartWifi()
+      setToast('Wi‑Fi reconnected')
+    } catch (err) {
+      setToast(err instanceof Error ? err.message : 'Couldn’t reconnect Wi‑Fi — try power-cycling the hub')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <div className={s.rows}>
+        <div className={s.row}>
+          <span className={s.rowText}>
+            <span>Reconnect Wi‑Fi</span>
+            <small>Use if the hub loses internet</small>
+          </span>
+          <Button
+            variant="secondary"
+            icon="refresh"
+            className={s.value}
+            disabled={busy}
+            onClick={() => void onReconnect()}
+          >
+            {busy ? 'Reconnecting…' : 'Reconnect'}
+          </Button>
+        </div>
+      </div>
+      {toast && (
+        <div role="status" className={`${s.toast} anim-toast`}>
+          <Icon name="tick" size={20} stroke={3} />
+          {toast}
         </div>
       )}
     </>
@@ -1106,7 +1160,7 @@ export default function Settings() {
 
   const lockMinsLeft = Math.max(0, Math.ceil((settingsUnlockedUntil - now.getTime()) / 60_000))
 
-  const sections: { id: SectionId; label: string; sub: string; icon: IconName; color: MemberColor }[] = [
+  const sections: { id: SectionId; label: string; sub: string; icon: IconName; color: ThemeColorToken }[] = [
     { id: 'family', label: 'Family', sub: 'Add, hide, remove members', icon: 'sofa', color: 'moss' },
     { id: 'workout', label: 'Workout coach', sub: 'Opt in, days, gear, limits', icon: 'dumbbell', color: 'honey' },
     { id: 'calendars', label: 'Calendars', sub: calendarCount ? `${calendarCount} Google calendar${calendarCount === 1 ? '' : 's'}` : 'Link Google accounts', icon: 'calendar', color: 'fjord' },
@@ -1126,6 +1180,7 @@ export default function Settings() {
       color: 'honey',
     },
     { id: 'pin', label: 'Parent PIN', sub: 'Approvals and settings', icon: 'key', color: 'clay' },
+    { id: 'device', label: 'Device', sub: 'Wi‑Fi and hub recovery', icon: 'refresh', color: 'slate' },
   ]
   const current = sections.find((x) => x.id === section)!
 
@@ -1173,8 +1228,10 @@ export default function Settings() {
             settings.data ? <SleepSettings settings={settings.data} /> : null
           ) : section === 'weather' ? (
             settings.data ? <WeatherSettings settings={settings.data} /> : null
-          ) : (
+          ) : section === 'pin' ? (
             settings.data ? <PinSettings settings={settings.data} /> : null
+          ) : (
+            <DeviceSettings />
           )}
         </Panel>
       </div>

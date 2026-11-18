@@ -12,10 +12,15 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     // Music agent search API (pnpm --filter @hub/music-agent start).
+    // Device helper (pi/hub-device) for Wi-Fi restart.
     proxy: {
       '/api/music': {
         target: 'http://127.0.0.1:8787',
         rewrite: (path) => path.replace(/^\/api\/music/, ''),
+      },
+      '/api/device': {
+        target: 'http://127.0.0.1:8788',
+        rewrite: (path) => path.replace(/^\/api\/device/, ''),
       },
     },
   },
@@ -24,6 +29,10 @@ export default defineConfig(({ mode }) => ({
       '/api/music': {
         target: 'http://127.0.0.1:8787',
         rewrite: (path) => path.replace(/^\/api\/music/, ''),
+      },
+      '/api/device': {
+        target: 'http://127.0.0.1:8788',
+        rewrite: (path) => path.replace(/^\/api\/device/, ''),
       },
     },
   },

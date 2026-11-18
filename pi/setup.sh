@@ -93,6 +93,9 @@ path.write_text(prefix + block)
 print("Updated", path)
 PY
 
+echo "==> Device helper (Wi-Fi restart for Settings)"
+bash "$SCRIPT_DIR/install-hub-device.sh"
+
 echo "==> Music agent (optional; needs Node 20+)"
 if command -v node >/dev/null 2>&1; then
   AGENT_DIR="$HOME/hub-music-agent"

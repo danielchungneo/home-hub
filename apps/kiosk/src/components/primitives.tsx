@@ -1,5 +1,5 @@
 import type { CSSProperties, HTMLAttributes, ReactNode } from 'react'
-import type { MemberColor } from '@hub/shared'
+import type { MemberColor, ThemeColorToken } from '@hub/shared'
 import { Icon } from './Icon'
 import s from './primitives.module.css'
 
@@ -69,7 +69,7 @@ export function CheckMark({ checked, size = 56 }: { checked: boolean; size?: num
 }
 
 /* ---------- Icon tile: tinted rounded square with an illustration icon ---------- */
-export function IconTile({ icon, color, size = 64 }: { icon: Parameters<typeof Icon>[0]['name']; color?: MemberColor; size?: number }) {
+export function IconTile({ icon, color, size = 64 }: { icon: Parameters<typeof Icon>[0]['name']; color?: ThemeColorToken; size?: number }) {
   return (
     <span data-color={color} className={s.tile} style={{ width: size, height: size }} aria-hidden="true">
       <Icon name={icon} size={Math.round(size * 0.62)} stroke={2.2} />

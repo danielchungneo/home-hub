@@ -115,6 +115,17 @@
 .rowText small { font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--color-ink-3); }
 .value { padding: 0 14px 0 20px; font-size: 18px; }
 
+.toast {
+  position: fixed; left: calc(50% + var(--sidebar-width) / 2); bottom: 60px; z-index: 50;
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 24px;
+  border-radius: var(--radius-pill);
+  background: var(--color-ink); color: var(--color-on-ink);
+  font-size: var(--text-md); font-weight: var(--weight-heavy);
+  max-width: min(720px, calc(100% - 80px));
+}
+
 .speakerPicker {
   display: flex;
   flex-direction: column;

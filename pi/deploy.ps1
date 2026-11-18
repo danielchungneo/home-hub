@@ -1,4 +1,5 @@
 ﻿# Build the kiosk on this machine and copy it to the Pi (never build on the Pi 3 B+).
+# Also installs/refreshes the localhost device helper (Wi-Fi restart).
 # Usage: pnpm deploy:pi    or    powershell -File pi/deploy.ps1 -PiHost home-hub.local -PiUser danielchung
 param(
   [string]$PiHost = 'home-hub.local',
@@ -14,6 +15,20 @@ try {
   Write-Host '==> Building the kiosk'
   pnpm build:kiosk
   if ($LASTEXITCODE -ne 0) { throw 'Build failed. Nothing was deployed.' }
+
+  Write-Host "==> Installing hub-device helper on $target"
+  ssh $target 'rm -rf /tmp/hub-device /tmp/hub-device.service /tmp/Caddyfile /tmp/install-hub-device.sh'
+  if ($LASTEXITCODE -ne 0) { throw "Can't reach $target over SSH." }
+  scp -r pi/hub-device "${target}:/tmp/hub-device"
+  if ($LASTEXITCODE -ne 0) { throw 'Copy of hub-device failed.' }
+  scp pi/systemd/hub-device.service "${target}:/tmp/hub-device.service"
+  if ($LASTEXITCODE -ne 0) { throw 'Copy of hub-device.service failed.' }
+  scp pi/caddy/Caddyfile "${target}:/tmp/Caddyfile"
+  if ($LASTEXITCODE -ne 0) { throw 'Copy of Caddyfile failed.' }
+  scp pi/install-hub-device.sh "${target}:/tmp/install-hub-device.sh"
+  if ($LASTEXITCODE -ne 0) { throw 'Copy of install-hub-device.sh failed.' }
+  ssh -t $target 'bash /tmp/install-hub-device.sh'
+  if ($LASTEXITCODE -ne 0) { throw 'install-hub-device.sh failed on the Pi.' }
 
   Write-Host "==> Copying apps/kiosk/dist to ${target}:/tmp/hub-dist"
   ssh $target 'rm -rf /tmp/hub-dist'

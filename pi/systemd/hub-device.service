@@ -1,0 +1,14 @@
+[Unit]
+Description=Chung Family Hub device helper (Wi-Fi restart)
+After=network.target
+
+[Service]
+Type=simple
+User=danielchung
+WorkingDirectory=/home/danielchung/hub-kiosk-tools
+ExecStart=/usr/bin/python3 /home/danielchung/hub-kiosk-tools/hub-device.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

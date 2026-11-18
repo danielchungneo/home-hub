@@ -1,0 +1,4 @@
+# Allow the kiosk user to bounce Wi-Fi without a password.
+# Installed to /etc/sudoers.d/hub-device by install-hub-device.sh.
+# Replace __KIOSK_USER__ at install time.
+__KIOSK_USER__ ALL=(root) NOPASSWD: /home/__KIOSK_USER__/hub-kiosk-tools/restart-wifi.sh

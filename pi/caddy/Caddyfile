@@ -10,6 +10,11 @@ http://localhost, http://127.0.0.1 {
 		reverse_proxy 127.0.0.1:8787
 	}
 
+	# Device helper (Wi-Fi restart) — pi/hub-device/hub-device.py on 127.0.0.1:8788.
+	handle_path /api/device/* {
+		reverse_proxy 127.0.0.1:8788
+	}
+
 	handle {
 		root * /var/www/hub
 		try_files {path} /index.html
