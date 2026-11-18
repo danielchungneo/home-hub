@@ -728,6 +728,21 @@ Deno.serve(async (req) => {
       return json({ household: { id: household.id, name: household.name } })
     }
 
+    if (req.method === "GET" && action === "recipe") {
+      const recipeId = url.searchParams.get("id")?.trim()
+      if (!recipeId) return json({ error: "Missing id" }, 400)
+      const { data, error } = await admin
+        .from("recipes")
+        .select("*")
+        .eq("id", recipeId)
+        .eq("household_id", household.id)
+        .maybeSingle()
+      if (error) throw new Error(error.message)
+      if (!data) return json({ error: "Recipe not found" }, 404)
+      const imageUrl = await signedImageUrl(admin, data.image_path)
+      return json({ recipe: rowToClient(data, imageUrl) })
+    }
+
     return json({ error: "Not found" }, 404)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

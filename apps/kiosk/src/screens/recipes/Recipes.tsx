@@ -3,6 +3,7 @@ import { AppShell, PageHeader } from '../../components/AppShell'
 import { Button, IconButton } from '../../components/Button'
 import { FoodPhoto } from '../../components/FoodPhoto'
 import { Icon } from '../../components/Icon'
+import { QrCode } from '../../components/QrCode'
 import { SoftKeyboard } from '../../components/SoftKeyboard'
 import { Panel, Rail } from '../../components/primitives'
 import { useDeleteRecipe, useHousehold, useHouseholdSettings, useMealPlan, useRecipes, useUpdateRecipe } from '../../data/hooks'
@@ -40,12 +41,13 @@ type Item =
   | { kind: 'divider'; key: string; x: number; course: Recipe['course']; count: number; tabX: number; n: number }
   | { kind: 'card'; key: string; x: number; recipe: Recipe; tilt: number; rest: number; n: number; i: number }
 
-function ingestUrl(token: string) {
+function ingestUrl(token: string, editRecipeId?: string) {
   // Supabase Functions/Storage force text/plain + CSP sandbox for HTML on *.supabase.co.
   // Host the phone UI on the existing smart-home Vercel app instead.
   const base = (import.meta.env.VITE_RECIPE_INGEST_URL as string | undefined)?.replace(/\/$/, '')
     || 'https://chung-smart-home.vercel.app/recipe'
-  return `${base}/?token=${encodeURIComponent(token)}`
+  const url = `${base}/?token=${encodeURIComponent(token)}`
+  return editRecipeId ? `${url}&edit=${encodeURIComponent(editRecipeId)}` : url
 }
 
 function readView(): ViewId {
@@ -163,9 +165,8 @@ export default function Recipes() {
   }
 
   const addUrl = household?.import_token ? ingestUrl(household.import_token) : null
-  const qrSrc = addUrl
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=12&data=${encodeURIComponent(addUrl)}`
-    : null
+  const editUrlFor = (recipeId: string) =>
+    household?.import_token ? ingestUrl(household.import_token, recipeId) : null
 
   return (
     <AppShell>
@@ -344,6 +345,7 @@ export default function Recipes() {
           onDelete={removeRecipe}
           deleting={deleteRecipe.isPending}
           pinProtectsDelete={!!settings?.pinProtectDeletes}
+          editUrl={editUrlFor(pull.recipe.id)}
           onClosed={() => setPull(null)}
         />
       )}
@@ -355,9 +357,9 @@ export default function Recipes() {
               <span className={s.qrTitle}>Add a recipe with your phone</span>
               <IconButton variant="secondary" icon="close" label="Close" onClick={() => setShowQr(false)} />
             </div>
-            {qrSrc ? (
+            {addUrl ? (
               <>
-                <img className={s.qrImg} src={qrSrc} alt="" width={360} height={360} />
+                <QrCode className={s.qrImg} value={addUrl} />
                 <p className={s.qrHint}>Scan to open the recipe importer, then the new card shows up here.</p>
               </>
             ) : (

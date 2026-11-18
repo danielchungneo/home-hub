@@ -5,6 +5,7 @@ import { AppShell, PageHeader } from '../../components/AppShell'
 import { Button, IconButton } from '../../components/Button'
 import { Icon, type IconName } from '../../components/Icon'
 import { MemberBlobAvatar } from '../../components/MemberBlobAvatar'
+import { QrCode } from '../../components/QrCode'
 import { SoftKeyboard } from '../../components/SoftKeyboard'
 import { Label } from '../../components/primitives'
 import { useAddWeekIngredients, useHouseholdSettings, useListShareLink, useMealPlan, useRecipes } from '../../data/hooks'
@@ -54,7 +55,7 @@ export default function Lists() {
   const [newColor, setNewColor] = useState<MemberColor>('fjord')
   const [creatingBusy, setCreatingBusy] = useState(false)
   const [showQr, setShowQr] = useState(false)
-  const [qrSrc, setQrSrc] = useState<string | null>(null)
+  const [qrUrl, setQrUrl] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const timers = useRef<number[]>([])
   const later = (ms: number, fn: () => void) => { timers.current.push(window.setTimeout(fn, ms)) }
@@ -247,11 +248,10 @@ export default function Lists() {
   const openPhoneQr = async () => {
     if (!active || shareLink.isPending) return
     setShowQr(true)
-    setQrSrc(null)
+    setQrUrl(null)
     try {
       const token = await shareLink.mutateAsync(active.id)
-      const url = shopUrl(token)
-      setQrSrc(`https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=12&data=${encodeURIComponent(url)}`)
+      setQrUrl(shopUrl(token))
     } catch (err) {
       setShowQr(false)
       setToast(err instanceof Error ? err.message : 'Couldn’t make a phone link')
@@ -623,9 +623,9 @@ export default function Lists() {
               <span className={s.qrTitle}>Open {active.name} on your phone</span>
               <IconButton variant="secondary" icon="close" label="Close" onClick={() => setShowQr(false)} />
             </div>
-            {qrSrc ? (
+            {qrUrl ? (
               <>
-                <img className={s.qrImg} src={qrSrc} alt="" width={360} height={360} />
+                <QrCode className={s.qrImg} value={qrUrl} />
                 <p className={s.qrHint}>Scan to check items off and add things. Changes show up here live.</p>
               </>
             ) : (

@@ -59,8 +59,11 @@ Deno.serve((req) => {
   }
   const url = new URL(req.url)
   const token = url.searchParams.get("token")
-  const target = token ? \`\${PAGE}?token=\${encodeURIComponent(token)}\` : PAGE
-  return Response.redirect(target, 302)
+  const edit = url.searchParams.get("edit")
+  const target = new URL(PAGE)
+  if (token) target.searchParams.set("token", token)
+  if (edit) target.searchParams.set("edit", edit)
+  return Response.redirect(target.toString(), 302)
 })
 `,
 )

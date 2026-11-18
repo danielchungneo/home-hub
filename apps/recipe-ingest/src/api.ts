@@ -55,10 +55,22 @@ export function getTokenFromLocation() {
   return new URLSearchParams(window.location.search).get('token')
 }
 
+export function getEditIdFromLocation() {
+  return new URLSearchParams(window.location.search).get('edit')
+}
+
 export function fetchHousehold(token: string) {
   return call<{ household: { id: string; name: string } }>(token, '/household?action=household', {
     method: 'GET',
   })
+}
+
+export function fetchRecipe(token: string, id: string) {
+  return call<{ recipe: RecipeDraft & { id: string } }>(
+    token,
+    `?action=recipe&id=${encodeURIComponent(id)}`,
+    { method: 'GET' },
+  )
 }
 
 export function analyzeRecipe(

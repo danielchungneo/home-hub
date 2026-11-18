@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNav } from '../../app/nav'
 import { Button, IconButton } from '../../components/Button'
 import { FoodPhoto } from '../../components/FoodPhoto'
+import { QrCode } from '../../components/QrCode'
 import { MEAL_SLOTS } from '../../lib/mealSlots'
 import type { MealPlanRow } from '../../data/mappers'
 import { shortDay } from '../../lib/format'
@@ -35,6 +36,7 @@ export function PulledCard({
   onDelete,
   deleting = false,
   pinProtectsDelete = false,
+  editUrl = null,
   onClosed,
 }: {
   pull: Pull
@@ -46,12 +48,14 @@ export function PulledCard({
   onDelete: (r: Recipe) => void
   deleting?: boolean
   pinProtectsDelete?: boolean
+  editUrl?: string | null
   onClosed: () => void
 }) {
   const { cook, requirePin } = useNav()
   const [phase, setPhase] = useState<Phase>('start')
   const [serv, setServ] = useState(r.servings)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showEditQr, setShowEditQr] = useState(false)
   const timers = useRef<number[]>([])
   const stage = useRef<HTMLDivElement>(null)
   const [origin, setOrigin] = useState<{ dx: number; dy: number; k: number } | null>(null)
@@ -151,6 +155,15 @@ export function PulledCard({
                   variant="secondary"
                   size="lg"
                   round
+                  icon="pencil"
+                  label={`Edit ${r.title} on your phone`}
+                  disabled={deleting || confirmDelete || !editUrl}
+                  onClick={() => setShowEditQr(true)}
+                />
+                <IconButton
+                  variant="secondary"
+                  size="lg"
+                  round
                   icon="trash"
                   label={pinProtectsDelete ? `Remove ${r.title} (needs PIN)` : `Remove ${r.title}`}
                   disabled={deleting}
@@ -219,6 +232,31 @@ export function PulledCard({
           </div>
         </div>
       </div>
+
+      {showEditQr && (
+        <div
+          className={s.qrScrim}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Edit ${r.title} on your phone`}
+          onClick={() => setShowEditQr(false)}
+        >
+          <div className={s.qrCard} onClick={(e) => e.stopPropagation()}>
+            <div className={s.qrHead}>
+              <span className={s.qrTitle}>Edit on your phone</span>
+              <IconButton variant="secondary" icon="close" label="Close" onClick={() => setShowEditQr(false)} />
+            </div>
+            {editUrl ? (
+              <>
+                <QrCode className={s.qrImg} value={editUrl} />
+                <p className={s.qrHint}>Scan to open the editor for “{r.title}”. Changes show up on the hub when you save.</p>
+              </>
+            ) : (
+              <p className={s.qrHint}>Recipe editing isn’t set up for this household yet.</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

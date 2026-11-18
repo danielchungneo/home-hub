@@ -198,14 +198,16 @@ export default function Cooking({ recipeId, onExit }: { recipeId: string; onExit
 
           <div className={s.uses}>
             <Label>This step uses</Label>
-            {uses.length > 0 ? uses.map((ing) => (
-              <div key={ing.name} className={s.useRow}>
-                <span className={s.useAmt}>{ing.qty ? `${quantity(ing.qty)}${ing.unit ? ` ${ing.unit}` : ''}` : 'To taste'}</span>
-                <span>{ing.name}</span>
-              </div>
-            )) : (
-              <span className={s.none}>No linked ingredients</span>
-            )}
+            <div className={`${s.usesList} scroll-y`}>
+              {uses.length > 0 ? uses.map((ing) => (
+                <div key={ing.name} className={s.useRow}>
+                  <span className={s.useAmt}>{ing.qty ? `${quantity(ing.qty)}${ing.unit ? ` ${ing.unit}` : ''}` : 'To taste'}</span>
+                  <span>{ing.name}</span>
+                </div>
+              )) : (
+                <span className={s.none}>No linked ingredients</span>
+              )}
+            </div>
           </div>
         </aside>
       </div>

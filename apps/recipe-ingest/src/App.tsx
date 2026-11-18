@@ -10,8 +10,10 @@ import {
   MAX_PARSE_IMAGES,
   analyzeRecipe,
   fetchHousehold,
+  fetchRecipe,
   fileToDataUrl,
   fileToVisionDataUrl,
+  getEditIdFromLocation,
   getTokenFromLocation,
   saveRecipe,
   uploadRecipeImage,
@@ -21,7 +23,7 @@ import {
 } from './api'
 import s from './App.module.css'
 
-type Phase = 'form' | 'needsText' | 'analyzing' | 'review' | 'success' | 'error-token'
+type Phase = 'form' | 'needsText' | 'analyzing' | 'loading' | 'review' | 'success' | 'error-token' | 'error-recipe'
 
 type ParsePhoto = { id: string; previewUrl: string; file: File }
 
@@ -47,7 +49,12 @@ function emptyDraft(): RecipeDraft {
 
 export function App() {
   const token = useMemo(() => getTokenFromLocation(), [])
-  const [phase, setPhase] = useState<Phase>(token ? 'form' : 'error-token')
+  const editId = useMemo(() => getEditIdFromLocation(), [])
+  const editing = Boolean(editId)
+  const [phase, setPhase] = useState<Phase>(() => {
+    if (!token) return 'error-token'
+    return editId ? 'loading' : 'form'
+  })
   const [householdName, setHouseholdName] = useState('your kitchen')
   const [url, setUrl] = useState('')
   const [text, setText] = useState('')
@@ -68,6 +75,35 @@ export function App() {
       .then((r) => setHouseholdName(r.household.name))
       .catch(() => setPhase('error-token'))
   }, [token])
+
+  useEffect(() => {
+    if (!token || !editId) return
+    let cancelled = false
+    setPhase('loading')
+    setError(null)
+    fetchRecipe(token, editId)
+      .then((r) => {
+        if (cancelled) return
+        setDraft({
+          ...r.recipe,
+          tags: normalizeRecipeTags(r.recipe.tags, {
+            prepMin: r.recipe.prepMin,
+            cookMin: r.recipe.cookMin,
+          }),
+          ingredients: r.recipe.ingredients.length
+            ? r.recipe.ingredients
+            : [{ qty: 1, unit: '', name: '' }],
+          steps: r.recipe.steps.length ? r.recipe.steps : [{ text: '' }],
+        })
+        setPhase('review')
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : String(err))
+        setPhase('error-recipe')
+      })
+    return () => { cancelled = true }
+  }, [token, editId])
 
   useEffect(() => {
     if (phase !== 'analyzing') return
@@ -170,12 +206,13 @@ export function App() {
     try {
       const cleaned: RecipeDraft = {
         ...draft,
+        id: draft.id ?? editId ?? undefined,
         title: draft.title.trim() || 'Untitled recipe',
         ingredients: draft.ingredients.filter((i) => i.name.trim()),
         steps: draft.steps.filter((st) => st.text.trim()),
         tags: normalizeRecipeTags(draft.tags, { prepMin: draft.prepMin, cookMin: draft.cookMin }),
       }
-      await saveRecipe(token, cleaned)
+      await saveRecipe(token, cleaned, cleaned.id)
       setPhase('success')
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -247,19 +284,47 @@ export function App() {
     )
   }
 
+  if (phase === 'error-recipe') {
+    return (
+      <main className={s.page}>
+        <p className={s.eyebrow}>{householdName}</p>
+        <h1 className={s.title}>Recipe not found</h1>
+        <p className={s.lede}>{error || 'Scan the edit QR again from the kitchen hub.'}</p>
+      </main>
+    )
+  }
+
+  if (phase === 'loading') {
+    return (
+      <main className={`${s.page} ${s.fadeIn}`}>
+        <p className={s.eyebrow}>{householdName}</p>
+        <h1 className={s.title}>Loading recipe</h1>
+        <p className={s.lede}>Pulling the current card from the hub…</p>
+        <section className={`${s.panel} ${s.analyzing}`}>
+          <div className={s.orbit} aria-hidden />
+        </section>
+      </main>
+    )
+  }
+
+  const heading =
+    phase === 'success'
+      ? (editing ? 'Recipe updated' : 'Recipe saved')
+      : phase === 'review'
+        ? (editing ? 'Edit recipe' : 'Review recipe')
+        : 'Add a recipe'
+  const lede =
+    phase === 'success'
+      ? (editing ? 'Changes are on the family recipe box on the hub.' : 'It is in the family recipe box on the hub.')
+      : phase === 'review'
+        ? (editing ? 'Change anything on your phone, then save to update the hub.' : 'Edit anything that looks off, then save it to the hub.')
+        : 'Paste a link, add notes, or snap a photo of a recipe card or screenshot.'
+
   return (
     <main className={`${s.page} ${s.fadeIn}`}>
       <p className={s.eyebrow}>{householdName}</p>
-      <h1 className={s.title}>
-        {phase === 'success' ? 'Recipe saved' : phase === 'review' ? 'Review recipe' : 'Add a recipe'}
-      </h1>
-      <p className={s.lede}>
-        {phase === 'success'
-          ? 'It is in the family recipe box on the hub.'
-          : phase === 'review'
-            ? 'Edit anything that looks off, then save it to the hub.'
-            : 'Paste a link, add notes, or snap a photo of a recipe card or screenshot.'}
-      </p>
+      <h1 className={s.title}>{heading}</h1>
+      <p className={s.lede}>{lede}</p>
 
       {(phase === 'form' || phase === 'needsText') && (
         <section className={s.panel}>
@@ -363,17 +428,35 @@ export function App() {
             ) : (
               <div className={s.photoEmpty}>No photo yet</div>
             )}
-            <label className={s.photoButton}>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                hidden
-                disabled={uploadingPhoto}
-                onChange={(e) => void onPhotoSelected(e.target.files?.[0] ?? null)}
-              />
-              {uploadingPhoto ? 'Uploading…' : draft.imageUrl ? 'Replace photo' : 'Add photo'}
-            </label>
+            <div className={s.photoActions}>
+              <label className={s.photoButton}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  hidden
+                  disabled={uploadingPhoto}
+                  onChange={(e) => {
+                    void onPhotoSelected(e.target.files?.[0] ?? null)
+                    e.target.value = ''
+                  }}
+                />
+                {uploadingPhoto ? 'Uploading…' : 'Take photo'}
+              </label>
+              <label className={s.photoButton}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  disabled={uploadingPhoto}
+                  onChange={(e) => {
+                    void onPhotoSelected(e.target.files?.[0] ?? null)
+                    e.target.value = ''
+                  }}
+                />
+                {uploadingPhoto ? 'Uploading…' : 'Choose from library'}
+              </label>
+            </div>
             {draft.imageUrl && (
               <button
                 type="button"
@@ -510,11 +593,13 @@ export function App() {
           {error && <p className={s.error}>{error}</p>}
           <div className={s.actions}>
             <button type="button" className={s.primary} disabled={saving} onClick={() => void onSave()}>
-              {saving ? 'Saving…' : 'Save to recipe box'}
+              {saving ? 'Saving…' : editing ? 'Save changes' : 'Save to recipe box'}
             </button>
-            <button type="button" className={s.secondary} onClick={() => { setPhase('form'); setError(null) }}>
-              Start over
-            </button>
+            {!editing && (
+              <button type="button" className={s.secondary} onClick={() => { setPhase('form'); setError(null) }}>
+                Start over
+              </button>
+            )}
           </div>
         </section>
       )}
@@ -523,12 +608,16 @@ export function App() {
         <section className={`${s.panel} ${s.success}`}>
           <div className={s.successMark} aria-hidden>✓</div>
           <h2 className={s.title} style={{ fontSize: 30 }}>{draft.title}</h2>
-          <p className={s.lede}>Added to the family recipe box.</p>
-          <div className={s.actions}>
-            <button type="button" className={s.primary} onClick={resetForm}>
-              Add another
-            </button>
-          </div>
+          <p className={s.lede}>
+            {editing ? 'Updated on the family recipe box.' : 'Added to the family recipe box.'}
+          </p>
+          {!editing && (
+            <div className={s.actions}>
+              <button type="button" className={s.primary} onClick={resetForm}>
+                Add another
+              </button>
+            </div>
+          )}
         </section>
       )}
     </main>
