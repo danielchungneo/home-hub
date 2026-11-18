@@ -11,6 +11,7 @@ import { useLive } from '../../data/live'
 import { localDate } from '../../data/mappers'
 import { useClock } from '../../hooks/useClock'
 import { addDays, startOfWeek } from '../../lib/format'
+import { recipeIngestUrl } from '../../lib/recipeIngest'
 import { COURSES, amount, entryRecipe, isQuick, matches, recipeById, timeLabel, totalMin } from '../../lib/recipes'
 import type { Recipe } from '../../lib/types'
 import { PulledCard, type Pull } from './PulledCard'
@@ -41,14 +42,6 @@ type Item =
   | { kind: 'divider'; key: string; x: number; course: Recipe['course']; count: number; tabX: number; n: number }
   | { kind: 'card'; key: string; x: number; recipe: Recipe; tilt: number; rest: number; n: number; i: number }
 
-function ingestUrl(token: string, editRecipeId?: string) {
-  // Supabase Functions/Storage force text/plain + CSP sandbox for HTML on *.supabase.co.
-  // Host the phone UI on the existing smart-home Vercel app instead.
-  const base = (import.meta.env.VITE_RECIPE_INGEST_URL as string | undefined)?.replace(/\/$/, '')
-    || 'https://chung-smart-home.vercel.app/recipe'
-  const url = `${base}/?token=${encodeURIComponent(token)}`
-  return editRecipeId ? `${url}&edit=${encodeURIComponent(editRecipeId)}` : url
-}
 
 function readView(): ViewId {
   try {
@@ -164,9 +157,9 @@ export default function Recipes() {
     setPull({ id, from: fromRect, recipe })
   }
 
-  const addUrl = household?.import_token ? ingestUrl(household.import_token) : null
+  const addUrl = household?.import_token ? recipeIngestUrl(household.import_token) : null
   const editUrlFor = (recipeId: string) =>
-    household?.import_token ? ingestUrl(household.import_token, recipeId) : null
+    household?.import_token ? recipeIngestUrl(household.import_token, recipeId) : null
 
   return (
     <AppShell>

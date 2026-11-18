@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Button, IconButton } from '../components/Button'
 import { Icon } from '../components/Icon'
+import { QrCode } from '../components/QrCode'
 import { Label, Switch } from '../components/primitives'
-import { useRecipes } from '../data/hooks'
+import { useHousehold, useRecipes } from '../data/hooks'
 import { quantity } from '../lib/format'
+import { recipeIngestUrl } from '../lib/recipeIngest'
 import { ingredientsForStep } from '../lib/stepIngredients'
 import s from './Cooking.module.css'
 
@@ -37,13 +39,19 @@ function useCountdown(totalSec: number, running: boolean, resetKey: number) {
 
 export default function Cooking({ recipeId, onExit }: { recipeId: string; onExit: () => void }) {
   const { data: recipes = [] } = useRecipes()
+  const { data: household } = useHousehold()
   const recipe = recipes.find((r) => r.id === recipeId) ?? recipes[0]
   const [i, setI] = useState(0)
   const [timerOn, setTimerOn] = useState(false)
   const [durationMin, setDurationMin] = useState(5)
   const [running, setRunning] = useState(false)
   const [resetKey, setResetKey] = useState(0)
+  const [showEditQr, setShowEditQr] = useState(false)
   useWakeLock()
+
+  const editUrl = recipe && household?.import_token
+    ? recipeIngestUrl(household.import_token, recipe.id)
+    : null
 
   const steps = recipe?.steps ?? []
   const step = steps[i]
@@ -104,6 +112,16 @@ export default function Cooking({ recipeId, onExit }: { recipeId: string; onExit
           <Label>Cooking mode</Label>
           <span className={s.recipe}>{recipe.title}</span>
         </div>
+        <Button
+          variant="rail"
+          size="lg"
+          pill
+          icon="pencil"
+          disabled={!editUrl}
+          onClick={() => setShowEditQr(true)}
+        >
+          Edit on phone
+        </Button>
         <span className={s.pill}><Icon name="sun" size={22} />Screen stays on</span>
       </header>
 
@@ -216,6 +234,31 @@ export default function Cooking({ recipeId, onExit }: { recipeId: string; onExit
         <Button variant="secondary" size="xl" disabled={i === 0} onClick={() => goTo(i - 1)}>Back</Button>
         <Button size="xl" onClick={() => (last ? onExit() : goTo(i + 1))}>{last ? 'Done cooking' : 'Next step'}</Button>
       </footer>
+
+      {showEditQr && (
+        <div
+          className={s.qrScrim}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Edit ${recipe.title} on your phone`}
+          onClick={() => setShowEditQr(false)}
+        >
+          <div className={s.qrCard} onClick={(e) => e.stopPropagation()}>
+            <div className={s.qrHead}>
+              <span className={s.qrTitle}>Edit on your phone</span>
+              <IconButton variant="secondary" icon="close" label="Close" onClick={() => setShowEditQr(false)} />
+            </div>
+            {editUrl ? (
+              <>
+                <QrCode className={s.qrImg} value={editUrl} />
+                <p className={s.qrHint}>Scan to edit “{recipe.title}”. Save on your phone and the hub updates.</p>
+              </>
+            ) : (
+              <p className={s.qrHint}>Recipe editing isn’t set up for this household yet.</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -297,12 +297,6 @@
   font-weight: 700;
 }
 
-.photoActions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
 .photoButton {
   display: grid;
   place-items: center;

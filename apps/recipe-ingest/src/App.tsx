@@ -428,35 +428,19 @@ export function App() {
             ) : (
               <div className={s.photoEmpty}>No photo yet</div>
             )}
-            <div className={s.photoActions}>
-              <label className={s.photoButton}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  hidden
-                  disabled={uploadingPhoto}
-                  onChange={(e) => {
-                    void onPhotoSelected(e.target.files?.[0] ?? null)
-                    e.target.value = ''
-                  }}
-                />
-                {uploadingPhoto ? 'Uploading…' : 'Take photo'}
-              </label>
-              <label className={s.photoButton}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  disabled={uploadingPhoto}
-                  onChange={(e) => {
-                    void onPhotoSelected(e.target.files?.[0] ?? null)
-                    e.target.value = ''
-                  }}
-                />
-                {uploadingPhoto ? 'Uploading…' : 'Choose from library'}
-              </label>
-            </div>
+            <label className={s.photoButton}>
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                disabled={uploadingPhoto}
+                onChange={(e) => {
+                  void onPhotoSelected(e.target.files?.[0] ?? null)
+                  e.target.value = ''
+                }}
+              />
+              {uploadingPhoto ? 'Uploading…' : draft.imageUrl ? 'Replace photo' : 'Add photo'}
+            </label>
             {draft.imageUrl && (
               <button
                 type="button"
