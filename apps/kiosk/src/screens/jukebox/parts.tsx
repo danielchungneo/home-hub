@@ -56,15 +56,25 @@ interface TrackRowProps {
   isCurrent: boolean
   playing: boolean
   showAlbum?: boolean
+  favorited?: boolean
+  onToggleFavorite?: () => void
   onPlay: () => void
   onPlayNext: () => void
   onQueue: () => void
 }
 
-/** A song row: number (or equalizer) · art + title · album · time · Play next · Add to queue. */
-export function TrackRow({ track, index, isCurrent, playing, showAlbum = true, onPlay, onPlayNext, onQueue }: TrackRowProps) {
+/** A song row: number (or equalizer) · art + title · album · time · Play next · Add to queue · ♥. */
+export function TrackRow({
+  track, index, isCurrent, playing, showAlbum = true, favorited, onToggleFavorite, onPlay, onPlayNext, onQueue,
+}: TrackRowProps) {
+  const withFav = Boolean(onToggleFavorite)
   return (
-    <div className={[s.row, showAlbum ? s.rowWithAlbum : s.rowNoAlbum, isCurrent && s.rowCurrent].filter(Boolean).join(' ')}>
+    <div className={[
+      s.row,
+      showAlbum ? s.rowWithAlbum : s.rowNoAlbum,
+      withFav && s.rowWithFav,
+      isCurrent && s.rowCurrent,
+    ].filter(Boolean).join(' ')}>
       <span className={s.rowNum}>{isCurrent ? <Equalizer playing={playing} /> : index + 1}</span>
       <button type="button" className={s.rowMain} aria-label={`Play ${track.title}`} onClick={onPlay}>
         <span className={s.rowArt}><Cover item={track} size={56} /></span>
@@ -78,6 +88,9 @@ export function TrackRow({ track, index, isCurrent, playing, showAlbum = true, o
       <span className={s.rowActions}>
         <IconButton icon="play-next" label={`Play ${track.title} next`} round={false} onClick={onPlayNext} />
         <IconButton icon="queue-add" label={`Add ${track.title} to queue`} round={false} onClick={onQueue} />
+        {onToggleFavorite && (
+          <FavoriteButton on={!!favorited} title={track.title} onToggle={onToggleFavorite} />
+        )}
       </span>
     </div>
   )

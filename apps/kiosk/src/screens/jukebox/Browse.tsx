@@ -77,7 +77,14 @@ export function SongsView({ jb, tracks, recent, onPick, onOpen }: {
           <span>#</span><span>Favorite songs · {tracks.length}</span><span>Album</span><span className={s.right}>Time</span><span />
         </div>
         <div className={`${s.rows} scroll-y`}>
-          {tracks.map((t, i) => <TrackRow key={t.uri} {...trackProps(jb, t, i)} />)}
+          {tracks.map((t, i) => (
+            <TrackRow
+              key={t.uri}
+              {...trackProps(jb, t, i)}
+              favorited={jb.isFavorite(t.uri)}
+              onToggleFavorite={() => jb.toggleFavorite(t.uri, 'track', favMeta('track', t))}
+            />
+          ))}
           {!tracks.length && <EmptyFavorites kind="songs" />}
         </div>
       </section>
@@ -86,8 +93,8 @@ export function SongsView({ jb, tracks, recent, onPick, onOpen }: {
 }
 
 /* ---------------- Albums / Playlists: covers leaning on wall ledges ---------------- */
-export function WallView({ items, kind, onPick, onOpen }: {
-  items: Collection[]; kind: 'album' | 'playlist'; onPick: (c: Collection) => void; onOpen: (c: Collection) => void
+export function WallView({ jb, items, kind, onPick, onOpen }: {
+  jb: Jukebox; items: Collection[]; kind: 'album' | 'playlist'; onPick: (c: Collection) => void; onOpen: (c: Collection) => void
 }) {
   return (
     <section aria-label={kind === 'album' ? 'Album wall' : 'Playlist wall'} className={s.wall}>
@@ -106,10 +113,17 @@ export function WallView({ items, kind, onPick, onOpen }: {
                 {c.kind === 'playlist' && !c.art.url && <span className={s.wallPlaylistLabel}>{c.title}</span>}
               </button>
               <div className={s.ledge} aria-hidden="true" />
-              <button type="button" className={s.wallCaption} aria-label={`Show songs in ${c.title}`} onClick={() => onOpen(c)}>
-                <span className={s.wallTitle}>{c.title}</span>
-                <span className={s.wallSub}>{collectionMeta(c)}</span>
-              </button>
+              <div className={s.wallFooter}>
+                <button type="button" className={s.wallCaption} aria-label={`Show songs in ${c.title}`} onClick={() => onOpen(c)}>
+                  <span className={s.wallTitle}>{c.title}</span>
+                  <span className={s.wallSub}>{collectionMeta(c)}</span>
+                </button>
+                <FavoriteButton
+                  on={jb.isFavorite(c.uri)}
+                  title={c.title}
+                  onToggle={() => jb.toggleFavorite(c.uri, c.kind, favMeta(c.kind, c))}
+                />
+              </div>
             </div>
           ))}
         </div>
@@ -183,7 +197,15 @@ export function DetailView({ jb, c, onBack, onPick }: { jb: Jukebox; c: Collecti
         </div>
       </div>
       <div className={`${s.rows} ${s.detailRows} scroll-y`}>
-        {tracks.map((t, i) => <TrackRow key={t.uri} showAlbum={false} {...trackProps(jb, t, i, enriched)} />)}
+        {tracks.map((t, i) => (
+          <TrackRow
+            key={t.uri}
+            showAlbum={false}
+            {...trackProps(jb, t, i, enriched)}
+            favorited={jb.isFavorite(t.uri)}
+            onToggleFavorite={() => jb.toggleFavorite(t.uri, 'track', favMeta('track', t))}
+          />
+        ))}
         {loading && <p className={s.note}>Loading songs…</p>}
         {!loading && !tracks.length && (
           <p className={s.note}>

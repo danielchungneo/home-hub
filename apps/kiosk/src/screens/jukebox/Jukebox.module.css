@@ -109,6 +109,8 @@
 }
 .rowWithAlbum { grid-template-columns: 56px minmax(0, 1.4fr) minmax(0, 1fr) 80px 128px; }
 .rowNoAlbum { grid-template-columns: 56px minmax(0, 1fr) 80px 128px; }
+.rowWithAlbum.rowWithFav { grid-template-columns: 56px minmax(0, 1.4fr) minmax(0, 1fr) 80px 192px; }
+.rowNoAlbum.rowWithFav { grid-template-columns: 56px minmax(0, 1fr) 80px 192px; }
 .rowHead {
   height: 52px;
   border-radius: 0;
@@ -192,8 +194,26 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .ledge { width: calc(100% + 70px); height: 22px; flex: none; background: var(--color-ledge); border-bottom: 6px solid var(--color-ledge-edge); }
-.wallCaption { max-width: 280px; height: 60px; margin-top: 6px; padding: 0 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border-radius: 14px; }
-.wallTitle, .wallSub { max-width: 256px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wallFooter {
+  max-width: 280px;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.wallCaption {
+  flex: 1;
+  min-width: 0;
+  height: 60px;
+  padding: 0 8px 0 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
+  border-radius: 14px;
+}
+.wallTitle, .wallSub { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wallTitle { font-size: var(--text-md); font-weight: var(--weight-heavy); }
 .wallSub { font-size: 14px; font-weight: var(--weight-bold); color: var(--color-ink-3); }
 .wallEmpty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }

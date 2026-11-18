@@ -22,8 +22,8 @@ The Jukebox tab browses and plays the household's **favorited Spotify items** on
 | View | What's on it |
 |---|---|
 | Toolbar (always) | Header has a **Kid-friendly** switch (PIN only to turn off); tabs (Songs · Playlists · Albums, with counts), search box (opens the on-screen SoftKeyboard — Chromium has no OS keyboard), and a "Now playing" button while something is playing |
-| Songs | "Jump back in" (the last 4 albums or playlists played, from `play_collection` commands) and the list of favorite songs. Each row has Play, **Play next** and **Add to queue** |
-| Albums / Playlists | The **record wall**: covers leaning on two wooden ledges, scrolling sideways. Tap a cover to play it with the pick animation; tap the caption to see its songs |
+| Songs | "Jump back in" (the last 4 albums or playlists played, from `play_collection` commands) and the list of favorite songs. Each row has Play, **Play next**, **Add to queue** and ♥ to unfavorite |
+| Albums / Playlists | The **record wall**: covers leaning on two wooden ledges, scrolling sideways. Tap a cover to play it with the pick animation; tap the caption to see its songs; ♥ next to the caption unfavorites |
 | Detail | Cover, title, meta, Play · Shuffle · Add all to queue · ♥, then the song list. Playlists you don't own show a note instead of songs (see §6) |
 | Search | "In your favorites" first, then "From Spotify". Each result has a type badge (Song / Album / Playlist), Queue or Play, and ♥ |
 | Now playing | Art tinted stage with a calm pulse, progress, shuffle/prev/play/next/repeat, volume, speaker picker; Up next panel with move up / remove / clear |
@@ -44,7 +44,7 @@ Search (spotify-search) ──♥──▶ insert jukebox_favorites ──Realti
 ```
 
 - **Favoriting** saves the item's display metadata on the row at that moment: title, subtitle, album, image URL, duration and track count. The tabs render straight from the table with **no Spotify calls**. That matters because Spotify removed batch lookups (`GET /tracks`, `GET /albums`) in February 2026, so re-fetching metadata would be one request per item.
-- **Unfavoriting** deletes the row (♥ in search results, on the detail header, or later from the phone).
+- **Unfavoriting** deletes the row (♥ on the Songs list, album/playlist wall, detail header, search results, or later from the phone).
 - **Ordering:** by `sort_order`, then newest first. Drag-to-reorder can come later on the phone.
 - **Artwork:** store Spotify's image URL (pick the ~300px image for covers). Don't copy the image files into our own storage without checking Spotify's Developer Terms first. The UI falls back to a drawn placeholder when there's no URL.
 - **Optional later:** mirror favorites to the Spotify account's library (`PUT /me/library`) so they show up in the Spotify app too.

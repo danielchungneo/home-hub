@@ -90,8 +90,8 @@ export default function Jukebox() {
   if (query.trim()) body = <SearchView jb={jb} query={query} onPick={pick} onOpen={open} />
   else if (activeTab === 'now') body = <NowPlaying jb={jb} />
   else if (detail) body = <DetailView jb={jb} c={detail} onBack={() => setDetail(null)} onPick={pick} />
-  else if (activeTab === 'albums') body = <WallView items={jb.albums} kind="album" onPick={pick} onOpen={open} />
-  else if (activeTab === 'playlists') body = <WallView items={jb.playlists} kind="playlist" onPick={pick} onOpen={open} />
+  else if (activeTab === 'albums') body = <WallView jb={jb} items={jb.albums} kind="album" onPick={pick} onOpen={open} />
+  else if (activeTab === 'playlists') body = <WallView jb={jb} items={jb.playlists} kind="playlist" onPick={pick} onOpen={open} />
   else body = <SongsView jb={jb} tracks={jb.songs} recent={jb.recent} onPick={pick} onOpen={open} />
 
   return (
